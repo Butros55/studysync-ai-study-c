@@ -6,6 +6,7 @@ type QueueTask = {
 class TaskQueue {
   private queue: QueueTask[] = []
   private isProcessing = false
+  private minDelayBetweenTasks = 2000
 
   async add(task: QueueTask) {
     this.queue.push(task)
@@ -28,6 +29,10 @@ class TaskQueue {
         await task.execute()
       } catch (error) {
         console.error(`Task ${task.id} failed:`, error)
+      }
+      
+      if (this.queue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, this.minDelayBetweenTasks))
       }
     }
 
