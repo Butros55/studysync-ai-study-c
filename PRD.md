@@ -75,6 +75,13 @@ A university study companion that organizes course materials by module, generate
 - **Progression**: Submit → AI extracts text/equations from canvas → Compares to solution → Returns match percentage → Provides hints or success message
 - **Success criteria**: Handwriting recognition achieves reasonable accuracy, feedback is helpful not just binary correct/incorrect
 
+### Study Statistics Dashboard
+- **Functionality**: Visual dashboard displaying learning progress over time with charts, metrics, and insights across all modules or per-module
+- **Purpose**: Provides motivation through visible progress, identifies areas needing more focus, and helps students understand their learning patterns
+- **Trigger**: User clicks "Statistics" button in header or within a specific module
+- **Progression**: Click statistics → Dashboard loads with animated charts → View overall stats or filter by module → See tasks completed over time, flashcard retention rates, study streak, difficulty distribution → Identify weak areas → Click through to relevant content
+- **Success criteria**: Charts are accurate and update in real-time, data is meaningful and actionable, visualizations are clear and beautiful, dashboard is responsive on all devices, empty states guide new users
+
 ## Edge Case Handling
 
 - **Empty States**: First-time users see helpful onboarding cards explaining to create modules and upload scripts

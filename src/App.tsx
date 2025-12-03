@@ -8,8 +8,9 @@ import { TaskSolver } from './components/TaskSolver'
 import { FlashcardStudy } from './components/FlashcardStudy'
 import { EmptyState } from './components/EmptyState'
 import { NotificationCenter, PipelineTask } from './components/NotificationCenter'
+import { StatisticsDashboard } from './components/StatisticsDashboard'
 import { Button } from './components/ui/button'
-import { Plus } from '@phosphor-icons/react'
+import { Plus, ChartLine } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -26,6 +27,7 @@ function App() {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
+  const [showStatistics, setShowStatistics] = useState(false)
   const [taskFeedback, setTaskFeedback] = useState<{
     isCorrect: boolean
     hints?: string[]
@@ -665,6 +667,27 @@ Beispielformat:
     )
   }
 
+  if (showStatistics) {
+    return (
+      <>
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <StatisticsDashboard
+          modules={modules || []}
+          tasks={tasks || []}
+          flashcards={flashcards || []}
+          scripts={scripts || []}
+          notes={notes || []}
+          onBack={() => setShowStatistics(false)}
+          selectedModuleId={selectedModuleId || undefined}
+        />
+      </>
+    )
+  }
+
   if (selectedModule) {
     return (
       <>
@@ -719,10 +742,16 @@ Beispielformat:
                   Dein KI-gestützter Lernbegleiter für die Uni
                 </p>
               </div>
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus size={18} className="mr-2" />
-                Neues Modul
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={() => setShowStatistics(true)}>
+                  <ChartLine size={18} className="mr-2" />
+                  Statistiken
+                </Button>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus size={18} className="mr-2" />
+                  Neues Modul
+                </Button>
+              </div>
             </div>
           </div>
         </div>
