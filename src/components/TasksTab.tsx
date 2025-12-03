@@ -23,15 +23,26 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
     }
   }
 
+  const getDifficultyLabel = (difficulty: Task['difficulty']) => {
+    switch (difficulty) {
+      case 'easy':
+        return 'Einfach'
+      case 'medium':
+        return 'Mittel'
+      case 'hard':
+        return 'Schwer'
+    }
+  }
+
   const incompleteTasks = tasks.filter((t) => !t.completed)
   const completedTasks = tasks.filter((t) => t.completed)
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Practice Tasks</h2>
+        <h2 className="text-xl font-semibold">Übungsaufgaben</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          AI-generated problems to test your understanding
+          KI-generierte Aufgaben zum Testen deines Verständnisses
         </p>
       </div>
 
@@ -40,9 +51,9 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
           <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
             <Brain size={32} className="text-muted-foreground" weight="duotone" />
           </div>
-          <h3 className="font-semibold text-lg mb-2">No tasks yet</h3>
+          <h3 className="font-semibold text-lg mb-2">Noch keine Aufgaben</h3>
           <p className="text-muted-foreground text-sm">
-            Generate practice tasks from your uploaded scripts using AI
+            Erstelle Übungsaufgaben aus deinen hochgeladenen Skripten mit KI
           </p>
         </Card>
       ) : (
@@ -51,7 +62,7 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
             <div>
               <h3 className="font-medium mb-4 flex items-center gap-2">
                 <Pencil size={18} />
-                To Solve ({incompleteTasks.length})
+                Zu lösen ({incompleteTasks.length})
               </h3>
               <div className="grid gap-4">
                 {incompleteTasks.map((task) => (
@@ -60,13 +71,13 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-3">
                           <Badge variant="outline" className={getDifficultyColor(task.difficulty)}>
-                            {task.difficulty}
+                            {getDifficultyLabel(task.difficulty)}
                           </Badge>
                         </div>
-                        <p className="text-sm leading-relaxed mb-4">{task.question}</p>
+                        <p className="text-sm leading-relaxed mb-4 whitespace-pre-wrap">{task.question}</p>
                         <Button onClick={() => onSolveTask(task)}>
                           <Pencil size={16} className="mr-2" />
-                          Solve Task
+                          Aufgabe lösen
                         </Button>
                       </div>
                       <Button
@@ -74,9 +85,9 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
                         variant="ghost"
                         className="text-destructive hover:text-destructive"
                         onClick={() => {
-                          if (confirm('Delete this task?')) {
+                          if (confirm('Diese Aufgabe löschen?')) {
                             onDeleteTask(task.id)
-                            toast.success('Task deleted')
+                            toast.success('Aufgabe gelöscht')
                           }
                         }}
                       >
@@ -93,7 +104,7 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
             <div>
               <h3 className="font-medium mb-4 flex items-center gap-2 text-accent">
                 <CheckCircle size={18} weight="fill" />
-                Completed ({completedTasks.length})
+                Abgeschlossen ({completedTasks.length})
               </h3>
               <div className="grid gap-4">
                 {completedTasks.map((task) => (
@@ -102,20 +113,20 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask }: TasksTabProps) {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-3">
                           <Badge variant="outline" className={getDifficultyColor(task.difficulty)}>
-                            {task.difficulty}
+                            {getDifficultyLabel(task.difficulty)}
                           </Badge>
                           <CheckCircle size={18} className="text-accent" weight="fill" />
                         </div>
-                        <p className="text-sm leading-relaxed opacity-75">{task.question}</p>
+                        <p className="text-sm leading-relaxed opacity-75 whitespace-pre-wrap">{task.question}</p>
                       </div>
                       <Button
                         size="icon"
                         variant="ghost"
                         className="text-destructive hover:text-destructive"
                         onClick={() => {
-                          if (confirm('Delete this task?')) {
+                          if (confirm('Diese Aufgabe löschen?')) {
                             onDeleteTask(task.id)
-                            toast.success('Task deleted')
+                            toast.success('Aufgabe gelöscht')
                           }
                         }}
                       >

@@ -36,11 +36,11 @@ export function ModuleCard({ module, onClick, scriptCount, taskCount }: ModuleCa
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <FileText size={16} />
-                <span>{scriptCount} scripts</span>
+                <span>{scriptCount} Skripte</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Brain size={16} />
-                <span>{taskCount} tasks</span>
+                <span>{taskCount} Aufgaben</span>
               </div>
             </div>
           </div>

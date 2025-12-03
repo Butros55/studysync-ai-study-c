@@ -24,6 +24,7 @@ function App() {
   const [taskFeedback, setTaskFeedback] = useState<{
     isCorrect: boolean
     hints?: string[]
+    transcription?: string
   } | null>(null)
   
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
@@ -42,7 +43,7 @@ function App() {
       color: getRandomColor(),
     }
     setModules((current) => [...(current || []), newModule])
-    toast.success('Module created successfully')
+    toast.success('Modul erfolgreich erstellt')
   }
 
   const handleUploadScript = async (content: string, name: string, fileType?: string, fileData?: string) => {
@@ -95,14 +96,14 @@ function App() {
         setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
       }, 5000)
       
-      toast.success('Script uploaded successfully')
+      toast.success('Skript erfolgreich hochgeladen')
     } catch (error) {
       setPipelineTasks((current) =>
         current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Upload failed', timestamp: Date.now() } : t
+          t.id === taskId ? { ...t, status: 'error', error: 'Upload fehlgeschlagen', timestamp: Date.now() } : t
         )
       )
-      toast.error('Failed to upload script')
+      toast.error('Fehler beim Hochladen des Skripts')
     }
   }
 
@@ -132,18 +133,18 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // @ts-ignore - spark.llmPrompt template literal typing
-      const prompt = spark.llmPrompt`You are an expert study assistant. Analyze the following course material and create comprehensive study notes.
+      const prompt = spark.llmPrompt`Du bist ein Experten-Studienassistent. Analysiere das folgende Kursmaterial und erstelle umfassende Lernnotizen.
 
-Course Material:
+Kursmaterial:
 ${script.content}
 
-Generate well-structured study notes that include:
-1. Key concepts and definitions
-2. Important formulas or principles
-3. Summary points
-4. Things to remember
+Erstelle gut strukturierte Lernnotizen mit:
+1. Schlüsselkonzepten und Definitionen
+2. Wichtigen Formeln oder Prinzipien
+3. Zusammenfassungspunkte
+4. Dinge, die man sich merken sollte
 
-Format the notes in a clear, readable way suitable for studying.`
+Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
 
       setPipelineTasks((current) =>
         current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -175,14 +176,14 @@ Format the notes in a clear, readable way suitable for studying.`
         setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
       }, 5000)
 
-      toast.success('Study notes generated successfully')
+      toast.success('Lernnotizen erfolgreich erstellt')
     } catch (error) {
       setPipelineTasks((current) =>
         current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Generation failed', timestamp: Date.now() } : t
+          t.id === taskId ? { ...t, status: 'error', error: 'Erstellung fehlgeschlagen', timestamp: Date.now() } : t
         )
       )
-      toast.error('Failed to generate notes. Please try again.')
+      toast.error('Fehler beim Erstellen der Notizen. Bitte versuche es erneut.')
     }
   }
 
@@ -212,24 +213,24 @@ Format the notes in a clear, readable way suitable for studying.`
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // @ts-ignore - spark.llmPrompt template literal typing
-      const prompt = spark.llmPrompt`You are an expert educator. Based on the following course material, create 3-5 practice problems of varying difficulty.
+      const prompt = spark.llmPrompt`Du bist ein Experten-Dozent. Basierend auf dem folgenden Kursmaterial, erstelle 3-5 Übungsaufgaben mit unterschiedlichen Schwierigkeitsgraden.
 
-Course Material:
+Kursmaterial:
 ${script.content}
 
-Generate problems as a JSON object with a single property "tasks" containing an array of task objects. Each task must have these exact fields:
-- question: A clear problem statement (string)
-- solution: The complete solution with explanation (string)
-- difficulty: Must be exactly one of these values: "easy", "medium", or "hard"
+Erstelle Aufgaben als JSON-Objekt mit einer einzelnen Eigenschaft "tasks", die ein Array von Aufgabenobjekten enthält. Jede Aufgabe muss diese exakten Felder haben:
+- question: Eine klare Aufgabenstellung AUF DEUTSCH (string)
+- solution: Die vollständige Lösung mit Erklärung AUF DEUTSCH (string)
+- difficulty: Muss genau einer dieser Werte sein: "easy", "medium", oder "hard"
 
-Make problems practical and test understanding of key concepts.
+Erstelle praxisnahe Aufgaben, die das Verständnis der Schlüsselkonzepte testen.
 
-Example format:
+Beispielformat:
 {
   "tasks": [
     {
-      "question": "What is 2+2?",
-      "solution": "The answer is 4 because...",
+      "question": "Was ist 2+2?",
+      "solution": "Die Antwort ist 4, weil...",
       "difficulty": "easy"
     }
   ]
@@ -249,11 +250,11 @@ Example format:
       try {
         parsed = JSON.parse(response)
       } catch (parseError) {
-        throw new Error('Invalid response format from AI')
+        throw new Error('Ungültiges Antwortformat von der KI')
       }
 
       if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
-        throw new Error('Response missing tasks array')
+        throw new Error('Antwort enthält kein tasks-Array')
       }
 
       setPipelineTasks((current) =>
@@ -281,75 +282,81 @@ Example format:
         setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
       }, 5000)
 
-      toast.success(`Generated ${newTasks.length} practice tasks`)
+      toast.success(`${newTasks.length} Übungsaufgaben erstellt`)
     } catch (error) {
-      console.error('Task generation error:', error)
+      console.error('Fehler bei Aufgabenerstellung:', error)
       setPipelineTasks((current) =>
         current.map((t) =>
           t.id === taskId ? { 
             ...t, 
             status: 'error', 
-            error: error instanceof Error ? error.message : 'Generation failed',
+            error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
             timestamp: Date.now()
           } : t
         )
       )
-      toast.error('Failed to generate tasks. Please try again.')
+      toast.error('Fehler beim Erstellen der Aufgaben. Bitte versuche es erneut.')
     }
   }
 
-  const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean) => {
+  const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
     if (!activeTask) return
 
     try {
       let userAnswer = answer
+      let transcription = ''
 
-      if (isHandwritten) {
-        toast.loading('Analyzing your handwriting...')
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const prompt = spark.llmPrompt`The user has drawn a solution on a canvas for the following question:
-
-Question: ${activeTask.question}
-
-Since this is a handwritten solution that we cannot directly read, please provide helpful feedback assuming the user made a genuine attempt. Give 2-3 helpful hints that would guide them toward the correct solution without giving it away completely.
-
-Return your response as JSON with:
-{
-  "hints": ["hint1", "hint2", "hint3"]
-}`
-
-        const response = await spark.llm(prompt, 'gpt-4o-mini', true)
-        const parsed = JSON.parse(response)
+      if (isHandwritten && canvasDataUrl) {
+        toast.loading('Analysiere deine Handschrift...')
         
-        toast.dismiss()
-        setTaskFeedback({
-          isCorrect: false,
-          hints: parsed.hints,
-        })
-        return
+        // @ts-ignore - spark.llmPrompt template literal typing
+        const visionPrompt = spark.llmPrompt`Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
+        
+Analysiere das folgende Bild einer handschriftlichen Lösung und transkribiere GENAU was du siehst.
+
+Fragestellung war: ${activeTask.question}
+
+Extrahiere den gesamten Text, mathematische Formeln, Gleichungen und Schritte. Bewahre die mathematische Notation und Struktur.
+
+WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzliche Kommentare.
+
+Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
+
+        const visionResponse = await spark.llm(visionPrompt, 'gpt-4o', false)
+        transcription = visionResponse.trim()
+        userAnswer = transcription
+        
+        console.log('=== HANDSCHRIFT TRANSKRIPTION ===')
+        console.log('Frage:', activeTask.question)
+        console.log('Transkribiert:', transcription)
+        console.log('================================')
       }
 
-      toast.loading('Checking your answer...')
+      toast.loading('Überprüfe deine Antwort...')
+      
       // @ts-ignore - spark.llmPrompt template literal typing
-      const prompt = spark.llmPrompt`You are evaluating a student's answer to a question.
+      const evaluationPrompt = spark.llmPrompt`Du bist ein Dozent, der die Antwort eines Studenten bewertet.
 
-Question: ${activeTask.question}
-Correct Solution: ${activeTask.solution}
-Student's Answer: ${userAnswer}
+Fragestellung: ${activeTask.question}
+Musterlösung: ${activeTask.solution}
+Antwort des Studenten: ${userAnswer}
 
-Evaluate if the student's answer is correct. They don't need to match word-for-word, but the key concepts and final answer should be correct.
+Bewerte, ob die Antwort des Studenten korrekt ist. Sie müssen nicht wortwörtlich übereinstimmen, aber die Schlüsselkonzepte und die Endergebnisse sollten korrekt sein.
 
-Return JSON:
+Gib deine Antwort als JSON zurück:
 {
   "isCorrect": true/false,
-  "hints": ["hint1", "hint2"] (only if incorrect, provide 2-3 helpful hints without giving away the answer)
+  "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-      const response = await spark.llm(prompt, 'gpt-4o-mini', true)
+      const response = await spark.llm(evaluationPrompt, 'gpt-4o', true)
       const evaluation = JSON.parse(response)
 
       toast.dismiss()
-      setTaskFeedback(evaluation)
+      setTaskFeedback({
+        ...evaluation,
+        transcription: isHandwritten ? transcription : undefined
+      })
 
       if (evaluation.isCorrect) {
         setTasks((current) =>
@@ -357,11 +364,12 @@ Return JSON:
             t.id === activeTask.id ? { ...t, completed: true } : t
           )
         )
-        toast.success('Correct answer!')
+        toast.success('Richtige Antwort!')
       }
     } catch (error) {
+      console.error('Fehler bei Antwortüberprüfung:', error)
       toast.dismiss()
-      toast.error('Failed to evaluate answer. Please try again.')
+      toast.error('Fehler beim Überprüfen der Antwort. Bitte versuche es erneut.')
     }
   }
 
@@ -379,7 +387,7 @@ Return JSON:
     } else {
       setActiveTask(null)
       setTaskFeedback(null)
-      toast.success('All tasks completed! Great work!')
+      toast.success('Alle Aufgaben abgeschlossen! Sehr gut!')
     }
   }
 
@@ -462,12 +470,12 @@ Return JSON:
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight">StudyMate</h1>
                 <p className="text-muted-foreground mt-1">
-                  Your AI-powered university study companion
+                  Dein KI-gestützter Lernbegleiter für die Uni
                 </p>
               </div>
               <Button onClick={() => setCreateDialogOpen(true)}>
                 <Plus size={18} className="mr-2" />
-                New Module
+                Neues Modul
               </Button>
             </div>
           </div>
@@ -476,9 +484,9 @@ Return JSON:
         <div className="max-w-7xl mx-auto px-6 py-8">
           {!modules || modules.length === 0 ? (
             <EmptyState
-              title="No modules yet"
-              description="Create your first module to organize your university course materials, notes, and practice tasks."
-              actionLabel="Create your first module"
+              title="Noch keine Module"
+              description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
+              actionLabel="Erstes Modul erstellen"
               onAction={() => setCreateDialogOpen(true)}
             />
           ) : (

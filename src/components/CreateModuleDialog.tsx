@@ -37,24 +37,24 @@ export function CreateModuleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New Module</DialogTitle>
+          <DialogTitle>Neues Modul erstellen</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="module-name">Module Name</Label>
+            <Label htmlFor="module-name">Modulname</Label>
             <Input
               id="module-name"
-              placeholder="e.g., Linear Algebra"
+              placeholder="z.B. Lineare Algebra"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="module-code">Module Code</Label>
+            <Label htmlFor="module-code">Modulkürzel</Label>
             <Input
               id="module-code"
-              placeholder="e.g., MATH101"
+              placeholder="z.B. MATH101"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -63,10 +63,10 @@ export function CreateModuleDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            Abbrechen
           </Button>
           <Button onClick={handleSubmit} disabled={!name.trim() || !code.trim()}>
-            Create Module
+            Modul erstellen
           </Button>
         </DialogFooter>
       </DialogContent>

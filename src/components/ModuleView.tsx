@@ -63,9 +63,9 @@ export function ModuleView({
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
-            <TabsTrigger value="scripts">Scripts ({scripts.length})</TabsTrigger>
-            <TabsTrigger value="notes">Notes ({notes.length})</TabsTrigger>
-            <TabsTrigger value="tasks">Tasks ({tasks.length})</TabsTrigger>
+            <TabsTrigger value="scripts">Skripte ({scripts.length})</TabsTrigger>
+            <TabsTrigger value="notes">Notizen ({notes.length})</TabsTrigger>
+            <TabsTrigger value="tasks">Aufgaben ({tasks.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="scripts">

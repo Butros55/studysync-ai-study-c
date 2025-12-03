@@ -11,15 +11,15 @@ interface NotesTabProps {
 export function NotesTab({ notes, scripts }: NotesTabProps) {
   const getScriptName = (scriptId: string) => {
     const script = scripts.find((s) => s.id === scriptId)
-    return script?.name || 'Unknown Script'
+    return script?.name || 'Unbekanntes Skript'
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Study Notes</h2>
+        <h2 className="text-xl font-semibold">Lernnotizen</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          AI-generated summaries and key concepts from your scripts
+          KI-generierte Zusammenfassungen und Schlüsselkonzepte aus deinen Skripten
         </p>
       </div>
 
@@ -28,9 +28,9 @@ export function NotesTab({ notes, scripts }: NotesTabProps) {
           <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
             <Note size={32} className="text-muted-foreground" weight="duotone" />
           </div>
-          <h3 className="font-semibold text-lg mb-2">No notes yet</h3>
+          <h3 className="font-semibold text-lg mb-2">Noch keine Notizen</h3>
           <p className="text-muted-foreground text-sm">
-            Generate study notes from your uploaded scripts using AI
+            Erstelle Lernnotizen aus deinen hochgeladenen Skripten mit KI
           </p>
         </Card>
       ) : (
@@ -44,7 +44,7 @@ export function NotesTab({ notes, scripts }: NotesTabProps) {
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">{getScriptName(note.scriptId)}</h3>
                   <p className="text-sm text-muted-foreground">
-                    Generated {formatDate(note.generatedAt)}
+                    Erstellt {formatDate(note.generatedAt)}
                   </p>
                 </div>
               </div>

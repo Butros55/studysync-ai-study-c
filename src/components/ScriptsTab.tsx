@@ -42,7 +42,7 @@ export function ScriptsTab({
     const file = e.target.files?.[0]
     if (file) {
       if (!isValidFileType(file.name)) {
-        toast.error('Please upload a PDF or PPTX file')
+        toast.error('Bitte lade eine PDF- oder PPTX-Datei hoch')
         return
       }
       setSelectedFile(file)
@@ -68,7 +68,7 @@ export function ScriptsTab({
         fileInputRef.current.value = ''
       }
     } catch (error) {
-      toast.error('Failed to parse file. Please try again.')
+      toast.error('Fehler beim Parsen der Datei. Bitte versuche es erneut.')
       console.error('File parsing error:', error)
     } finally {
       setIsUploading(false)
@@ -91,14 +91,14 @@ export function ScriptsTab({
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold">Course Scripts</h2>
+          <h2 className="text-xl font-semibold">Kursskripte</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload lecture notes and course materials
+            Lade Vorlesungsnotizen und Kursmaterialien hoch
           </p>
         </div>
         <Button onClick={() => setUploadDialogOpen(true)}>
           <Plus size={18} className="mr-2" />
-          Upload Script
+          Skript hochladen
         </Button>
       </div>
 
@@ -107,13 +107,13 @@ export function ScriptsTab({
           <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
             <FileText size={32} className="text-muted-foreground" weight="duotone" />
           </div>
-          <h3 className="font-semibold text-lg mb-2">No scripts yet</h3>
+          <h3 className="font-semibold text-lg mb-2">Noch keine Skripte</h3>
           <p className="text-muted-foreground mb-6 text-sm">
-            Upload your first lecture notes to get started with AI-powered study materials
+            Lade deine ersten Vorlesungsnotizen hoch, um mit KI-gestütztem Lernmaterial zu starten
           </p>
           <Button onClick={() => setUploadDialogOpen(true)}>
             <Plus size={18} className="mr-2" />
-            Upload Script
+            Skript hochladen
           </Button>
         </Card>
       ) : (
@@ -137,7 +137,7 @@ export function ScriptsTab({
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Uploaded {formatDate(script.uploadedAt)}
+                      Hochgeladen {formatDate(script.uploadedAt)}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -149,7 +149,7 @@ export function ScriptsTab({
                         }}
                       >
                         <Eye size={16} className="mr-2" />
-                        Preview
+                        Vorschau
                       </Button>
                       <Button
                         size="sm"
@@ -157,7 +157,7 @@ export function ScriptsTab({
                         onClick={() => onGenerateNotes(script.id)}
                       >
                         <Sparkle size={16} className="mr-2" />
-                        Generate Notes
+                        Notizen erstellen
                       </Button>
                       <Button
                         size="sm"
@@ -165,7 +165,7 @@ export function ScriptsTab({
                         onClick={() => onGenerateTasks(script.id)}
                       >
                         <Sparkle size={16} className="mr-2" />
-                        Generate Tasks
+                        Aufgaben erstellen
                       </Button>
                     </div>
                   </div>
@@ -175,9 +175,9 @@ export function ScriptsTab({
                   variant="ghost"
                   className="text-destructive hover:text-destructive"
                   onClick={() => {
-                    if (confirm('Delete this script?')) {
+                    if (confirm('Dieses Skript löschen?')) {
                       onDeleteScript(script.id)
-                      toast.success('Script deleted')
+                      toast.success('Skript gelöscht')
                     }
                   }}
                 >
@@ -192,13 +192,13 @@ export function ScriptsTab({
       <Dialog open={uploadDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upload Script</DialogTitle>
+            <DialogTitle>Skript hochladen</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Select File</label>
+              <label className="text-sm font-medium">Datei auswählen</label>
               <p className="text-xs text-muted-foreground mb-3">
-                Upload PDF or PPTX files containing your course materials
+                Lade PDF- oder PPTX-Dateien mit deinen Kursmaterialien hoch
               </p>
               <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-muted/50 transition-colors">
                 <input
@@ -240,7 +240,7 @@ export function ScriptsTab({
                           }
                         }}
                       >
-                        Change File
+                        Datei ändern
                       </Button>
                     </>
                   ) : (
@@ -249,8 +249,8 @@ export function ScriptsTab({
                         <UploadSimple size={24} className="text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="font-medium">Click to upload</p>
-                        <p className="text-sm text-muted-foreground">PDF or PPTX files</p>
+                        <p className="font-medium">Klicken zum Hochladen</p>
+                        <p className="text-sm text-muted-foreground">PDF- oder PPTX-Dateien</p>
                       </div>
                     </>
                   )}
@@ -260,10 +260,10 @@ export function ScriptsTab({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleDialogClose(false)} disabled={isUploading}>
-              Cancel
+              Abbrechen
             </Button>
             <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
-              {isUploading ? 'Uploading...' : 'Upload Script'}
+              {isUploading ? 'Wird hochgeladen...' : 'Skript hochladen'}
             </Button>
           </DialogFooter>
         </DialogContent>
