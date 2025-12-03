@@ -1,27 +1,33 @@
 import { useState } from 'react'
-import { Module, Script, StudyNote, Task } from '@/lib/types'
+import { Module, Script, StudyNote, Task, Flashcard } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeft } from '@phosphor-icons/react'
 import { ScriptsTab } from './ScriptsTab'
 import { NotesTab } from './NotesTab'
 import { TasksTab } from './TasksTab'
+import { FlashcardsTab } from './FlashcardsTab'
 
 interface ModuleViewProps {
   module: Module
   scripts: Script[]
   notes: StudyNote[]
   tasks: Task[]
+  flashcards: Flashcard[]
   onBack: () => void
   onUploadScript: (content: string, name: string, fileType?: string, fileData?: string) => Promise<void>
   onGenerateNotes: (scriptId: string) => void
   onGenerateTasks: (scriptId: string) => void
+  onGenerateFlashcards: (noteId: string) => void
   onDeleteScript: (scriptId: string) => void
   onSolveTask: (task: Task) => void
   onDeleteTask: (taskId: string) => void
   onDeleteNote: (noteId: string) => void
+  onDeleteFlashcard: (flashcardId: string) => void
   onGenerateAllNotes: () => void
   onGenerateAllTasks: () => void
+  onGenerateAllFlashcards: () => void
+  onStartFlashcardStudy: () => void
 }
 
 export function ModuleView({
@@ -29,16 +35,21 @@ export function ModuleView({
   scripts,
   notes,
   tasks,
+  flashcards,
   onBack,
   onUploadScript,
   onGenerateNotes,
   onGenerateTasks,
+  onGenerateFlashcards,
   onDeleteScript,
   onSolveTask,
   onDeleteTask,
   onDeleteNote,
+  onDeleteFlashcard,
   onGenerateAllNotes,
   onGenerateAllTasks,
+  onGenerateAllFlashcards,
+  onStartFlashcardStudy,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('scripts')
 
@@ -71,6 +82,7 @@ export function ModuleView({
           <TabsList className="mb-6">
             <TabsTrigger value="scripts">Skripte ({scripts.length})</TabsTrigger>
             <TabsTrigger value="notes">Notizen ({notes.length})</TabsTrigger>
+            <TabsTrigger value="flashcards">Karteikarten ({flashcards.length})</TabsTrigger>
             <TabsTrigger value="tasks">Aufgaben ({tasks.length})</TabsTrigger>
           </TabsList>
 
@@ -88,6 +100,17 @@ export function ModuleView({
 
           <TabsContent value="notes">
             <NotesTab notes={notes} scripts={scripts} onDeleteNote={onDeleteNote} />
+          </TabsContent>
+
+          <TabsContent value="flashcards">
+            <FlashcardsTab
+              flashcards={flashcards}
+              notes={notes}
+              onGenerateFlashcards={onGenerateFlashcards}
+              onDeleteFlashcard={onDeleteFlashcard}
+              onStartStudy={onStartFlashcardStudy}
+              onGenerateAllFlashcards={onGenerateAllFlashcards}
+            />
           </TabsContent>
 
           <TabsContent value="tasks">

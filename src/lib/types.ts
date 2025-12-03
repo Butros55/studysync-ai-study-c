@@ -42,3 +42,23 @@ export interface TaskAttempt {
   hints: string[]
   attemptedAt: string
 }
+
+export interface Flashcard {
+  id: string
+  noteId: string
+  moduleId: string
+  front: string
+  back: string
+  createdAt: string
+  lastReviewed?: string
+  nextReview?: string
+  ease: number
+  interval: number
+  repetitions: number
+}
+
+export interface FlashcardReview {
+  flashcardId: string
+  quality: number
+  reviewedAt: string
+}

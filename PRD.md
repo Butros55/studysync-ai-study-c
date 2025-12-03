@@ -54,6 +54,13 @@ A university study companion that organizes course materials by module, generate
 - **Progression**: Click generate → Task added to notification center with progress tracking → AI creates 3-5 tasks → Progress updates smoothly through all stages → Tasks appear in module's task list → Each task shows difficulty level → Completion notification
 - **Success criteria**: Tasks are relevant to content, vary in difficulty, include solutions stored separately, generation process is reliable with clear error messages if it fails, progress tracking is accurate and smooth
 
+### Flashcard Study Mode
+- **Functionality**: Converts study notes into interactive flashcards with spaced repetition algorithm for optimal learning
+- **Purpose**: Provides active recall practice using proven memory techniques to improve retention
+- **Trigger**: User clicks "Generate Flashcards" on notes, or starts flashcard study session
+- **Progression**: Generate → Task added to notification center → AI creates 5-10 cards from notes → Cards appear in flashcards tab → User starts study session → Cards shown one at a time with flip animation → User self-evaluates recall quality (Again/Hard/Good/Easy) → Spaced repetition schedules next review → Session completes with summary
+- **Success criteria**: Cards capture key concepts from notes, flip animation is smooth and intuitive, spaced repetition algorithm properly schedules reviews based on quality ratings, due cards are clearly indicated, study sessions feel focused and productive
+
 ### Interactive Task Solving
 - **Functionality**: Full-screen canvas for solving tasks with keyboard input or touch/stylus drawing
 - **Purpose**: Creates authentic problem-solving experience that supports multiple input methods

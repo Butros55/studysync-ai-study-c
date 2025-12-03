@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Module, Script, StudyNote, Task } from './lib/types'
+import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
 import { ModuleCard } from './components/ModuleCard'
 import { CreateModuleDialog } from './components/CreateModuleDialog'
 import { ModuleView } from './components/ModuleView'
 import { TaskSolver } from './components/TaskSolver'
+import { FlashcardStudy } from './components/FlashcardStudy'
 import { EmptyState } from './components/EmptyState'
 import { NotificationCenter, PipelineTask } from './components/NotificationCenter'
 import { Button } from './components/ui/button'
 import { Plus } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
+import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
 import { taskQueue } from './lib/task-queue'
 
@@ -18,10 +20,12 @@ function App() {
   const [scripts, setScripts] = useKV<Script[]>('scripts', [])
   const [notes, setNotes] = useKV<StudyNote[]>('notes', [])
   const [tasks, setTasks] = useKV<Task[]>('tasks', [])
+  const [flashcards, setFlashcards] = useKV<Flashcard[]>('flashcards', [])
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
   const [taskFeedback, setTaskFeedback] = useState<{
     isCorrect: boolean
     hints?: string[]
@@ -34,6 +38,7 @@ function App() {
   const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
   const moduleNotes = notes?.filter((n) => n.moduleId === selectedModuleId) || []
   const moduleTasks = tasks?.filter((t) => t.moduleId === selectedModuleId) || []
+  const moduleFlashcards = flashcards?.filter((f) => f.moduleId === selectedModuleId) || []
 
   const handleCreateModule = (name: string, code: string) => {
     const newModule: Module = {
@@ -449,6 +454,191 @@ Gib deine Antwort als JSON zurück:
     })
   }
 
+  const handleGenerateFlashcards = async (noteId: string) => {
+    const note = notes?.find((n) => n.id === noteId)
+    if (!note) return
+
+    const taskId = generateId()
+    
+    const execute = async () => {
+      setPipelineTasks((current) => [
+        ...current,
+        {
+          id: taskId,
+          type: 'generate-flashcards',
+          name: `Notiz vom ${new Date(note.generatedAt).toLocaleDateString('de-DE')}`,
+          progress: 0,
+          status: 'processing',
+          timestamp: Date.now(),
+        },
+      ])
+
+      try {
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
+        )
+
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // @ts-ignore - spark.llmPrompt template literal typing
+        const prompt = spark.llmPrompt`Du bist ein Experte für das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
+
+Notizen:
+${note.content}
+
+Erstelle 5-10 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthält. Jede Karteikarte muss diese exakten Felder haben:
+- front: Die Frage oder das Konzept (kurz und prägnant, AUF DEUTSCH) (string)
+- back: Die Antwort oder Erklärung (klar und vollständig, AUF DEUTSCH) (string)
+
+Erstelle Karten, die Schlüsselkonzepte, Definitionen, Formeln und wichtige Zusammenhänge abdecken.
+
+Beispielformat:
+{
+  "flashcards": [
+    {
+      "front": "Was ist die Formel für die Kreisfläche?",
+      "back": "A = π × r²\n\nDabei ist:\n- A = Fläche\n- r = Radius\n- π ≈ 3,14159"
+    }
+  ]
+}`
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
+        )
+
+        const response = await spark.llm(prompt, 'gpt-4o', true)
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
+        )
+
+        let parsed
+        try {
+          parsed = JSON.parse(response)
+        } catch (parseError) {
+          throw new Error('Ungültiges Antwortformat von der KI')
+        }
+
+        if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
+          throw new Error('Antwort enthält kein flashcards-Array')
+        }
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
+        )
+
+        const newFlashcards: Flashcard[] = parsed.flashcards.map((f: any) => ({
+          id: generateId(),
+          noteId: note.id,
+          moduleId: note.moduleId,
+          front: f.front,
+          back: f.back,
+          createdAt: new Date().toISOString(),
+          ease: 2.5,
+          interval: 0,
+          repetitions: 0,
+        }))
+
+        setFlashcards((current) => [...(current || []), ...newFlashcards])
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+        )
+
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.success(`${newFlashcards.length} Karteikarten erstellt`)
+        }, 3000)
+      } catch (error) {
+        console.error('Fehler bei Karteikarten-Erstellung:', error)
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { 
+              ...t, 
+              status: 'error', 
+              error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
+              timestamp: Date.now()
+            } : t
+          )
+        )
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.error('Fehler beim Erstellen der Karteikarten')
+        }, 5000)
+      }
+    }
+
+    await taskQueue.add({ id: taskId, execute })
+  }
+
+  const handleGenerateAllFlashcards = () => {
+    if (!selectedModuleId) return
+    const moduleNotes = notes?.filter((n) => n.moduleId === selectedModuleId) || []
+    
+    moduleNotes.forEach((note) => {
+      const hasFlashcards = flashcards?.some((f) => f.noteId === note.id)
+      if (!hasFlashcards) {
+        handleGenerateFlashcards(note.id)
+      }
+    })
+  }
+
+  const handleDeleteFlashcard = (flashcardId: string) => {
+    setFlashcards((current) => (current || []).filter((f) => f.id !== flashcardId))
+    toast.success('Karteikarte gelöscht')
+  }
+
+  const handleStartFlashcardStudy = () => {
+    if (!selectedModuleId) return
+    const dueCards = moduleFlashcards.filter((card) => {
+      if (!card.nextReview) return true
+      return new Date(card.nextReview) <= new Date()
+    })
+    
+    if (dueCards.length === 0) {
+      toast.info('Keine fälligen Karteikarten zum Lernen')
+      return
+    }
+    
+    setActiveFlashcards(dueCards)
+  }
+
+  const handleReviewFlashcard = (flashcardId: string, quality: number) => {
+    const card = flashcards?.find((f) => f.id === flashcardId)
+    if (!card) return
+
+    const update = calculateNextReview(card, quality)
+    
+    setFlashcards((current) =>
+      (current || []).map((f) =>
+        f.id === flashcardId
+          ? {
+              ...f,
+              ...update,
+              lastReviewed: new Date().toISOString(),
+            }
+          : f
+      )
+    )
+  }
+
+  if (activeFlashcards) {
+    return (
+      <>
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <FlashcardStudy
+          flashcards={activeFlashcards}
+          onClose={() => setActiveFlashcards(null)}
+          onReview={handleReviewFlashcard}
+        />
+      </>
+    )
+  }
+
   if (activeTask) {
     return (
       <>
@@ -488,10 +678,12 @@ Gib deine Antwort als JSON zurück:
           scripts={moduleScripts}
           notes={moduleNotes}
           tasks={moduleTasks}
+          flashcards={moduleFlashcards}
           onBack={() => setSelectedModuleId(null)}
           onUploadScript={handleUploadScript}
           onGenerateNotes={handleGenerateNotes}
           onGenerateTasks={handleGenerateTasks}
+          onGenerateFlashcards={handleGenerateFlashcards}
           onDeleteScript={handleDeleteScript}
           onSolveTask={(task) => {
             setActiveTask(task)
@@ -499,8 +691,11 @@ Gib deine Antwort als JSON zurück:
           }}
           onDeleteTask={handleDeleteTask}
           onDeleteNote={handleDeleteNote}
+          onDeleteFlashcard={handleDeleteFlashcard}
           onGenerateAllNotes={handleGenerateAllNotes}
           onGenerateAllTasks={handleGenerateAllTasks}
+          onGenerateAllFlashcards={handleGenerateAllFlashcards}
+          onStartFlashcardStudy={handleStartFlashcardStudy}
         />
       </>
     )

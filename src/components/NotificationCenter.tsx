@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, X, Check, Warning, Upload, FileText, ListChecks } from '@phosphor-icons/react'
+import { Bell, X, Check, Warning, Upload, FileText, ListChecks, Cards } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 export interface PipelineTask {
   id: string
-  type: 'upload' | 'generate-notes' | 'generate-tasks'
+  type: 'upload' | 'generate-notes' | 'generate-tasks' | 'generate-flashcards'
   name: string
   progress: number
   status: 'pending' | 'processing' | 'completed' | 'error'
@@ -50,6 +50,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
       case 'upload': return Upload
       case 'generate-notes': return FileText
       case 'generate-tasks': return ListChecks
+      case 'generate-flashcards': return Cards
       default: return FileText
     }
   }
@@ -57,9 +58,10 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'upload': return 'Upload'
-      case 'generate-notes': return 'Generate Notes'
-      case 'generate-tasks': return 'Generate Tasks'
-      default: return 'Processing'
+      case 'generate-notes': return 'Notizen generieren'
+      case 'generate-tasks': return 'Aufgaben generieren'
+      case 'generate-flashcards': return 'Karteikarten generieren'
+      default: return 'Verarbeitung'
     }
   }
 
