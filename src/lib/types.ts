@@ -13,6 +13,7 @@ export interface Script {
   content: string
   uploadedAt: string
   fileType: string
+  fileData?: string
 }
 
 export interface StudyNote {

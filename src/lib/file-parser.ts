@@ -78,3 +78,12 @@ export async function parseFile(file: File): Promise<string> {
       throw new Error(`Unsupported file type: ${ext}`)
   }
 }
+
+export async function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}

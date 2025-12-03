@@ -8,8 +8,11 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FileText, FilePdf, X } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils-app'
+import { PDFViewer } from './PDFViewer'
+import { PPTXViewer } from './PPTXViewer'
 
 interface ScriptPreviewDialogProps {
   script: Script | null
@@ -30,7 +33,7 @@ export function ScriptPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -79,16 +82,45 @@ export function ScriptPreviewDialog({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-4 pr-4">
-            <div>
-              <h3 className="text-sm font-medium mb-2">Content Preview</h3>
-              <div className="bg-muted rounded-lg p-4 font-mono text-sm whitespace-pre-wrap break-words">
-                {script.content}
+        <Tabs defaultValue="document" className="flex-1 flex flex-col min-h-0">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="document">Document View</TabsTrigger>
+            <TabsTrigger value="text">Text Content</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="document" className="flex-1 mt-4 overflow-hidden">
+            <ScrollArea className="h-[calc(90vh-300px)]">
+              <div className="pr-4">
+                {script.fileData ? (
+                  script.fileType === 'pdf' ? (
+                    <PDFViewer fileData={script.fileData} />
+                  ) : script.fileType === 'pptx' ? (
+                    <PPTXViewer fileData={script.fileData} content={script.content} />
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground">Document preview not available</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">Original file not stored. Only text content is available.</p>
+                    <p className="text-xs text-muted-foreground mt-2">Re-upload the file to enable document preview.</p>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-        </ScrollArea>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="text" className="flex-1 mt-4 overflow-hidden">
+            <ScrollArea className="h-[calc(90vh-300px)]">
+              <div className="pr-4">
+                <div className="bg-muted rounded-lg p-4 font-mono text-sm whitespace-pre-wrap break-words">
+                  {script.content}
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

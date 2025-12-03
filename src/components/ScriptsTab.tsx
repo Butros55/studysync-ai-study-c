@@ -13,12 +13,12 @@ import {
 import { FileText, Sparkle, Trash, Plus, UploadSimple, FilePdf, Eye } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils-app'
 import { toast } from 'sonner'
-import { parseFile, isValidFileType, getFileExtension } from '@/lib/file-parser'
+import { parseFile, isValidFileType, getFileExtension, fileToDataURL } from '@/lib/file-parser'
 import { ScriptPreviewDialog } from './ScriptPreviewDialog'
 
 interface ScriptsTabProps {
   scripts: Script[]
-  onUploadScript: (content: string, name: string, fileType?: string) => void
+  onUploadScript: (content: string, name: string, fileType?: string, fileData?: string) => void
   onGenerateNotes: (scriptId: string) => void
   onGenerateTasks: (scriptId: string) => void
   onDeleteScript: (scriptId: string) => void
@@ -57,10 +57,11 @@ export function ScriptsTab({
 
     try {
       const content = await parseFile(selectedFile)
+      const fileData = await fileToDataURL(selectedFile)
       const name = selectedFile.name.replace(/\.[^/.]+$/, '')
       const fileType = getFileExtension(selectedFile.name)
       
-      onUploadScript(content, name, fileType)
+      onUploadScript(content, name, fileType, fileData)
       
       setSelectedFile(null)
       setUploadDialogOpen(false)

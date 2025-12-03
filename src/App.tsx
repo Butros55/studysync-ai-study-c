@@ -44,7 +44,7 @@ function App() {
     toast.success('Module created successfully')
   }
 
-  const handleUploadScript = (content: string, name: string, fileType?: string) => {
+  const handleUploadScript = (content: string, name: string, fileType?: string, fileData?: string) => {
     if (!selectedModuleId) return
 
     const newScript: Script = {
@@ -54,6 +54,7 @@ function App() {
       content,
       uploadedAt: new Date().toISOString(),
       fileType: fileType || 'text',
+      fileData,
     }
     setScripts((current) => [...(current || []), newScript])
   }
