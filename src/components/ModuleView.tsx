@@ -19,6 +19,9 @@ interface ModuleViewProps {
   onDeleteScript: (scriptId: string) => void
   onSolveTask: (task: Task) => void
   onDeleteTask: (taskId: string) => void
+  onDeleteNote: (noteId: string) => void
+  onGenerateAllNotes: () => void
+  onGenerateAllTasks: () => void
 }
 
 export function ModuleView({
@@ -33,6 +36,9 @@ export function ModuleView({
   onDeleteScript,
   onSolveTask,
   onDeleteTask,
+  onDeleteNote,
+  onGenerateAllNotes,
+  onGenerateAllTasks,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('scripts')
 
@@ -75,11 +81,13 @@ export function ModuleView({
               onGenerateNotes={onGenerateNotes}
               onGenerateTasks={onGenerateTasks}
               onDeleteScript={onDeleteScript}
+              onGenerateAllNotes={onGenerateAllNotes}
+              onGenerateAllTasks={onGenerateAllTasks}
             />
           </TabsContent>
 
           <TabsContent value="notes">
-            <NotesTab notes={notes} scripts={scripts} />
+            <NotesTab notes={notes} scripts={scripts} onDeleteNote={onDeleteNote} />
           </TabsContent>
 
           <TabsContent value="tasks">

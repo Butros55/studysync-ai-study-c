@@ -11,6 +11,7 @@ import { Button } from './components/ui/button'
 import { Plus } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { toast } from 'sonner'
+import { taskQueue } from './lib/task-queue'
 
 function App() {
   const [modules, setModules] = useKV<Module[]>('modules', [])
@@ -50,61 +51,68 @@ function App() {
     if (!selectedModuleId) return
 
     const taskId = generateId()
+    const moduleId = selectedModuleId
     
-    setPipelineTasks((current) => [
-      ...current,
-      {
-        id: taskId,
-        type: 'upload',
-        name,
-        progress: 0,
-        status: 'processing',
-        timestamp: Date.now(),
-      },
-    ])
+    const execute = async () => {
+      setPipelineTasks((current) => [
+        ...current,
+        {
+          id: taskId,
+          type: 'upload',
+          name,
+          progress: 0,
+          status: 'processing',
+          timestamp: Date.now(),
+        },
+      ])
 
-    try {
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
-      )
-      
-      await new Promise(resolve => setTimeout(resolve, 200))
-
-      const newScript: Script = {
-        id: generateId(),
-        moduleId: selectedModuleId,
-        name,
-        content,
-        uploadedAt: new Date().toISOString(),
-        fileType: fileType || 'text',
-        fileData,
-      }
-      
-      setScripts((current) => [...(current || []), newScript])
-      
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
-      )
-      
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
-      )
-
-      setTimeout(() => {
-        setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-      }, 5000)
-      
-      toast.success('Skript erfolgreich hochgeladen')
-    } catch (error) {
-      setPipelineTasks((current) =>
-        current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Upload fehlgeschlagen', timestamp: Date.now() } : t
+      try {
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
-      )
-      toast.error('Fehler beim Hochladen des Skripts')
+        
+        await new Promise(resolve => setTimeout(resolve, 200))
+
+        const newScript: Script = {
+          id: generateId(),
+          moduleId: moduleId,
+          name,
+          content,
+          uploadedAt: new Date().toISOString(),
+          fileType: fileType || 'text',
+          fileData,
+        }
+        
+        setScripts((current) => [...(current || []), newScript])
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
+        )
+        
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+        )
+
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.success(`"${name}" erfolgreich hochgeladen`)
+        }, 3000)
+      } catch (error) {
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { ...t, status: 'error', error: 'Upload fehlgeschlagen', timestamp: Date.now() } : t
+          )
+        )
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.error(`Fehler beim Hochladen von "${name}"`)
+        }, 5000)
+      }
     }
+    
+    await taskQueue.add({ id: taskId, execute })
   }
 
   const handleGenerateNotes = async (scriptId: string) => {
@@ -113,27 +121,28 @@ function App() {
 
     const taskId = generateId()
     
-    setPipelineTasks((current) => [
-      ...current,
-      {
-        id: taskId,
-        type: 'generate-notes',
-        name: script.name,
-        progress: 0,
-        status: 'processing',
-        timestamp: Date.now(),
-      },
-    ])
+    const execute = async () => {
+      setPipelineTasks((current) => [
+        ...current,
+        {
+          id: taskId,
+          type: 'generate-notes',
+          name: script.name,
+          progress: 0,
+          status: 'processing',
+          timestamp: Date.now(),
+        },
+      ])
 
-    try {
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
-      )
+      try {
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
+        )
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
-      // @ts-ignore - spark.llmPrompt template literal typing
-      const prompt = spark.llmPrompt`Du bist ein Experten-Studienassistent. Analysiere das folgende Kursmaterial und erstelle umfassende Lernnotizen.
+        // @ts-ignore - spark.llmPrompt template literal typing
+        const prompt = spark.llmPrompt`Du bist ein Experten-Studienassistent. Analysiere das folgende Kursmaterial und erstelle umfassende Lernnotizen.
 
 Kursmaterial:
 ${script.content}
@@ -146,45 +155,50 @@ Erstelle gut strukturierte Lernnotizen mit:
 
 Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
 
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
-      )
-
-      const notesContent = await spark.llm(prompt, 'gpt-4o')
-
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
-      )
-
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      const newNote: StudyNote = {
-        id: generateId(),
-        scriptId: script.id,
-        moduleId: script.moduleId,
-        content: notesContent,
-        generatedAt: new Date().toISOString(),
-      }
-
-      setNotes((current) => [...(current || []), newNote])
-      
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
-      )
-
-      setTimeout(() => {
-        setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-      }, 5000)
-
-      toast.success('Lernnotizen erfolgreich erstellt')
-    } catch (error) {
-      setPipelineTasks((current) =>
-        current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Erstellung fehlgeschlagen', timestamp: Date.now() } : t
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
-      )
-      toast.error('Fehler beim Erstellen der Notizen. Bitte versuche es erneut.')
+
+        const notesContent = await spark.llm(prompt, 'gpt-4o')
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
+        )
+
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const newNote: StudyNote = {
+          id: generateId(),
+          scriptId: script.id,
+          moduleId: script.moduleId,
+          content: notesContent,
+          generatedAt: new Date().toISOString(),
+        }
+
+        setNotes((current) => [...(current || []), newNote])
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+        )
+
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.success(`Notizen für "${script.name}" erfolgreich erstellt`)
+        }, 3000)
+      } catch (error) {
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { ...t, status: 'error', error: 'Erstellung fehlgeschlagen', timestamp: Date.now() } : t
+          )
+        )
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.error(`Fehler beim Erstellen der Notizen für "${script.name}"`)
+        }, 5000)
+      }
     }
+
+    await taskQueue.add({ id: taskId, execute })
   }
 
   const handleGenerateTasks = async (scriptId: string) => {
@@ -193,27 +207,28 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
 
     const taskId = generateId()
     
-    setPipelineTasks((current) => [
-      ...current,
-      {
-        id: taskId,
-        type: 'generate-tasks',
-        name: script.name,
-        progress: 0,
-        status: 'processing',
-        timestamp: Date.now(),
-      },
-    ])
+    const execute = async () => {
+      setPipelineTasks((current) => [
+        ...current,
+        {
+          id: taskId,
+          type: 'generate-tasks',
+          name: script.name,
+          progress: 0,
+          status: 'processing',
+          timestamp: Date.now(),
+        },
+      ])
 
-    try {
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
-      )
+      try {
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
+        )
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
 
-      // @ts-ignore - spark.llmPrompt template literal typing
-      const prompt = spark.llmPrompt`Du bist ein Experten-Dozent. Basierend auf dem folgenden Kursmaterial, erstelle 3-5 Übungsaufgaben mit unterschiedlichen Schwierigkeitsgraden.
+        // @ts-ignore - spark.llmPrompt template literal typing
+        const prompt = spark.llmPrompt`Du bist ein Experten-Dozent. Basierend auf dem folgenden Kursmaterial, erstelle 3-5 Übungsaufgaben mit unterschiedlichen Schwierigkeitsgraden.
 
 Kursmaterial:
 ${script.content}
@@ -236,67 +251,72 @@ Beispielformat:
   ]
 }`
 
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
-      )
-
-      const response = await spark.llm(prompt, 'gpt-4o', true)
-      
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
-      )
-
-      let parsed
-      try {
-        parsed = JSON.parse(response)
-      } catch (parseError) {
-        throw new Error('Ungültiges Antwortformat von der KI')
-      }
-
-      if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
-        throw new Error('Antwort enthält kein tasks-Array')
-      }
-
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
-      )
-
-      const newTasks: Task[] = parsed.tasks.map((t: any) => ({
-        id: generateId(),
-        moduleId: script.moduleId,
-        scriptId: script.id,
-        question: t.question,
-        solution: t.solution,
-        difficulty: t.difficulty || 'medium',
-        createdAt: new Date().toISOString(),
-        completed: false,
-      }))
-
-      setTasks((current) => [...(current || []), ...newTasks])
-      
-      setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
-      )
-
-      setTimeout(() => {
-        setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-      }, 5000)
-
-      toast.success(`${newTasks.length} Übungsaufgaben erstellt`)
-    } catch (error) {
-      console.error('Fehler bei Aufgabenerstellung:', error)
-      setPipelineTasks((current) =>
-        current.map((t) =>
-          t.id === taskId ? { 
-            ...t, 
-            status: 'error', 
-            error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
-            timestamp: Date.now()
-          } : t
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
-      )
-      toast.error('Fehler beim Erstellen der Aufgaben. Bitte versuche es erneut.')
+
+        const response = await spark.llm(prompt, 'gpt-4o', true)
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
+        )
+
+        let parsed
+        try {
+          parsed = JSON.parse(response)
+        } catch (parseError) {
+          throw new Error('Ungültiges Antwortformat von der KI')
+        }
+
+        if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+          throw new Error('Antwort enthält kein tasks-Array')
+        }
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
+        )
+
+        const newTasks: Task[] = parsed.tasks.map((t: any) => ({
+          id: generateId(),
+          moduleId: script.moduleId,
+          scriptId: script.id,
+          question: t.question,
+          solution: t.solution,
+          difficulty: t.difficulty || 'medium',
+          createdAt: new Date().toISOString(),
+          completed: false,
+        }))
+
+        setTasks((current) => [...(current || []), ...newTasks])
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+        )
+
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.success(`${newTasks.length} Aufgaben für "${script.name}" erstellt`)
+        }, 3000)
+      } catch (error) {
+        console.error('Fehler bei Aufgabenerstellung:', error)
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { 
+              ...t, 
+              status: 'error', 
+              error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
+              timestamp: Date.now()
+            } : t
+          )
+        )
+        setTimeout(() => {
+          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+          toast.error(`Fehler beim Erstellen der Aufgaben für "${script.name}"`)
+        }, 5000)
+      }
     }
+
+    await taskQueue.add({ id: taskId, execute })
   }
 
   const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
@@ -397,8 +417,36 @@ Gib deine Antwort als JSON zurück:
     setTasks((current) => (current || []).filter((t) => t.scriptId !== scriptId))
   }
 
+  const handleDeleteNote = (noteId: string) => {
+    setNotes((current) => (current || []).filter((n) => n.id !== noteId))
+  }
+
   const handleDeleteTask = (taskId: string) => {
     setTasks((current) => (current || []).filter((t) => t.id !== taskId))
+  }
+
+  const handleGenerateAllNotes = () => {
+    if (!selectedModuleId) return
+    const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
+    
+    moduleScripts.forEach((script) => {
+      const hasNotes = notes?.some((n) => n.scriptId === script.id)
+      if (!hasNotes) {
+        handleGenerateNotes(script.id)
+      }
+    })
+  }
+
+  const handleGenerateAllTasks = () => {
+    if (!selectedModuleId) return
+    const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
+    
+    moduleScripts.forEach((script) => {
+      const hasTasks = tasks?.some((t) => t.scriptId === script.id)
+      if (!hasTasks) {
+        handleGenerateTasks(script.id)
+      }
+    })
   }
 
   if (activeTask) {
@@ -450,6 +498,9 @@ Gib deine Antwort als JSON zurück:
             setTaskFeedback(null)
           }}
           onDeleteTask={handleDeleteTask}
+          onDeleteNote={handleDeleteNote}
+          onGenerateAllNotes={handleGenerateAllNotes}
+          onGenerateAllTasks={handleGenerateAllTasks}
         />
       </>
     )

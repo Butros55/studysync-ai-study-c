@@ -1,14 +1,17 @@
 import { StudyNote, Script } from '@/lib/types'
 import { Card } from '@/components/ui/card'
-import { FileText, Note } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { Note, Trash } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils-app'
+import { toast } from 'sonner'
 
 interface NotesTabProps {
   notes: StudyNote[]
   scripts: Script[]
+  onDeleteNote: (noteId: string) => void
 }
 
-export function NotesTab({ notes, scripts }: NotesTabProps) {
+export function NotesTab({ notes, scripts, onDeleteNote }: NotesTabProps) {
   const getScriptName = (scriptId: string) => {
     const script = scripts.find((s) => s.id === scriptId)
     return script?.name || 'Unbekanntes Skript'
@@ -47,6 +50,19 @@ export function NotesTab({ notes, scripts }: NotesTabProps) {
                     Erstellt {formatDate(note.generatedAt)}
                   </p>
                 </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm('Diese Notiz löschen?')) {
+                      onDeleteNote(note.id)
+                      toast.success('Notiz gelöscht')
+                    }
+                  }}
+                >
+                  <Trash size={18} />
+                </Button>
               </div>
               <div className="prose prose-sm max-w-none">
                 <div className="whitespace-pre-wrap text-sm leading-relaxed">

@@ -22,6 +22,8 @@ interface ScriptsTabProps {
   onGenerateNotes: (scriptId: string) => void
   onGenerateTasks: (scriptId: string) => void
   onDeleteScript: (scriptId: string) => void
+  onGenerateAllNotes: () => void
+  onGenerateAllTasks: () => void
 }
 
 export function ScriptsTab({
@@ -30,6 +32,8 @@ export function ScriptsTab({
   onGenerateNotes,
   onGenerateTasks,
   onDeleteScript,
+  onGenerateAllNotes,
+  onGenerateAllTasks,
 }: ScriptsTabProps) {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -89,17 +93,31 @@ export function ScriptsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <div>
           <h2 className="text-xl font-semibold">Kursskripte</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Lade Vorlesungsnotizen und Kursmaterialien hoch
           </p>
         </div>
-        <Button onClick={() => setUploadDialogOpen(true)}>
-          <Plus size={18} className="mr-2" />
-          Skript hochladen
-        </Button>
+        <div className="flex gap-2">
+          {scripts.length > 0 && (
+            <>
+              <Button variant="outline" onClick={onGenerateAllNotes}>
+                <Sparkle size={18} className="mr-2" />
+                Alle Notizen erstellen
+              </Button>
+              <Button variant="outline" onClick={onGenerateAllTasks}>
+                <Sparkle size={18} className="mr-2" />
+                Alle Aufgaben erstellen
+              </Button>
+            </>
+          )}
+          <Button onClick={() => setUploadDialogOpen(true)}>
+            <Plus size={18} className="mr-2" />
+            Skript hochladen
+          </Button>
+        </div>
       </div>
 
       {scripts.length === 0 ? (

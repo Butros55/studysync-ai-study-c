@@ -27,6 +27,7 @@ export function AdvancedDrawingCanvas({
 }: AdvancedDrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const drawingLayerRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasDrawn, setHasDrawn] = useState(false)
   const [tool, setTool] = useState<Tool>('pen')
@@ -39,9 +40,11 @@ export function AdvancedDrawingCanvas({
   const [isExpanded, setIsExpanded] = useState(false)
   const historyRef = useRef<ImageData[]>([])
   const historyStepRef = useRef(0)
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null)
+  const animationFrameRef = useRef<number | null>(null)
 
   const saveState = useCallback(() => {
-    const canvas = canvasRef.current
+    const canvas = drawingLayerRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
@@ -61,7 +64,7 @@ export function AdvancedDrawingCanvas({
   const undo = useCallback(() => {
     if (historyStepRef.current <= 0) return
 
-    const canvas = canvasRef.current
+    const canvas = drawingLayerRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
@@ -75,49 +78,55 @@ export function AdvancedDrawingCanvas({
   }, [])
 
   const initCanvas = useCallback(() => {
-    const canvas = canvasRef.current
+    const gridCanvas = canvasRef.current
+    const drawingCanvas = drawingLayerRef.current
     const container = containerRef.current
-    if (!canvas || !container) return
+    if (!gridCanvas || !drawingCanvas || !container) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const gridCtx = gridCanvas.getContext('2d')
+    const drawingCtx = drawingCanvas.getContext('2d')
+    if (!gridCtx || !drawingCtx) return
 
     const rect = container.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
 
-    canvas.width = rect.width * dpr * 2
-    canvas.height = rect.height * dpr * 2
+    gridCanvas.width = rect.width * dpr
+    gridCanvas.height = rect.height * dpr
+    gridCanvas.style.width = `${rect.width}px`
+    gridCanvas.style.height = `${rect.height}px`
 
-    ctx.scale(dpr * 2, dpr * 2)
+    drawingCanvas.width = rect.width * dpr
+    drawingCanvas.height = rect.height * dpr
+    drawingCanvas.style.width = `${rect.width}px`
+    drawingCanvas.style.height = `${rect.height}px`
 
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    gridCtx.scale(dpr, dpr)
+    drawingCtx.scale(dpr, dpr)
 
-    ctx.strokeStyle = '#1a1a2e'
-    ctx.lineWidth = penSize
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
+    gridCtx.fillStyle = '#ffffff'
+    gridCtx.fillRect(0, 0, rect.width, rect.height)
 
     const gridSize = 25
-    ctx.strokeStyle = '#e8e8ea'
-    ctx.lineWidth = 1
+    gridCtx.strokeStyle = '#e8e8ea'
+    gridCtx.lineWidth = 1
 
-    for (let x = 0; x < canvas.width; x += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, canvas.height)
-      ctx.stroke()
+    for (let x = 0; x < rect.width; x += gridSize) {
+      gridCtx.beginPath()
+      gridCtx.moveTo(x, 0)
+      gridCtx.lineTo(x, rect.height)
+      gridCtx.stroke()
     }
 
-    for (let y = 0; y < canvas.height; y += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(canvas.width, y)
-      ctx.stroke()
+    for (let y = 0; y < rect.height; y += gridSize) {
+      gridCtx.beginPath()
+      gridCtx.moveTo(0, y)
+      gridCtx.lineTo(rect.width, y)
+      gridCtx.stroke()
     }
 
-    ctx.strokeStyle = '#1a1a2e'
-    ctx.lineWidth = penSize
+    drawingCtx.lineWidth = penSize
+    drawingCtx.lineCap = 'round'
+    drawingCtx.lineJoin = 'round'
 
     saveState()
   }, [penSize, saveState])
@@ -131,58 +140,27 @@ export function AdvancedDrawingCanvas({
   }, [initCanvas])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (rect) {
-      const gridSize = 25
-      ctx.strokeStyle = '#e8e8ea'
-      ctx.lineWidth = 1
-
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(canvas.width, y)
-        ctx.stroke()
-      }
-    }
-
-    ctx.strokeStyle = '#1a1a2e'
+    initCanvas()
     setHasDrawn(false)
     onContentChange(false)
     setZoom(1)
     setPanOffset({ x: 0, y: 0 })
     historyRef.current = []
     historyStepRef.current = 0
-    saveState()
-  }, [clearTrigger, onContentChange, saveState])
+  }, [clearTrigger, onContentChange, initCanvas])
 
   const getCoordinates = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
-    const canvas = canvasRef.current
+    const canvas = drawingLayerRef.current
     if (!canvas) return { x: 0, y: 0 }
 
     const rect = canvas.getBoundingClientRect()
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
 
-    const x = (clientX - rect.left - panOffset.x) / zoom
-    const y = (clientY - rect.top - panOffset.y) / zoom
+    const x = ((clientX - rect.left) / rect.width) * canvas.width / (window.devicePixelRatio || 1)
+    const y = ((clientY - rect.top) / rect.height) * canvas.height / (window.devicePixelRatio || 1)
 
     return { x, y }
   }
@@ -199,13 +177,14 @@ export function AdvancedDrawingCanvas({
     }
 
     setIsDrawing(true)
-    const canvas = canvasRef.current
+    const canvas = drawingLayerRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
     const { x, y } = getCoordinates(e)
+    lastPointRef.current = { x, y }
 
     if (tool === 'pen') {
       ctx.strokeStyle = '#1a1a2e'
@@ -243,7 +222,7 @@ export function AdvancedDrawingCanvas({
 
     if (!isDrawing) return
 
-    const canvas = canvasRef.current
+    const canvas = drawingLayerRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
@@ -251,13 +230,24 @@ export function AdvancedDrawingCanvas({
 
     const { x, y } = getCoordinates(e)
 
-    ctx.lineTo(x, y)
-    ctx.stroke()
-
-    if (!hasDrawn) {
-      setHasDrawn(true)
-      onContentChange(true)
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
     }
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (lastPointRef.current) {
+        ctx.lineTo(x, y)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+      }
+      lastPointRef.current = { x, y }
+
+      if (!hasDrawn) {
+        setHasDrawn(true)
+        onContentChange(true)
+      }
+    })
   }
 
   const stopDrawing = () => {
@@ -267,17 +257,35 @@ export function AdvancedDrawingCanvas({
     }
 
     if (isDrawing) {
-      const canvas = canvasRef.current
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+
+      const canvas = drawingLayerRef.current
       if (canvas) {
         const ctx = canvas.getContext('2d')
         if (ctx) {
           ctx.globalCompositeOperation = 'source-over'
         }
         saveState()
+        
         if (onCanvasDataUrl) {
-          onCanvasDataUrl(canvas.toDataURL('image/png'))
+          const gridCanvas = canvasRef.current
+          if (gridCanvas) {
+            const tempCanvas = document.createElement('canvas')
+            tempCanvas.width = canvas.width
+            tempCanvas.height = canvas.height
+            const tempCtx = tempCanvas.getContext('2d')
+            if (tempCtx) {
+              tempCtx.drawImage(gridCanvas, 0, 0)
+              tempCtx.drawImage(canvas, 0, 0)
+              onCanvasDataUrl(tempCanvas.toDataURL('image/png'))
+            }
+          }
         }
       }
+      lastPointRef.current = null
     }
     setIsDrawing(false)
   }
@@ -301,8 +309,7 @@ export function AdvancedDrawingCanvas({
   return (
     <div
       className={cn(
-        'flex flex-col bg-muted/30 rounded-lg border transition-all',
-        isExpanded && 'fixed inset-4 z-40 shadow-2xl'
+        'flex flex-col bg-muted/30 rounded-lg border transition-all'
       )}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50">
@@ -332,7 +339,17 @@ export function AdvancedDrawingCanvas({
                 min="1"
                 max="10"
                 value={penSize}
-                onChange={(e) => setPenSize(Number(e.target.value))}
+                onChange={(e) => {
+                  const newSize = Number(e.target.value)
+                  setPenSize(newSize)
+                  const canvas = drawingLayerRef.current
+                  if (canvas) {
+                    const ctx = canvas.getContext('2d')
+                    if (ctx && tool === 'pen') {
+                      ctx.lineWidth = newSize
+                    }
+                  }
+                }}
                 className="w-20"
               />
               <Badge variant="secondary">{penSize}px</Badge>
@@ -345,7 +362,17 @@ export function AdvancedDrawingCanvas({
                 min="10"
                 max="50"
                 value={eraserSize}
-                onChange={(e) => setEraserSize(Number(e.target.value))}
+                onChange={(e) => {
+                  const newSize = Number(e.target.value)
+                  setEraserSize(newSize)
+                  const canvas = drawingLayerRef.current
+                  if (canvas) {
+                    const ctx = canvas.getContext('2d')
+                    if (ctx && tool === 'eraser') {
+                      ctx.lineWidth = newSize
+                    }
+                  }
+                }}
                 className="w-20"
               />
               <Badge variant="secondary">{eraserSize}px</Badge>
@@ -375,7 +402,10 @@ export function AdvancedDrawingCanvas({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+              setIsExpanded(!isExpanded)
+              setTimeout(() => initCanvas(), 100)
+            }}
             title={isExpanded ? 'Verkleinern' : 'Vergrößern'}
           >
             <ArrowsOutSimple size={18} />
@@ -383,14 +413,21 @@ export function AdvancedDrawingCanvas({
         </div>
       </div>
 
-      <div ref={containerRef} className="flex-1 overflow-hidden bg-white relative min-h-[400px]">
+      <div ref={containerRef} className={cn("flex-1 overflow-hidden bg-white relative", isExpanded ? "min-h-[calc(100vh-140px)]" : "min-h-[400px]")}>
         <canvas
           ref={canvasRef}
+          className="absolute pointer-events-none"
+          style={{
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+          }}
+        />
+        <canvas
+          ref={drawingLayerRef}
           className="absolute cursor-crosshair touch-none"
           style={{
             transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
             transformOrigin: '0 0',
-            imageRendering: 'auto',
           }}
           onMouseDown={startDrawing}
           onMouseMove={draw}
