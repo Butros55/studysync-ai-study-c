@@ -20,11 +20,11 @@ A university study companion that organizes course materials by module, generate
 - **Success criteria**: Modules persist between sessions, each maintains independent script and task collections
 
 ### Script Upload & Storage
-- **Functionality**: Upload PDF/text files (scripts/lecture notes) to specific modules
+- **Functionality**: Upload PDF and PPTX files (lecture notes/presentations) to specific modules
 - **Purpose**: Centralizes course materials in one accessible location per module
 - **Trigger**: User clicks "Upload Script" within a module folder
-- **Progression**: Click upload → Select file → File uploads with loading indicator → Script appears in module's script list
-- **Success criteria**: Files are stored per module, retrievable, and display metadata (name, upload date)
+- **Progression**: Click upload → Select PDF/PPTX file → AI parses file content → File uploads with loading indicator → Script appears in module's script list with file type badge
+- **Success criteria**: PDF and PPTX files are parsed correctly, text content is extracted, files are stored per module with metadata (name, upload date, file type)
 
 ### AI Study Note Generation
 - **Functionality**: Processes uploaded scripts to generate concise study notes automatically
@@ -57,10 +57,10 @@ A university study companion that organizes course materials by module, generate
 ## Edge Case Handling
 
 - **Empty States**: First-time users see helpful onboarding cards explaining to create modules and upload scripts
-- **Upload Failures**: Show clear error messages with retry options if file uploads fail or are wrong format
+- **Upload Failures**: Show clear error messages with retry options if file uploads fail, are wrong format (only PDF/PPTX accepted), or cannot be parsed
 - **AI Processing Errors**: Graceful fallback messages if AI generation fails, with manual retry button
 - **No Touch Support**: Keyboard/text input remains fully functional for non-touch devices
-- **Large Files**: Show progress indicators for large script uploads, possibly limit file sizes
+- **Large Files**: Show progress indicators for PDF/PPTX parsing, especially for large documents with many pages/slides
 - **Task Completion**: Completed tasks are marked/moved to archive to avoid clutter
 - **Module Deletion**: Confirm before deleting modules to prevent accidental data loss
 
