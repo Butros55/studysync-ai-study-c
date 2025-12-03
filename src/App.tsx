@@ -10,6 +10,7 @@ import { EmptyState } from './components/EmptyState'
 import { NotificationCenter, PipelineTask } from './components/NotificationCenter'
 import { StatisticsDashboard } from './components/StatisticsDashboard'
 import { RateLimitIndicator } from './components/RateLimitIndicator'
+import { RateLimitBanner } from './components/RateLimitBanner'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
@@ -734,6 +735,8 @@ Beispielformat:
             </div>
           </div>
         </div>
+
+        <RateLimitBanner />
 
         <div className="max-w-7xl mx-auto px-6 py-8">
           {!modules || modules.length === 0 ? (

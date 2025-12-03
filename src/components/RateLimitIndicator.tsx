@@ -3,8 +3,9 @@ import { rateLimitTracker, RateLimitInfo } from '@/lib/rate-limit-tracker'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Progress } from './ui/progress'
-import { Warning, Clock, CheckCircle, XCircle } from '@phosphor-icons/react'
+import { Warning, Clock, CheckCircle, XCircle, ArrowClockwise } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export function RateLimitIndicator() {
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null)
@@ -42,7 +43,7 @@ export function RateLimitIndicator() {
   if (!rateLimitInfo) return null
 
   const remaining = rateLimitTracker.getRemainingCalls(rateLimitInfo)
-  const total = 60
+  const total = 40
   const percentage = (remaining / total) * 100
 
   const formatTime = (ms: number): string => {
@@ -61,6 +62,11 @@ export function RateLimitIndicator() {
     if (percentage > 50) return <CheckCircle className={getStatusColor()} weight="fill" />
     if (percentage > 20) return <Warning className={getStatusColor()} weight="fill" />
     return <XCircle className={getStatusColor()} weight="fill" />
+  }
+
+  const handleReset = async () => {
+    await rateLimitTracker.resetCounter()
+    toast.success('Ratenlimit-Zähler zurückgesetzt')
   }
 
   return (
@@ -86,7 +92,7 @@ export function RateLimitIndicator() {
           <div>
             <h4 className="font-semibold mb-1">API-Ratenlimit</h4>
             <p className="text-sm text-muted-foreground">
-              Verfügbare LLM-Anfragen in dieser Stunde
+              Verfügbare LLM-Anfragen in dieser Stunde (konservativ)
             </p>
           </div>
 
@@ -119,10 +125,10 @@ export function RateLimitIndicator() {
                 <Warning size={18} className="text-destructive flex-shrink-0 mt-0.5" weight="fill" />
                 <div className="text-sm">
                   <p className="font-medium text-destructive mb-1">
-                    Niedriges Limit
+                    Kritisches Limit!
                   </p>
                   <p className="text-muted-foreground">
-                    Nur noch wenige Anfragen verfügbar. Warte auf das Reset oder reduziere die Nutzung.
+                    Nur noch {remaining} Anfragen verfügbar. Warte {formatTime(timeUntilReset)} auf das automatische Reset oder nutze den manuellen Reset-Button.
                   </p>
                 </div>
               </div>
@@ -138,12 +144,27 @@ export function RateLimitIndicator() {
                     Moderates Limit
                   </p>
                   <p className="text-muted-foreground">
-                    Weniger als die Hälfte der Anfragen verfügbar.
+                    Weniger als die Hälfte der Anfragen verfügbar. Nutze die API sparsam.
                   </p>
                 </div>
               </div>
             </div>
           )}
+
+          <div className="space-y-2 pt-2 border-t">
+            <p className="text-xs text-muted-foreground">
+              Hinweis: Das Limit wird konservativ bei 40 Anfragen/Stunde gesetzt, um 429-Fehler zu vermeiden. Zwischen Anfragen werden mindestens 8 Sekunden gewartet.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={handleReset}
+            >
+              <ArrowClockwise size={16} />
+              Zähler zurücksetzen
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

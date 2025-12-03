@@ -5,7 +5,7 @@ export interface RateLimitInfo {
 }
 
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000
-const MAX_CALLS_PER_HOUR = 60
+const MAX_CALLS_PER_HOUR = 40
 
 export class RateLimitTracker {
   private static instance: RateLimitTracker
@@ -80,6 +80,16 @@ export class RateLimitTracker {
 
   private notifyListeners(info: RateLimitInfo): void {
     this.listeners.forEach(callback => callback(info))
+  }
+  
+  async resetCounter(): Promise<void> {
+    const resetInfo: RateLimitInfo = {
+      totalCalls: 0,
+      lastReset: new Date().toISOString(),
+      window: RATE_LIMIT_WINDOW,
+    }
+    await spark.kv.set('rate-limit-info', resetInfo)
+    this.notifyListeners(resetInfo)
   }
 }
 

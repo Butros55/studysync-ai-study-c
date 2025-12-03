@@ -8,6 +8,7 @@ import { NotesTab } from './NotesTab'
 import { TasksTab } from './TasksTab'
 import { FlashcardsTab } from './FlashcardsTab'
 import { RateLimitIndicator } from './RateLimitIndicator'
+import { RateLimitBanner } from './RateLimitBanner'
 
 interface ModuleViewProps {
   module: Module
@@ -80,6 +81,8 @@ export function ModuleView({
           </div>
         </div>
       </div>
+
+      <RateLimitBanner />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>

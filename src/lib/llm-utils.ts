@@ -11,12 +11,25 @@ export async function llmWithRetry(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       if (attempt > 0) {
-        const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 30000)
-        const jitter = Math.random() * 1000
-        const totalDelay = backoffDelay + jitter
+        const baseDelay = 2000 * Math.pow(2, attempt)
+        const jitter = Math.random() * 2000
+        const totalDelay = Math.min(baseDelay + jitter, 60000)
         
         console.log(`LLM retry attempt ${attempt + 1}/${maxRetries}, waiting ${Math.round(totalDelay)}ms...`)
         await new Promise(resolve => setTimeout(resolve, totalDelay))
+      }
+      
+      const info = await rateLimitTracker.getInfo()
+      const remaining = rateLimitTracker.getRemainingCalls(info)
+      
+      if (remaining <= 0) {
+        const timeUntilReset = rateLimitTracker.getTimeUntilReset(info)
+        throw new Error(`Ratenlimit erreicht. Reset in ${Math.ceil(timeUntilReset / 60000)} Minuten. Bitte warte, bevor du weitere Anfragen sendest.`)
+      }
+      
+      if (remaining <= 5) {
+        console.warn(`Nur noch ${remaining} API-Aufrufe verfügbar in dieser Stunde`)
+        await new Promise(resolve => setTimeout(resolve, 3000))
       }
       
       await rateLimitTracker.recordCall()
@@ -29,7 +42,15 @@ export async function llmWithRetry(
       
       if (errorMessage.includes('429') || errorMessage.includes('Too many requests')) {
         console.warn(`Rate limit hit on attempt ${attempt + 1}/${maxRetries}`)
+        
+        if (attempt === maxRetries - 1) {
+          throw new Error('GitHub API-Ratenlimit erreicht. Bitte warte einige Minuten, bevor du weitere Anfragen sendest.')
+        }
         continue
+      }
+      
+      if (errorMessage.includes('Ratenlimit erreicht')) {
+        throw error
       }
       
       throw error
