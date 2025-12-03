@@ -23,9 +23,12 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
-      // Relax some rules for Spark projects
+      // Relax some rules for Spark projects:
+      // - no-explicit-any: Spark uses 'any' for LLM responses and dynamic content
       "@typescript-eslint/no-explicit-any": "off",
+      // - ban-ts-comment: Allow @ts-ignore for Spark-specific APIs (spark.llmPrompt, etc.)
       "@typescript-eslint/ban-ts-comment": "off",
+      // - unused-vars: Warn only, as some variables may be for future use
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "warn",
     },
