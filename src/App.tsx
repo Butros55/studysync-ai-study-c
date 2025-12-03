@@ -102,20 +102,14 @@ function App() {
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.success(`"${name}" erfolgreich hochgeladen`)
-        }, 3000)
+        toast.success(`"${name}" erfolgreich hochgeladen`)
       } catch (error) {
         setPipelineTasks((current) =>
           current.map((t) =>
             t.id === taskId ? { ...t, status: 'error', error: 'Upload fehlgeschlagen', timestamp: Date.now() } : t
           )
         )
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.error(`Fehler beim Hochladen von "${name}"`)
-        }, 5000)
+        toast.error(`Fehler beim Hochladen von "${name}"`)
       }
     }
     
@@ -188,20 +182,14 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.success(`Notizen für "${script.name}" erfolgreich erstellt`)
-        }, 3000)
+        toast.success(`Notizen für "${script.name}" erfolgreich erstellt`)
       } catch (error) {
         setPipelineTasks((current) =>
           current.map((t) =>
             t.id === taskId ? { ...t, status: 'error', error: 'Erstellung fehlgeschlagen', timestamp: Date.now() } : t
           )
         )
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.error(`Fehler beim Erstellen der Notizen für "${script.name}"`)
-        }, 5000)
+        toast.error(`Fehler beim Erstellen der Notizen für "${script.name}"`)
       }
     }
 
@@ -300,10 +288,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.success(`${newTasks.length} Aufgaben für "${script.name}" erstellt`)
-        }, 3000)
+        toast.success(`${newTasks.length} Aufgaben für "${script.name}" erstellt`)
       } catch (error) {
         console.error('Fehler bei Aufgabenerstellung:', error)
         setPipelineTasks((current) =>
@@ -316,10 +301,7 @@ Beispielformat:
             } : t
           )
         )
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.error(`Fehler beim Erstellen der Aufgaben für "${script.name}"`)
-        }, 5000)
+        toast.error(`Fehler beim Erstellen der Aufgaben für "${script.name}"`)
       }
     }
 
@@ -547,10 +529,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.success(`${newFlashcards.length} Karteikarten erstellt`)
-        }, 3000)
+        toast.success(`${newFlashcards.length} Karteikarten erstellt`)
       } catch (error) {
         console.error('Fehler bei Karteikarten-Erstellung:', error)
         setPipelineTasks((current) =>
@@ -563,10 +542,7 @@ Beispielformat:
             } : t
           )
         )
-        setTimeout(() => {
-          setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-          toast.error('Fehler beim Erstellen der Karteikarten')
-        }, 5000)
+        toast.error('Fehler beim Erstellen der Karteikarten')
       }
     }
 

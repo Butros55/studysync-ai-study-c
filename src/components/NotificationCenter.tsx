@@ -26,17 +26,30 @@ interface NotificationCenterProps {
 export function NotificationCenter({ tasks, onDismiss, onClearAll }: NotificationCenterProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [hasNewNotifications, setHasNewNotifications] = useState(false)
+  const [autoDismissedIds, setAutoDismissedIds] = useState<Set<string>>(new Set())
 
   const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending')
   const completedTasks = tasks.filter(t => t.status === 'completed')
   const errorTasks = tasks.filter(t => t.status === 'error')
-  const recentTasks = [...completedTasks, ...errorTasks].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10)
+  const recentTasks = [...completedTasks, ...errorTasks].sort((a, b) => b.timestamp - a.timestamp)
 
   useEffect(() => {
     if (completedTasks.length > 0 || errorTasks.length > 0) {
       setHasNewNotifications(true)
     }
   }, [completedTasks.length, errorTasks.length])
+
+  useEffect(() => {
+    const completedOrErrorTasks = [...completedTasks, ...errorTasks]
+    completedOrErrorTasks.forEach((task) => {
+      if (!autoDismissedIds.has(task.id)) {
+        const timer = setTimeout(() => {
+          setAutoDismissedIds((prev) => new Set(prev).add(task.id))
+        }, 5000)
+        return () => clearTimeout(timer)
+      }
+    })
+  }, [completedTasks, errorTasks, autoDismissedIds])
 
   const handleOpen = () => {
     setIsOpen(!isOpen)
@@ -66,9 +79,12 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
   }
 
   const totalNotifications = activeTasks.length + recentTasks.length
+  const visiblePopupTasks = activeTasks.concat(
+    [...completedTasks, ...errorTasks].filter(t => !autoDismissedIds.has(t.id))
+  )
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed top-4 right-4 z-[100]">
       <div className="flex flex-col items-end gap-3">
         <motion.div
           initial={false}
@@ -98,41 +114,6 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
         </motion.div>
 
         <AnimatePresence>
-          {activeTasks.map((task) => (
-            <motion.div
-              key={task.id}
-              initial={{ opacity: 0, x: 100, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 100, scale: 0.8 }}
-              transition={{ type: "spring", duration: 0.4 }}
-            >
-              <Card className="w-80 p-4 shadow-lg border-2 bg-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="mt-0.5">
-                      {(() => {
-                        const Icon = getTypeIcon(task.type)
-                        return <Icon size={18} className="text-primary" />
-                      })()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm mb-0.5">{getTypeLabel(task.type)}</p>
-                      <p className="text-xs text-muted-foreground truncate">{task.name}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Progress value={task.progress} className="h-2" />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {Math.round(task.progress)}%
-                  </p>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        <AnimatePresence>
           {isOpen && (
             <motion.div
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -143,7 +124,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
               <Card className="w-96 shadow-2xl border-2 overflow-hidden">
                 <div className="p-4 border-b bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Notifications</h3>
+                    <h3 className="font-semibold">Benachrichtigungen</h3>
                     {recentTasks.length > 0 && (
                       <Button
                         size="sm"
@@ -151,7 +132,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
                         onClick={onClearAll}
                         className="text-xs h-7"
                       >
-                        Clear all
+                        Alle löschen
                       </Button>
                     )}
                   </div>
@@ -162,7 +143,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
                     {activeTasks.length === 0 && recentTasks.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <Bell size={48} className="text-muted-foreground/30 mb-3" />
-                        <p className="text-sm text-muted-foreground">No notifications</p>
+                        <p className="text-sm text-muted-foreground">Keine Benachrichtigungen</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -218,7 +199,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-2 right-2 h-6 w-6"
                                 onClick={() => onDismiss(task.id)}
                               >
                                 <X size={14} />
@@ -233,7 +214,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium mb-1">
-                                    {task.status === 'completed' ? 'Completed' : 'Failed'}
+                                    {task.status === 'completed' ? 'Abgeschlossen' : 'Fehlgeschlagen'}
                                   </p>
                                   <p className="text-xs text-muted-foreground truncate">
                                     {task.name}
@@ -261,6 +242,65 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
               </Card>
             </motion.div>
           )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {visiblePopupTasks.map((task, index) => (
+            <motion.div
+              key={task.id}
+              initial={{ opacity: 0, x: 100, scale: 0.8 }}
+              animate={{ 
+                opacity: 1, 
+                x: 0, 
+                scale: 1,
+                y: isOpen ? index * 10 : 0
+              }}
+              exit={{ opacity: 0, x: 100, scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              style={{ zIndex: 50 - index }}
+            >
+              <Card className="w-80 p-4 shadow-lg border-2 bg-card">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="mt-0.5">
+                      {task.status === 'processing' || task.status === 'pending' ? (
+                        (() => {
+                          const Icon = getTypeIcon(task.type)
+                          return <Icon size={18} className="text-primary" />
+                        })()
+                      ) : task.status === 'completed' ? (
+                        <Check size={18} className="text-accent" weight="bold" />
+                      ) : (
+                        <Warning size={18} className="text-destructive" weight="bold" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm mb-0.5">
+                        {task.status === 'processing' || task.status === 'pending' 
+                          ? getTypeLabel(task.type)
+                          : task.status === 'completed'
+                          ? 'Abgeschlossen'
+                          : 'Fehlgeschlagen'
+                        }
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{task.name}</p>
+                      {task.error && (
+                        <p className="text-xs text-destructive mt-1">{task.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {(task.status === 'processing' || task.status === 'pending') && (
+                  <div className="space-y-2">
+                    <Progress value={task.progress} className="h-2" />
+                    <p className="text-xs text-muted-foreground text-right">
+                      {Math.round(task.progress)}%
+                    </p>
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          ))}
         </AnimatePresence>
       </div>
     </div>
