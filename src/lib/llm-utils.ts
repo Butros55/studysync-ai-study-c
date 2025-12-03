@@ -2,7 +2,7 @@ import { rateLimitTracker } from './rate-limit-tracker'
 
 export async function llmWithRetry(
   prompt: string,
-  model: string = 'gpt-4o',
+  model: string = 'gpt-5',
   jsonMode: boolean = false,
   maxRetries: number = 5
 ): Promise<string> {
