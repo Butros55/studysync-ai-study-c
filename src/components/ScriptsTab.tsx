@@ -36,44 +36,99 @@ export function ScriptsTab({
   onGenerateAllTasks,
 }: ScriptsTabProps) {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (!isValidFileType(file.name)) {
-        toast.error('Bitte lade eine PDF- oder PPTX-Datei hoch')
-        return
+    const files = Array.from(e.target.files || [])
+    const validFiles: File[] = []
+    const invalidFiles: string[] = []
+
+    files.forEach((file) => {
+      if (isValidFileType(file.name)) {
+        validFiles.push(file)
+      } else {
+        invalidFiles.push(file.name)
       }
-      setSelectedFile(file)
+    })
+
+    if (invalidFiles.length > 0) {
+      toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...validFiles])
     }
   }
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    const validFiles: File[] = []
+    const invalidFiles: string[] = []
+
+    files.forEach((file) => {
+      if (isValidFileType(file.name)) {
+        validFiles.push(file)
+      } else {
+        invalidFiles.push(file.name)
+      }
+    })
+
+    if (invalidFiles.length > 0) {
+      toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...validFiles])
+    }
+  }
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
   const handleUpload = async () => {
-    if (!selectedFile) return
+    if (selectedFiles.length === 0) return
 
     setIsUploading(true)
 
     try {
-      const content = await parseFile(selectedFile)
-      const fileData = await fileToDataURL(selectedFile)
-      const name = selectedFile.name.replace(/\.[^/.]+$/, '')
-      const fileType = getFileExtension(selectedFile.name)
+      for (const file of selectedFiles) {
+        try {
+          const content = await parseFile(file)
+          const fileData = await fileToDataURL(file)
+          const name = file.name.replace(/\.[^/.]+$/, '')
+          const fileType = getFileExtension(file.name)
+          
+          await onUploadScript(content, name, fileType, fileData)
+        } catch (error) {
+          toast.error(`Fehler beim Hochladen von "${file.name}"`)
+          console.error('File parsing error:', error)
+        }
+      }
       
-      await onUploadScript(content, name, fileType, fileData)
-      
-      setSelectedFile(null)
+      setSelectedFiles([])
       setUploadDialogOpen(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-    } catch (error) {
-      toast.error('Fehler beim Parsen der Datei. Bitte versuche es erneut.')
-      console.error('File parsing error:', error)
     } finally {
       setIsUploading(false)
     }
@@ -83,7 +138,7 @@ export function ScriptsTab({
     if (!isUploading) {
       setUploadDialogOpen(open)
       if (!open) {
-        setSelectedFile(null)
+        setSelectedFiles([])
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
@@ -214,11 +269,20 @@ export function ScriptsTab({
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Datei auswählen</label>
+              <label className="text-sm font-medium">Datei(en) auswählen</label>
               <p className="text-xs text-muted-foreground mb-3">
-                Lade PDF- oder PPTX-Dateien mit deinen Kursmaterialien hoch
+                Lade eine oder mehrere PDF- oder PPTX-Dateien mit deinen Kursmaterialien hoch
               </p>
-              <div className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-muted/50 transition-colors">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragging
+                    ? 'bg-primary/10 border-primary'
+                    : 'hover:bg-muted/50 border-border'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -226,62 +290,72 @@ export function ScriptsTab({
                   onChange={handleFileSelect}
                   className="hidden"
                   id="file-upload"
+                  multiple
                 />
                 <label
                   htmlFor="file-upload"
                   className="cursor-pointer flex flex-col items-center gap-3"
                 >
-                  {selectedFile ? (
-                    <>
-                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        {getFileExtension(selectedFile.name) === 'pdf' ? (
-                          <FilePdf size={24} weight="duotone" className="text-primary" />
-                        ) : (
-                          <FileText size={24} weight="duotone" className="text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium">{selectedFile.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setSelectedFile(null)
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = ''
-                          }
-                        }}
-                      >
-                        Datei ändern
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                        <UploadSimple size={24} className="text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Klicken zum Hochladen</p>
-                        <p className="text-sm text-muted-foreground">PDF- oder PPTX-Dateien</p>
-                      </div>
-                    </>
-                  )}
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                    <UploadSimple size={24} className="text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      {isDragging ? 'Dateien hier ablegen' : 'Klicken oder Dateien hierher ziehen'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      PDF- oder PPTX-Dateien (mehrere möglich)
+                    </p>
+                  </div>
                 </label>
               </div>
             </div>
+
+            {selectedFiles.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Ausgewählte Dateien ({selectedFiles.length})
+                </label>
+                <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="p-3 flex items-center justify-between hover:bg-muted/50">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          {getFileExtension(file.name) === 'pdf' ? (
+                            <FilePdf size={16} weight="duotone" className="text-primary" />
+                          ) : (
+                            <FileText size={16} weight="duotone" className="text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="flex-shrink-0 text-destructive hover:text-destructive"
+                        onClick={() => removeFile(index)}
+                        disabled={isUploading}
+                      >
+                        <Trash size={16} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => handleDialogClose(false)} disabled={isUploading}>
               Abbrechen
             </Button>
-            <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
-              {isUploading ? 'Wird hochgeladen...' : 'Skript hochladen'}
+            <Button onClick={handleUpload} disabled={selectedFiles.length === 0 || isUploading}>
+              {isUploading ? `Wird hochgeladen (${selectedFiles.length})...` : `${selectedFiles.length} ${selectedFiles.length === 1 ? 'Skript' : 'Skripte'} hochladen`}
             </Button>
           </DialogFooter>
         </DialogContent>
