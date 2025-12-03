@@ -6,6 +6,7 @@ import { CreateModuleDialog } from './components/CreateModuleDialog'
 import { ModuleView } from './components/ModuleView'
 import { TaskSolver } from './components/TaskSolver'
 import { EmptyState } from './components/EmptyState'
+import { TaskPipeline, PipelineTask } from './components/TaskPipeline'
 import { Button } from './components/ui/button'
 import { Plus } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
@@ -24,8 +25,8 @@ function App() {
     isCorrect: boolean
     hints?: string[]
   } | null>(null)
-  const [generatingNotes, setGeneratingNotes] = useState(false)
-  const [generatingTasks, setGeneratingTasks] = useState(false)
+  
+  const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
 
   const selectedModule = modules?.find((m) => m.id === selectedModuleId)
   const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
@@ -44,29 +45,82 @@ function App() {
     toast.success('Module created successfully')
   }
 
-  const handleUploadScript = (content: string, name: string, fileType?: string, fileData?: string) => {
+  const handleUploadScript = async (content: string, name: string, fileType?: string, fileData?: string) => {
     if (!selectedModuleId) return
 
-    const newScript: Script = {
-      id: generateId(),
-      moduleId: selectedModuleId,
-      name,
-      content,
-      uploadedAt: new Date().toISOString(),
-      fileType: fileType || 'text',
-      fileData,
+    const taskId = generateId()
+    
+    setPipelineTasks((current) => [
+      ...current,
+      {
+        id: taskId,
+        type: 'upload',
+        name,
+        progress: 0,
+        status: 'processing',
+      },
+    ])
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 50 } : t))
+      )
+
+      const newScript: Script = {
+        id: generateId(),
+        moduleId: selectedModuleId,
+        name,
+        content,
+        uploadedAt: new Date().toISOString(),
+        fileType: fileType || 'text',
+        fileData,
+      }
+      
+      setScripts((current) => [...(current || []), newScript])
+      
+      await new Promise(resolve => setTimeout(resolve, 300))
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+      )
+
+      setTimeout(() => {
+        setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+      }, 2000)
+      
+      toast.success('Script uploaded successfully')
+    } catch (error) {
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'error', error: 'Upload failed' } : t
+        )
+      )
+      toast.error('Failed to upload script')
     }
-    setScripts((current) => [...(current || []), newScript])
   }
 
   const handleGenerateNotes = async (scriptId: string) => {
     const script = scripts?.find((s) => s.id === scriptId)
-    if (!script || generatingNotes) return
+    if (!script) return
 
-    setGeneratingNotes(true)
-    toast.loading('Generating study notes...')
+    const taskId = generateId()
+    
+    setPipelineTasks((current) => [
+      ...current,
+      {
+        id: taskId,
+        type: 'generate-notes',
+        name: script.name,
+        progress: 0,
+        status: 'processing',
+      },
+    ])
 
     try {
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 20 } : t))
+      )
+
       // @ts-ignore - spark.llmPrompt template literal typing
       const prompt = spark.llmPrompt`You are an expert study assistant. Analyze the following course material and create comprehensive study notes.
 
@@ -81,7 +135,15 @@ Generate well-structured study notes that include:
 
 Format the notes in a clear, readable way suitable for studying.`
 
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 40 } : t))
+      )
+
       const notesContent = await spark.llm(prompt, 'gpt-4o')
+
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 80 } : t))
+      )
 
       const newNote: StudyNote = {
         id: generateId(),
@@ -92,24 +154,48 @@ Format the notes in a clear, readable way suitable for studying.`
       }
 
       setNotes((current) => [...(current || []), newNote])
-      toast.dismiss()
+      
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+      )
+
+      setTimeout(() => {
+        setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+      }, 2000)
+
       toast.success('Study notes generated successfully')
     } catch (error) {
-      toast.dismiss()
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'error', error: 'Generation failed' } : t
+        )
+      )
       toast.error('Failed to generate notes. Please try again.')
-    } finally {
-      setGeneratingNotes(false)
     }
   }
 
   const handleGenerateTasks = async (scriptId: string) => {
     const script = scripts?.find((s) => s.id === scriptId)
-    if (!script || generatingTasks) return
+    if (!script) return
 
-    setGeneratingTasks(true)
-    toast.loading('Generating practice tasks...')
+    const taskId = generateId()
+    
+    setPipelineTasks((current) => [
+      ...current,
+      {
+        id: taskId,
+        type: 'generate-tasks',
+        name: script.name,
+        progress: 0,
+        status: 'processing',
+      },
+    ])
 
     try {
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 20 } : t))
+      )
+
       // @ts-ignore - spark.llmPrompt template literal typing
       const prompt = spark.llmPrompt`You are an expert educator. Based on the following course material, create 3-5 practice problems of varying difficulty.
 
@@ -123,8 +209,16 @@ Generate problems as a JSON object with a single property "tasks" containing an 
 
 Make problems practical and test understanding of key concepts.`
 
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 40 } : t))
+      )
+
       const response = await spark.llm(prompt, 'gpt-4o', true)
       const parsed = JSON.parse(response)
+
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 80 } : t))
+      )
 
       const newTasks: Task[] = parsed.tasks.map((t: any) => ({
         id: generateId(),
@@ -138,13 +232,23 @@ Make problems practical and test understanding of key concepts.`
       }))
 
       setTasks((current) => [...(current || []), ...newTasks])
-      toast.dismiss()
+      
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+      )
+
+      setTimeout(() => {
+        setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
+      }, 2000)
+
       toast.success(`Generated ${newTasks.length} practice tasks`)
     } catch (error) {
-      toast.dismiss()
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'error', error: 'Generation failed' } : t
+        )
+      )
       toast.error('Failed to generate tasks. Please try again.')
-    } finally {
-      setGeneratingTasks(false)
     }
   }
 
@@ -236,7 +340,7 @@ Return JSON:
   const handleDeleteScript = (scriptId: string) => {
     setScripts((current) => (current || []).filter((s) => s.id !== scriptId))
     setNotes((current) => (current || []).filter((n) => n.scriptId !== scriptId))
-    setTasks((current) => (current || []).filter((t) => t.scriptId === scriptId))
+    setTasks((current) => (current || []).filter((t) => t.scriptId !== scriptId))
   }
 
   const handleDeleteTask = (taskId: string) => {
@@ -284,53 +388,60 @@ Return JSON:
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">StudyMate</h1>
-              <p className="text-muted-foreground mt-1">
-                Your AI-powered university study companion
-              </p>
+    <>
+      <TaskPipeline
+        tasks={pipelineTasks}
+        onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+      />
+      
+      <div className="min-h-screen bg-background">
+        <div className="border-b bg-card">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-semibold tracking-tight">StudyMate</h1>
+                <p className="text-muted-foreground mt-1">
+                  Your AI-powered university study companion
+                </p>
+              </div>
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus size={18} className="mr-2" />
+                New Module
+              </Button>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus size={18} className="mr-2" />
-              New Module
-            </Button>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {!modules || modules.length === 0 ? (
-          <EmptyState
-            title="No modules yet"
-            description="Create your first module to organize your university course materials, notes, and practice tasks."
-            actionLabel="Create your first module"
-            onAction={() => setCreateDialogOpen(true)}
-          />
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {modules.map((module) => (
-              <ModuleCard
-                key={module.id}
-                module={module}
-                onClick={() => setSelectedModuleId(module.id)}
-                scriptCount={scripts?.filter((s) => s.moduleId === module.id).length || 0}
-                taskCount={tasks?.filter((t) => t.moduleId === module.id).length || 0}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {!modules || modules.length === 0 ? (
+            <EmptyState
+              title="No modules yet"
+              description="Create your first module to organize your university course materials, notes, and practice tasks."
+              actionLabel="Create your first module"
+              onAction={() => setCreateDialogOpen(true)}
+            />
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {modules.map((module) => (
+                <ModuleCard
+                  key={module.id}
+                  module={module}
+                  onClick={() => setSelectedModuleId(module.id)}
+                  scriptCount={scripts?.filter((s) => s.moduleId === module.id).length || 0}
+                  taskCount={tasks?.filter((t) => t.moduleId === module.id).length || 0}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      <CreateModuleDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onCreateModule={handleCreateModule}
-      />
-    </div>
+        <CreateModuleDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onCreateModule={handleCreateModule}
+        />
+      </div>
+    </>
   )
 }
 

@@ -13,7 +13,7 @@ interface ModuleViewProps {
   notes: StudyNote[]
   tasks: Task[]
   onBack: () => void
-  onUploadScript: (content: string, name: string) => void
+  onUploadScript: (content: string, name: string, fileType?: string, fileData?: string) => Promise<void>
   onGenerateNotes: (scriptId: string) => void
   onGenerateTasks: (scriptId: string) => void
   onDeleteScript: (scriptId: string) => void

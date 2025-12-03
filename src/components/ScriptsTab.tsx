@@ -18,7 +18,7 @@ import { ScriptPreviewDialog } from './ScriptPreviewDialog'
 
 interface ScriptsTabProps {
   scripts: Script[]
-  onUploadScript: (content: string, name: string, fileType?: string, fileData?: string) => void
+  onUploadScript: (content: string, name: string, fileType?: string, fileData?: string) => Promise<void>
   onGenerateNotes: (scriptId: string) => void
   onGenerateTasks: (scriptId: string) => void
   onDeleteScript: (scriptId: string) => void
@@ -53,7 +53,6 @@ export function ScriptsTab({
     if (!selectedFile) return
 
     setIsUploading(true)
-    const toastId = toast.loading('Parsing file...')
 
     try {
       const content = await parseFile(selectedFile)
@@ -61,18 +60,14 @@ export function ScriptsTab({
       const name = selectedFile.name.replace(/\.[^/.]+$/, '')
       const fileType = getFileExtension(selectedFile.name)
       
-      onUploadScript(content, name, fileType, fileData)
+      await onUploadScript(content, name, fileType, fileData)
       
       setSelectedFile(null)
       setUploadDialogOpen(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      
-      toast.dismiss(toastId)
-      toast.success('Script uploaded successfully')
     } catch (error) {
-      toast.dismiss(toastId)
       toast.error('Failed to parse file. Please try again.')
       console.error('File parsing error:', error)
     } finally {
