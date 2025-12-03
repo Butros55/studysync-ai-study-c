@@ -1,3 +1,5 @@
+import { rateLimitTracker } from './rate-limit-tracker'
+
 export async function llmWithRetry(
   prompt: string,
   model: string = 'gpt-4o',
@@ -17,6 +19,7 @@ export async function llmWithRetry(
         await new Promise(resolve => setTimeout(resolve, totalDelay))
       }
       
+      await rateLimitTracker.recordCall()
       const response = await spark.llm(prompt, model, jsonMode)
       return response
       

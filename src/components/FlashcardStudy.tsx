@@ -3,6 +3,7 @@ import { Flashcard } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { RateLimitIndicator } from './RateLimitIndicator'
 import { X, ArrowsClockwise, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -86,35 +87,38 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       <div className="border-b bg-card">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X size={20} />
-            </Button>
-            <div>
-              <h2 className="font-semibold">Karteikarten-Modus</h2>
-              <p className="text-sm text-muted-foreground">
-                Karte {currentIndex + 1} von {flashcards.length}
-              </p>
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X size={20} />
+              </Button>
+              <div>
+                <h2 className="font-semibold">Karteikarten-Modus</h2>
+                <p className="text-sm text-muted-foreground">
+                  Karte {currentIndex + 1} von {flashcards.length}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevious}
-              disabled={currentIndex === 0}
-            >
-              <CaretLeft size={20} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNext}
-              disabled={currentIndex >= flashcards.length - 1}
-            >
-              <CaretRight size={20} />
-            </Button>
+            <div className="flex items-center gap-3">
+              <RateLimitIndicator />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevious}
+                disabled={currentIndex === 0}
+              >
+                <CaretLeft size={20} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNext}
+                disabled={currentIndex >= flashcards.length - 1}
+              >
+                <CaretRight size={20} />
+              </Button>
+            </div>
           </div>
         </div>
         <div className="px-6 pb-2">

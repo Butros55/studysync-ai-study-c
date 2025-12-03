@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { RateLimitIndicator } from './RateLimitIndicator'
 import {
   X,
   CheckCircle,
@@ -96,9 +97,12 @@ export function TaskSolver({
             </Badge>
             <h2 className="font-semibold">Aufgabe lösen</h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X size={20} />
-          </Button>
+          <div className="flex items-center gap-3">
+            <RateLimitIndicator />
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X size={20} />
+            </Button>
+          </div>
         </div>
       </div>
 

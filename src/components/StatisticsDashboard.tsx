@@ -15,6 +15,7 @@ import { ArrowLeft, TrendUp, Fire, Clock, Target, BookOpen, Lightning, Trophy, C
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import { Separator } from './ui/separator'
+import { RateLimitIndicator } from './RateLimitIndicator'
 import { format, formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
 import {
@@ -91,18 +92,21 @@ export function StatisticsDashboard({
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft size={20} />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-3xl font-semibold tracking-tight">Statistiken</h1>
-              <p className="text-muted-foreground mt-1">
-                {selectedModule
-                  ? `Fortschritt für ${selectedModule.name}`
-                  : 'Dein Lernfortschritt im Überblick'}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={onBack}>
+                <ArrowLeft size={20} />
+              </Button>
+              <div className="flex-1">
+                <h1 className="text-3xl font-semibold tracking-tight">Statistiken</h1>
+                <p className="text-muted-foreground mt-1">
+                  {selectedModule
+                    ? `Fortschritt für ${selectedModule.name}`
+                    : 'Dein Lernfortschritt im Überblick'}
+                </p>
+              </div>
             </div>
+            <RateLimitIndicator />
           </div>
         </div>
       </div>

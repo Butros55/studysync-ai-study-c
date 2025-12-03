@@ -7,6 +7,7 @@ import { ScriptsTab } from './ScriptsTab'
 import { NotesTab } from './NotesTab'
 import { TasksTab } from './TasksTab'
 import { FlashcardsTab } from './FlashcardsTab'
+import { RateLimitIndicator } from './RateLimitIndicator'
 
 interface ModuleViewProps {
   module: Module
@@ -57,22 +58,25 @@ export function ModuleView({
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft size={20} />
-            </Button>
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center text-white"
-              style={{ backgroundColor: module.color }}
-            >
-              <span className="font-semibold text-lg">
-                {module.code.substring(0, 2).toUpperCase()}
-              </span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={onBack}>
+                <ArrowLeft size={20} />
+              </Button>
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center text-white"
+                style={{ backgroundColor: module.color }}
+              >
+                <span className="font-semibold text-lg">
+                  {module.code.substring(0, 2).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">{module.name}</h1>
+                <p className="text-sm text-muted-foreground">{module.code}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">{module.name}</h1>
-              <p className="text-sm text-muted-foreground">{module.code}</p>
-            </div>
+            <RateLimitIndicator />
           </div>
         </div>
       </div>
