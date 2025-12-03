@@ -6,7 +6,7 @@ import { CreateModuleDialog } from './components/CreateModuleDialog'
 import { ModuleView } from './components/ModuleView'
 import { TaskSolver } from './components/TaskSolver'
 import { EmptyState } from './components/EmptyState'
-import { TaskPipeline, PipelineTask } from './components/TaskPipeline'
+import { NotificationCenter, PipelineTask } from './components/NotificationCenter'
 import { Button } from './components/ui/button'
 import { Plus } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
@@ -58,14 +58,16 @@ function App() {
         name,
         progress: 0,
         status: 'processing',
+        timestamp: Date.now(),
       },
     ])
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 100))
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 50 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
       )
+      
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       const newScript: Script = {
         id: generateId(),
@@ -79,20 +81,25 @@ function App() {
       
       setScripts((current) => [...(current || []), newScript])
       
-      await new Promise(resolve => setTimeout(resolve, 300))
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
+      )
+      
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
       setPipelineTasks((current) =>
         current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
       )
 
       setTimeout(() => {
         setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-      }, 2000)
+      }, 5000)
       
       toast.success('Script uploaded successfully')
     } catch (error) {
       setPipelineTasks((current) =>
         current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Upload failed' } : t
+          t.id === taskId ? { ...t, status: 'error', error: 'Upload failed', timestamp: Date.now() } : t
         )
       )
       toast.error('Failed to upload script')
@@ -113,13 +120,16 @@ function App() {
         name: script.name,
         progress: 0,
         status: 'processing',
+        timestamp: Date.now(),
       },
     ])
 
     try {
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 20 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
       )
+
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       // @ts-ignore - spark.llmPrompt template literal typing
       const prompt = spark.llmPrompt`You are an expert study assistant. Analyze the following course material and create comprehensive study notes.
@@ -136,14 +146,16 @@ Generate well-structured study notes that include:
 Format the notes in a clear, readable way suitable for studying.`
 
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 40 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
       )
 
       const notesContent = await spark.llm(prompt, 'gpt-4o')
 
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 80 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
       )
+
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       const newNote: StudyNote = {
         id: generateId(),
@@ -161,13 +173,13 @@ Format the notes in a clear, readable way suitable for studying.`
 
       setTimeout(() => {
         setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-      }, 2000)
+      }, 5000)
 
       toast.success('Study notes generated successfully')
     } catch (error) {
       setPipelineTasks((current) =>
         current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Generation failed' } : t
+          t.id === taskId ? { ...t, status: 'error', error: 'Generation failed', timestamp: Date.now() } : t
         )
       )
       toast.error('Failed to generate notes. Please try again.')
@@ -188,13 +200,16 @@ Format the notes in a clear, readable way suitable for studying.`
         name: script.name,
         progress: 0,
         status: 'processing',
+        timestamp: Date.now(),
       },
     ])
 
     try {
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 20 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
       )
+
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       // @ts-ignore - spark.llmPrompt template literal typing
       const prompt = spark.llmPrompt`You are an expert educator. Based on the following course material, create 3-5 practice problems of varying difficulty.
@@ -202,22 +217,47 @@ Format the notes in a clear, readable way suitable for studying.`
 Course Material:
 ${script.content}
 
-Generate problems as a JSON object with a single property "tasks" containing an array of task objects. Each task should have:
-- question: A clear problem statement
-- solution: The complete solution with explanation
-- difficulty: "easy", "medium", or "hard"
+Generate problems as a JSON object with a single property "tasks" containing an array of task objects. Each task must have these exact fields:
+- question: A clear problem statement (string)
+- solution: The complete solution with explanation (string)
+- difficulty: Must be exactly one of these values: "easy", "medium", or "hard"
 
-Make problems practical and test understanding of key concepts.`
+Make problems practical and test understanding of key concepts.
+
+Example format:
+{
+  "tasks": [
+    {
+      "question": "What is 2+2?",
+      "solution": "The answer is 4 because...",
+      "difficulty": "easy"
+    }
+  ]
+}`
 
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 40 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
       )
 
       const response = await spark.llm(prompt, 'gpt-4o', true)
-      const parsed = JSON.parse(response)
+      
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
+      )
+
+      let parsed
+      try {
+        parsed = JSON.parse(response)
+      } catch (parseError) {
+        throw new Error('Invalid response format from AI')
+      }
+
+      if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+        throw new Error('Response missing tasks array')
+      }
 
       setPipelineTasks((current) =>
-        current.map((t) => (t.id === taskId ? { ...t, progress: 80 } : t))
+        current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
       )
 
       const newTasks: Task[] = parsed.tasks.map((t: any) => ({
@@ -226,7 +266,7 @@ Make problems practical and test understanding of key concepts.`
         scriptId: script.id,
         question: t.question,
         solution: t.solution,
-        difficulty: t.difficulty,
+        difficulty: t.difficulty || 'medium',
         createdAt: new Date().toISOString(),
         completed: false,
       }))
@@ -239,13 +279,19 @@ Make problems practical and test understanding of key concepts.`
 
       setTimeout(() => {
         setPipelineTasks((current) => current.filter((t) => t.id !== taskId))
-      }, 2000)
+      }, 5000)
 
       toast.success(`Generated ${newTasks.length} practice tasks`)
     } catch (error) {
+      console.error('Task generation error:', error)
       setPipelineTasks((current) =>
         current.map((t) =>
-          t.id === taskId ? { ...t, status: 'error', error: 'Generation failed' } : t
+          t.id === taskId ? { 
+            ...t, 
+            status: 'error', 
+            error: error instanceof Error ? error.message : 'Generation failed',
+            timestamp: Date.now()
+          } : t
         )
       )
       toast.error('Failed to generate tasks. Please try again.')
@@ -349,49 +395,64 @@ Return JSON:
 
   if (activeTask) {
     return (
-      <TaskSolver
-        task={activeTask}
-        onClose={() => {
-          setActiveTask(null)
-          setTaskFeedback(null)
-        }}
-        onSubmit={handleSubmitTaskAnswer}
-        feedback={taskFeedback || undefined}
-        onNextTask={
-          moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
-            ? handleNextTask
-            : undefined
-        }
-      />
+      <>
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <TaskSolver
+          task={activeTask}
+          onClose={() => {
+            setActiveTask(null)
+            setTaskFeedback(null)
+          }}
+          onSubmit={handleSubmitTaskAnswer}
+          feedback={taskFeedback || undefined}
+          onNextTask={
+            moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
+              ? handleNextTask
+              : undefined
+          }
+        />
+      </>
     )
   }
 
   if (selectedModule) {
     return (
-      <ModuleView
-        module={selectedModule}
-        scripts={moduleScripts}
-        notes={moduleNotes}
-        tasks={moduleTasks}
-        onBack={() => setSelectedModuleId(null)}
-        onUploadScript={handleUploadScript}
-        onGenerateNotes={handleGenerateNotes}
-        onGenerateTasks={handleGenerateTasks}
-        onDeleteScript={handleDeleteScript}
-        onSolveTask={(task) => {
-          setActiveTask(task)
-          setTaskFeedback(null)
-        }}
-        onDeleteTask={handleDeleteTask}
-      />
+      <>
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <ModuleView
+          module={selectedModule}
+          scripts={moduleScripts}
+          notes={moduleNotes}
+          tasks={moduleTasks}
+          onBack={() => setSelectedModuleId(null)}
+          onUploadScript={handleUploadScript}
+          onGenerateNotes={handleGenerateNotes}
+          onGenerateTasks={handleGenerateTasks}
+          onDeleteScript={handleDeleteScript}
+          onSolveTask={(task) => {
+            setActiveTask(task)
+            setTaskFeedback(null)
+          }}
+          onDeleteTask={handleDeleteTask}
+        />
+      </>
     )
   }
 
   return (
     <>
-      <TaskPipeline
+      <NotificationCenter
         tasks={pipelineTasks}
         onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+        onClearAll={() => setPipelineTasks([])}
       />
       
       <div className="min-h-screen bg-background">

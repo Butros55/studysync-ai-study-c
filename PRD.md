@@ -23,8 +23,15 @@ A university study companion that organizes course materials by module, generate
 - **Functionality**: Upload PDF and PPTX files (lecture notes/presentations) to specific modules with content preview
 - **Purpose**: Centralizes course materials in one accessible location per module and allows verification of parsed content
 - **Trigger**: User clicks "Upload Script" within a module folder
-- **Progression**: Click upload → Select PDF/PPTX file → AI parses file content → File uploads with loading indicator → Script appears in module's script list with file type badge → User can preview extracted content before processing
-- **Success criteria**: PDF and PPTX files are parsed correctly, text content is extracted, files are stored per module with metadata (name, upload date, file type), preview shows accurate content with statistics
+- **Progression**: Click upload → Select PDF/PPTX file → AI parses file content → Upload progress tracked in notification center → Script appears in module's script list with file type badge → User can preview extracted content before processing
+- **Success criteria**: PDF and PPTX files are parsed correctly, text content is extracted, files are stored per module with metadata (name, upload date, file type), preview shows accurate content with statistics, progress is tracked smoothly
+
+### Real-time Notification Center
+- **Functionality**: Global notification bell with badge counter showing all ongoing tasks (uploads, AI generations), completed items, and errors with an expandable notification history panel
+- **Purpose**: Provides visibility into background processing, allows users to continue working while tasks complete, creates confidence through transparent progress tracking
+- **Trigger**: Automatically appears when any task starts (upload, note generation, task generation); user can click bell icon to open full notification history
+- **Progression**: Task initiated → Notification bell shows badge count → Active task card appears with real-time progress bar → Task completes/fails → Result shown in notification history → User can dismiss individual notifications or clear all
+- **Success criteria**: Badge count is accurate, progress bars update smoothly (not stuck at 40%), notifications persist across all views (home, module view, task solver), completed/failed notifications remain accessible for review, animations are smooth and delightful
 
 ### Script Content Preview
 - **Functionality**: View extracted text content from uploaded scripts with statistics
@@ -34,18 +41,18 @@ A university study companion that organizes course materials by module, generate
 - **Success criteria**: Preview loads instantly, shows formatted content exactly as extracted, statistics are accurate, dialog is responsive and scrollable
 
 ### AI Study Note Generation
-- **Functionality**: Processes uploaded scripts to generate concise study notes automatically
+- **Functionality**: Processes uploaded scripts to generate concise study notes automatically with progress tracking
 - **Purpose**: Saves time by summarizing key concepts and creating study-friendly content
 - **Trigger**: User clicks "Generate Notes" on an uploaded script (can preview content first)
-- **Progression**: Click generate → AI processes document → Loading state → Notes appear in dedicated notes section → Notes are editable and savable
-- **Success criteria**: Notes capture key concepts, are formatted readably, and persist for future reference
+- **Progression**: Click generate → Task added to notification center → AI processes document → Progress updates in real-time → Notes appear in dedicated notes section → Completion notification shown → Notes are editable and savable
+- **Success criteria**: Notes capture key concepts, are formatted readably, persist for future reference, progress is clearly visible throughout generation
 
 ### AI Task Generation
-- **Functionality**: Creates practice problems based on script content with solutions
+- **Functionality**: Creates practice problems based on script content with solutions, with robust error handling
 - **Purpose**: Provides targeted practice material directly related to course content
 - **Trigger**: User clicks "Generate Tasks" on a script or module
-- **Progression**: Click generate → AI creates 3-5 tasks → Tasks appear in module's task list → Each task shows difficulty level
-- **Success criteria**: Tasks are relevant to content, vary in difficulty, include solutions stored separately
+- **Progression**: Click generate → Task added to notification center with progress tracking → AI creates 3-5 tasks → Progress updates smoothly through all stages → Tasks appear in module's task list → Each task shows difficulty level → Completion notification
+- **Success criteria**: Tasks are relevant to content, vary in difficulty, include solutions stored separately, generation process is reliable with clear error messages if it fails, progress tracking is accurate and smooth
 
 ### Interactive Task Solving
 - **Functionality**: Full-screen canvas for solving tasks with keyboard input or touch/stylus drawing
@@ -64,12 +71,14 @@ A university study companion that organizes course materials by module, generate
 ## Edge Case Handling
 
 - **Empty States**: First-time users see helpful onboarding cards explaining to create modules and upload scripts
-- **Upload Failures**: Show clear error messages with retry options if file uploads fail, are wrong format (only PDF/PPTX accepted), or cannot be parsed
-- **AI Processing Errors**: Graceful fallback messages if AI generation fails, with manual retry button
+- **Upload Failures**: Show clear error messages in notification center with retry options if file uploads fail, are wrong format (only PDF/PPTX accepted), or cannot be parsed
+- **AI Processing Errors**: Graceful fallback messages in notification center if AI generation fails, with error details shown in the notification history
 - **No Touch Support**: Keyboard/text input remains fully functional for non-touch devices
-- **Large Files**: Show progress indicators for PDF/PPTX parsing, especially for large documents with many pages/slides
+- **Large Files**: Show smooth progress indicators in notification center for PDF/PPTX parsing, especially for large documents with many pages/slides
 - **Task Completion**: Completed tasks are marked/moved to archive to avoid clutter
 - **Module Deletion**: Confirm before deleting modules to prevent accidental data loss
+- **Multiple Concurrent Operations**: Notification center handles multiple simultaneous uploads and AI generations, showing progress for each independently
+- **Notification Persistence**: Completed/failed notifications remain in history until user dismisses them, visible across all app views
 
 ## Design Direction
 
@@ -120,9 +129,9 @@ Animations should be subtle and purposeful, reinforcing the calm academic atmosp
   - **Dialog**: Module creation, delete confirmations, settings
   - **Button**: Primary for actions, secondary for cancel, ghost for icon buttons
   - **Tabs**: Switch between scripts/notes/tasks within a module view
-  - **Scroll Area**: Long lists of modules, scripts, tasks
-  - **Progress**: File upload progress, task completion tracking
-  - **Badge**: Task difficulty levels, completion status
+  - **Scroll Area**: Long lists of modules, scripts, tasks, notification history
+  - **Progress**: File upload progress, task completion tracking, AI generation progress with smooth 300ms transitions
+  - **Badge**: Task difficulty levels, completion status, notification counter with pulse animation
   - **Separator**: Visual division between sections
   - **Textarea**: Note editing, text-based problem input
   - **Alert**: Error messages, helpful tips
@@ -132,6 +141,7 @@ Animations should be subtle and purposeful, reinforcing the calm academic atmosp
   - **File Upload Zone**: Custom drag-drop area with file type validation
   - **Task Solver View**: Full-screen overlay with canvas, task prompt, and controls
   - **Module Grid**: Responsive grid layout with masonry-style cards
+  - **Notification Center**: Fixed-position bell icon with badge counter, expandable notification panel showing active tasks with live progress, completed items, and error history with timestamps
 
 - **States**:
   - Buttons: Default with subtle shadow → Hover with slight lift → Active with press effect → Disabled with reduced opacity
@@ -150,6 +160,10 @@ Animations should be subtle and purposeful, reinforcing the calm academic atmosp
   - ArrowRight: Next task
   - Trash: Delete actions
   - Download: Export notes
+  - Bell: Notification center (regular weight when closed, filled when open)
+  - Upload: File uploads in progress
+  - Warning: Error notifications
+  - ListChecks: Task generation
 
 - **Spacing**: Base unit of 4px, generous padding (p-6 for cards, p-8 for containers), gap-4 for grids, gap-6 for major sections
 

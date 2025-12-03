@@ -1,0 +1,266 @@
+import { useState, useEffect } from 'react'
+import { Bell, X, Check, Warning, Upload, FileText, ListChecks } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
+export interface PipelineTask {
+  id: string
+  type: 'upload' | 'generate-notes' | 'generate-tasks'
+  name: string
+  progress: number
+  status: 'pending' | 'processing' | 'completed' | 'error'
+  error?: string
+  timestamp: number
+}
+
+interface NotificationCenterProps {
+  tasks: PipelineTask[]
+  onDismiss: (taskId: string) => void
+  onClearAll: () => void
+}
+
+export function NotificationCenter({ tasks, onDismiss, onClearAll }: NotificationCenterProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [hasNewNotifications, setHasNewNotifications] = useState(false)
+
+  const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending')
+  const completedTasks = tasks.filter(t => t.status === 'completed')
+  const errorTasks = tasks.filter(t => t.status === 'error')
+  const recentTasks = [...completedTasks, ...errorTasks].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10)
+
+  useEffect(() => {
+    if (completedTasks.length > 0 || errorTasks.length > 0) {
+      setHasNewNotifications(true)
+    }
+  }, [completedTasks.length, errorTasks.length])
+
+  const handleOpen = () => {
+    setIsOpen(!isOpen)
+    if (!isOpen) {
+      setHasNewNotifications(false)
+    }
+  }
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'upload': return Upload
+      case 'generate-notes': return FileText
+      case 'generate-tasks': return ListChecks
+      default: return FileText
+    }
+  }
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'upload': return 'Upload'
+      case 'generate-notes': return 'Generate Notes'
+      case 'generate-tasks': return 'Generate Tasks'
+      default: return 'Processing'
+    }
+  }
+
+  const totalNotifications = activeTasks.length + recentTasks.length
+
+  return (
+    <div className="fixed top-4 right-4 z-50">
+      <div className="flex flex-col items-end gap-3">
+        <motion.div
+          initial={false}
+          animate={{ scale: hasNewNotifications ? [1, 1.1, 1] : 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button
+            size="icon"
+            variant={isOpen ? "default" : "outline"}
+            className={cn(
+              "relative h-11 w-11 rounded-full shadow-lg transition-all",
+              isOpen && "shadow-xl"
+            )}
+            onClick={handleOpen}
+          >
+            <Bell size={20} weight={isOpen ? "fill" : "regular"} />
+            {totalNotifications > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full min-w-[20px] h-5 flex items-center justify-center text-xs font-semibold px-1"
+              >
+                {totalNotifications > 9 ? '9+' : totalNotifications}
+              </motion.div>
+            )}
+          </Button>
+        </motion.div>
+
+        <AnimatePresence>
+          {activeTasks.map((task) => (
+            <motion.div
+              key={task.id}
+              initial={{ opacity: 0, x: 100, scale: 0.8 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 100, scale: 0.8 }}
+              transition={{ type: "spring", duration: 0.4 }}
+            >
+              <Card className="w-80 p-4 shadow-lg border-2 bg-card">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="mt-0.5">
+                      {(() => {
+                        const Icon = getTypeIcon(task.type)
+                        return <Icon size={18} className="text-primary" />
+                      })()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm mb-0.5">{getTypeLabel(task.type)}</p>
+                      <p className="text-xs text-muted-foreground truncate">{task.name}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Progress value={task.progress} className="h-2" />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {Math.round(task.progress)}%
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ type: "spring", duration: 0.3 }}
+            >
+              <Card className="w-96 shadow-2xl border-2 overflow-hidden">
+                <div className="p-4 border-b bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Notifications</h3>
+                    {recentTasks.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onClearAll}
+                        className="text-xs h-7"
+                      >
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <ScrollArea className="h-[400px]">
+                  <div className="p-2">
+                    {activeTasks.length === 0 && recentTasks.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Bell size={48} className="text-muted-foreground/30 mb-3" />
+                        <p className="text-sm text-muted-foreground">No notifications</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeTasks.map((task) => (
+                          <motion.div
+                            key={task.id}
+                            layout
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                          >
+                            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-0.5">
+                                  {(() => {
+                                    const Icon = getTypeIcon(task.type)
+                                    return <Icon size={16} className="text-primary" />
+                                  })()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium mb-1">
+                                    {getTypeLabel(task.type)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate mb-2">
+                                    {task.name}
+                                  </p>
+                                  <Progress value={task.progress} className="h-1.5" />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {Math.round(task.progress)}%
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+
+                        {recentTasks.map((task) => (
+                          <motion.div
+                            key={task.id}
+                            layout
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                          >
+                            <div
+                              className={cn(
+                                "p-3 rounded-lg border relative group",
+                                task.status === 'completed'
+                                  ? "bg-accent/5 border-accent/20"
+                                  : "bg-destructive/5 border-destructive/20"
+                              )}
+                            >
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => onDismiss(task.id)}
+                              >
+                                <X size={14} />
+                              </Button>
+                              <div className="flex items-start gap-3 pr-8">
+                                <div className="mt-0.5">
+                                  {task.status === 'completed' ? (
+                                    <Check size={16} className="text-accent" weight="bold" />
+                                  ) : (
+                                    <Warning size={16} className="text-destructive" weight="bold" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium mb-1">
+                                    {task.status === 'completed' ? 'Completed' : 'Failed'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {task.name}
+                                  </p>
+                                  {task.error && (
+                                    <p className="text-xs text-destructive mt-1">
+                                      {task.error}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground/60 mt-2">
+                                    {new Date(task.timestamp).toLocaleTimeString([], { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  )
+}
