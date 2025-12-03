@@ -10,10 +10,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { FileText, Sparkle, Trash, Plus, UploadSimple, FilePdf } from '@phosphor-icons/react'
+import { FileText, Sparkle, Trash, Plus, UploadSimple, FilePdf, Eye } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils-app'
 import { toast } from 'sonner'
 import { parseFile, isValidFileType, getFileExtension } from '@/lib/file-parser'
+import { ScriptPreviewDialog } from './ScriptPreviewDialog'
 
 interface ScriptsTabProps {
   scripts: Script[]
@@ -33,6 +34,8 @@ export function ScriptsTab({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [previewScript, setPreviewScript] = useState<Script | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,6 +144,17 @@ export function ScriptsTab({
                       Uploaded {formatDate(script.uploadedAt)}
                     </p>
                     <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setPreviewScript(script)
+                          setPreviewOpen(true)
+                        }}
+                      >
+                        <Eye size={16} className="mr-2" />
+                        Preview
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -258,6 +272,12 @@ export function ScriptsTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ScriptPreviewDialog
+        script={previewScript}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </div>
   )
 }

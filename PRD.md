@@ -20,16 +20,23 @@ A university study companion that organizes course materials by module, generate
 - **Success criteria**: Modules persist between sessions, each maintains independent script and task collections
 
 ### Script Upload & Storage
-- **Functionality**: Upload PDF and PPTX files (lecture notes/presentations) to specific modules
-- **Purpose**: Centralizes course materials in one accessible location per module
+- **Functionality**: Upload PDF and PPTX files (lecture notes/presentations) to specific modules with content preview
+- **Purpose**: Centralizes course materials in one accessible location per module and allows verification of parsed content
 - **Trigger**: User clicks "Upload Script" within a module folder
-- **Progression**: Click upload → Select PDF/PPTX file → AI parses file content → File uploads with loading indicator → Script appears in module's script list with file type badge
-- **Success criteria**: PDF and PPTX files are parsed correctly, text content is extracted, files are stored per module with metadata (name, upload date, file type)
+- **Progression**: Click upload → Select PDF/PPTX file → AI parses file content → File uploads with loading indicator → Script appears in module's script list with file type badge → User can preview extracted content before processing
+- **Success criteria**: PDF and PPTX files are parsed correctly, text content is extracted, files are stored per module with metadata (name, upload date, file type), preview shows accurate content with statistics
+
+### Script Content Preview
+- **Functionality**: View extracted text content from uploaded scripts with statistics
+- **Purpose**: Verify parsed content accuracy before generating notes or tasks, review material at a glance
+- **Trigger**: User clicks "Preview" button on a script card
+- **Progression**: Click preview → Dialog opens showing full content → Display word count, line count, character count → User can review and scroll through content → Close to return
+- **Success criteria**: Preview loads instantly, shows formatted content exactly as extracted, statistics are accurate, dialog is responsive and scrollable
 
 ### AI Study Note Generation
 - **Functionality**: Processes uploaded scripts to generate concise study notes automatically
 - **Purpose**: Saves time by summarizing key concepts and creating study-friendly content
-- **Trigger**: User clicks "Generate Notes" on an uploaded script
+- **Trigger**: User clicks "Generate Notes" on an uploaded script (can preview content first)
 - **Progression**: Click generate → AI processes document → Loading state → Notes appear in dedicated notes section → Notes are editable and savable
 - **Success criteria**: Notes capture key concepts, are formatted readably, and persist for future reference
 
@@ -135,6 +142,7 @@ Animations should be subtle and purposeful, reinforcing the calm academic atmosp
   - Plus: New module/upload
   - Folder: Module representation
   - FileText: Scripts/documents
+  - Eye: Preview script content
   - Brain/Sparkles: AI generation actions
   - Pencil: Handwriting/solve mode
   - Check: Correct solutions
