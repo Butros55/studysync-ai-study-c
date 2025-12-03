@@ -24,7 +24,7 @@ export async function parsePPTX(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer()
   
   try {
-    const PPTXParser = (await import('pptx-parser' as any)).default
+    const PPTXParser = (await import('pptx-parser')).default
     const parser = new PPTXParser()
     const result = await parser.parse(arrayBuffer)
     
