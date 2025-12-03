@@ -15,6 +15,7 @@ import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
 import { taskQueue } from './lib/task-queue'
+import { llmWithRetry } from './lib/llm-utils'
 
 function App() {
   const [modules, setModules] = useKV<Module[]>('modules', [])
@@ -160,7 +161,7 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const notesContent = await spark.llm(prompt, 'gpt-4o')
+        const notesContent = await llmWithRetry(prompt, 'gpt-4o', false)
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
@@ -250,7 +251,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const response = await spark.llm(prompt, 'gpt-4o', true)
+        const response = await llmWithRetry(prompt, 'gpt-4o', true)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
@@ -331,7 +332,7 @@ WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzli
 
 Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
 
-        const visionResponse = await spark.llm(visionPrompt, 'gpt-4o', false)
+        const visionResponse = await llmWithRetry(visionPrompt, 'gpt-4o', false)
         transcription = visionResponse.trim()
         userAnswer = transcription
         
@@ -358,7 +359,7 @@ Gib deine Antwort als JSON zurück:
   "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-      const response = await spark.llm(evaluationPrompt, 'gpt-4o', true)
+      const response = await llmWithRetry(evaluationPrompt, 'gpt-4o', true)
       const evaluation = JSON.parse(response)
 
       toast.dismiss()
@@ -490,7 +491,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const response = await spark.llm(prompt, 'gpt-4o', true)
+        const response = await llmWithRetry(prompt, 'gpt-4o', true)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))

@@ -6,7 +6,7 @@ type QueueTask = {
 class TaskQueue {
   private queue: QueueTask[] = []
   private isProcessing = false
-  private minDelayBetweenTasks = 2000
+  private minDelayBetweenTasks = 4000
 
   async add(task: QueueTask) {
     this.queue.push(task)
