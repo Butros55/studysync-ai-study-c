@@ -34,9 +34,9 @@ class TaskQueue {
         await new Promise(resolve => setTimeout(resolve, this.minDelayBetweenTasks))
       }
     }
-    }
 
     await this.process()
   }
 }
 
+export const taskQueue = new TaskQueue()
