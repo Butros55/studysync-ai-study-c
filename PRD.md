@@ -19,6 +19,13 @@ A university study companion that organizes course materials by module, generate
 - **Progression**: Click new module → Enter module name/code → Module card appears on dashboard → Click to enter module view
 - **Success criteria**: Modules persist between sessions, each maintains independent script and task collections
 
+### Local Data Storage Indicator
+- **Functionality**: Visible indicator showing users that all their data is stored locally in their browser
+- **Purpose**: Builds trust by clearly communicating privacy and data ownership, helps users understand why data doesn't sync between devices
+- **Trigger**: Always visible in header (desktop) and footer (all views)
+- **Progression**: User sees database icon with "Daten lokal gespeichert" text → Can hover for detailed tooltip explaining local storage → Banner appears on empty state with full explanation
+- **Success criteria**: Users understand their data is private and stored locally, tooltip provides clear information about what's stored and why
+
 ### Script Upload & Storage
 - **Functionality**: Upload PDF and PPTX files (lecture notes/presentations) to specific modules with content preview
 - **Purpose**: Centralizes course materials in one accessible location per module and allows verification of parsed content
@@ -178,6 +185,8 @@ Animations should be subtle and purposeful, reinforcing the calm academic atmosp
   - Upload: File uploads in progress
   - Warning: Error notifications
   - ListChecks: Task generation
+  - Database: Local storage indicator (duotone variant with primary color)
+  - Info: Information/help tooltips
 
 - **Spacing**: Base unit of 4px, generous padding (p-6 for cards, p-8 for containers), gap-4 for grids, gap-6 for major sections
 

@@ -17,6 +17,7 @@ import { FlashcardsTab } from './FlashcardsTab'
 import { RateLimitIndicator } from './RateLimitIndicator'
 import { RateLimitBanner } from './RateLimitBanner'
 import { DebugModeToggle } from './DebugModeToggle'
+import { LocalStorageIndicator } from './LocalStorageIndicator'
 
 interface ModuleViewProps {
   module: Module
@@ -174,6 +175,17 @@ export function ModuleView({
           </TabsContent>
         </Tabs>
       </div>
+
+      <footer className="border-t bg-card/50 backdrop-blur-sm mt-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <LocalStorageIndicator />
+            <p className="text-xs text-muted-foreground">
+              StudyMate © {new Date().getFullYear()} · Deine Daten bleiben privat
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

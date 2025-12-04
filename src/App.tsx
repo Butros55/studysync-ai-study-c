@@ -14,6 +14,7 @@ import { CostTrackingDashboard } from './components/CostTrackingDashboard'
 import { RateLimitIndicator } from './components/RateLimitIndicator'
 import { RateLimitBanner } from './components/RateLimitBanner'
 import { DebugModeToggle } from './components/DebugModeToggle'
+import { LocalStorageIndicator, LocalStorageBanner } from './components/LocalStorageIndicator'
 import { Button } from './components/ui/button'
 import {
   Sheet,
@@ -1079,10 +1080,17 @@ Gib deine Antwort als JSON zurück:
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div className="flex-1">
-                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
-                <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                  Dein KI-gestützter Lernbegleiter für die Uni
-                </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                      Dein KI-gestützter Lernbegleiter für die Uni
+                    </p>
+                  </div>
+                  <div className="hidden lg:block">
+                    <LocalStorageIndicator />
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="hidden sm:flex items-center gap-3">
@@ -1148,12 +1156,17 @@ Gib deine Antwort als JSON zurück:
 
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
           {!modules || modules.length === 0 ? (
-            <EmptyState
-              title="Noch keine Module"
-              description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
-              actionLabel="Erstes Modul erstellen"
-              onAction={() => setCreateDialogOpen(true)}
-            />
+            <>
+              <div className="mb-6">
+                <LocalStorageBanner />
+              </div>
+              <EmptyState
+                title="Noch keine Module"
+                description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
+                actionLabel="Erstes Modul erstellen"
+                onAction={() => setCreateDialogOpen(true)}
+              />
+            </>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {modules.map((module) => (
@@ -1168,6 +1181,17 @@ Gib deine Antwort als JSON zurück:
             </div>
           )}
         </div>
+
+        <footer className="border-t bg-card/50 backdrop-blur-sm mt-8">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <LocalStorageIndicator />
+              <p className="text-xs text-muted-foreground">
+                StudyMate © {new Date().getFullYear()} · Deine Daten bleiben privat
+              </p>
+            </div>
+          </div>
+        </footer>
 
         <CreateModuleDialog
           open={createDialogOpen}
