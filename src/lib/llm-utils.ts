@@ -6,11 +6,38 @@ import { generateId } from './utils-app'
 
 const RATE_LIMIT_COOLDOWN_KEY = 'llm-rate-limit-cooldown'
 const RATE_LIMIT_COOLDOWN_DURATION = 5 * 60 * 1000
+const TOKEN_USAGE_KEY = 'token-usage'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+// Lokale Storage-Helfer (ersetzt spark.kv)
+function getLocalStorage<T>(key: string): T | null {
+  try {
+    const item = localStorage.getItem(key)
+    return item ? JSON.parse(item) : null
+  } catch {
+    return null
+  }
+}
+
+function setLocalStorage<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch (e) {
+    console.warn('localStorage setItem failed:', e)
+  }
+}
+
+function deleteLocalStorage(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch (e) {
+    console.warn('localStorage removeItem failed:', e)
+  }
+}
+
 async function isInCooldown(): Promise<boolean> {
-  const cooldownUntil = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
+  const cooldownUntil = getLocalStorage<number>(RATE_LIMIT_COOLDOWN_KEY)
   if (!cooldownUntil) return false
   
   const now = Date.now()
@@ -18,17 +45,17 @@ async function isInCooldown(): Promise<boolean> {
     return true
   }
   
-  await spark.kv.delete(RATE_LIMIT_COOLDOWN_KEY)
+  deleteLocalStorage(RATE_LIMIT_COOLDOWN_KEY)
   return false
 }
 
 async function setCooldown(durationMs: number = RATE_LIMIT_COOLDOWN_DURATION): Promise<void> {
   const cooldownUntil = Date.now() + durationMs
-  await spark.kv.set(RATE_LIMIT_COOLDOWN_KEY, cooldownUntil)
+  setLocalStorage(RATE_LIMIT_COOLDOWN_KEY, cooldownUntil)
 }
 
 async function getRemainingCooldown(): Promise<number> {
-  const cooldownUntil = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
+  const cooldownUntil = getLocalStorage<number>(RATE_LIMIT_COOLDOWN_KEY)
   if (!cooldownUntil) return 0
   
   const remaining = cooldownUntil - Date.now()
@@ -131,8 +158,8 @@ export async function llmWithRetry(
           moduleId: moduleId,
         }
         
-        const existingUsage = await spark.kv.get<TokenUsage[]>('token-usage') || []
-        await spark.kv.set('token-usage', [...existingUsage, usageRecord])
+        const existingUsage = getLocalStorage<TokenUsage[]>(TOKEN_USAGE_KEY) || []
+        setLocalStorage(TOKEN_USAGE_KEY, [...existingUsage, usageRecord])
       }
       
       debugStore.addLog({

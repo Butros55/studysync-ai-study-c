@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { TokenUsage } from '../lib/types'
 import {
   generateCostSummary,
@@ -43,9 +42,40 @@ interface CostTrackingDashboardProps {
   onBack: () => void
 }
 
+// Lokaler Storage-Helfer
+function getLocalStorage<T>(key: string, defaultValue: T): T {
+  try {
+    const item = localStorage.getItem(key)
+    return item ? JSON.parse(item) : defaultValue
+  } catch {
+    return defaultValue
+  }
+}
+
+function deleteLocalStorage(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch (e) {
+    console.warn('localStorage removeItem failed:', e)
+  }
+}
+
 export function CostTrackingDashboard({ onBack }: CostTrackingDashboardProps) {
-  const [usageRecords] = useKV<TokenUsage[]>('token-usage', [])
+  const [usageRecords, setUsageRecords] = useState<TokenUsage[]>([])
   const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all')
+
+  // Lade usage records aus localStorage
+  useEffect(() => {
+    const loadRecords = () => {
+      const records = getLocalStorage<TokenUsage[]>('token-usage', [])
+      setUsageRecords(records)
+    }
+    loadRecords()
+    
+    // Aktualisiere alle 5 Sekunden
+    const interval = setInterval(loadRecords, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const filteredRecords = (usageRecords || []).filter((record) => {
     const recordDate = new Date(record.timestamp)
@@ -67,8 +97,9 @@ export function CostTrackingDashboard({ onBack }: CostTrackingDashboardProps) {
 
   const summary = generateCostSummary(filteredRecords)
 
-  const handleClearHistory = async () => {
-    await spark.kv.delete('token-usage')
+  const handleClearHistory = () => {
+    deleteLocalStorage('token-usage')
+    setUsageRecords([])
   }
 
   const getTopModel = () => {

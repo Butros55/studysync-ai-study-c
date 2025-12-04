@@ -6,6 +6,25 @@ export interface RateLimitInfo {
 
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000
 const MAX_CALLS_PER_HOUR = 30
+const STORAGE_KEY = 'rate-limit-info'
+
+// Lokale Storage-Helfer
+function getLocalStorage<T>(key: string): T | null {
+  try {
+    const item = localStorage.getItem(key)
+    return item ? JSON.parse(item) : null
+  } catch {
+    return null
+  }
+}
+
+function setLocalStorage<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch (e) {
+    console.warn('localStorage setItem failed:', e)
+  }
+}
 
 export class RateLimitTracker {
   private static instance: RateLimitTracker
@@ -21,7 +40,7 @@ export class RateLimitTracker {
   }
 
   async getInfo(): Promise<RateLimitInfo> {
-    const info = await spark.kv.get<RateLimitInfo>('rate-limit-info')
+    const info = getLocalStorage<RateLimitInfo>(STORAGE_KEY)
     
     if (!info) {
       const newInfo: RateLimitInfo = {
@@ -29,7 +48,7 @@ export class RateLimitTracker {
         lastReset: new Date().toISOString(),
         window: RATE_LIMIT_WINDOW,
       }
-      await spark.kv.set('rate-limit-info', newInfo)
+      setLocalStorage(STORAGE_KEY, newInfo)
       return newInfo
     }
 
@@ -42,7 +61,7 @@ export class RateLimitTracker {
         lastReset: new Date().toISOString(),
         window: RATE_LIMIT_WINDOW,
       }
-      await spark.kv.set('rate-limit-info', resetInfo)
+      setLocalStorage(STORAGE_KEY, resetInfo)
       this.notifyListeners(resetInfo)
       return resetInfo
     }
@@ -56,7 +75,7 @@ export class RateLimitTracker {
       ...info,
       totalCalls: info.totalCalls + 1,
     }
-    await spark.kv.set('rate-limit-info', updatedInfo)
+    setLocalStorage(STORAGE_KEY, updatedInfo)
     this.notifyListeners(updatedInfo)
   }
 
@@ -88,7 +107,7 @@ export class RateLimitTracker {
       lastReset: new Date().toISOString(),
       window: RATE_LIMIT_WINDOW,
     }
-    await spark.kv.set('rate-limit-info', resetInfo)
+    setLocalStorage(STORAGE_KEY, resetInfo)
     this.notifyListeners(resetInfo)
   }
 }

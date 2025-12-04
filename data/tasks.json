@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1764884636508-rkqwllyaf",
+    "moduleId": "1764882526572-1te27dzgp",
+    "scriptId": "1764882533604-wl83j95hc",
+    "question": "Was sind Minterme und wie unterscheiden sie sich von Maxtermen?",
+    "solution": "Minterme sind spezifische Kombinationen von Variablen, die eine boolesche Funktion genau dann zu 1 evaluieren, wenn alle nicht negierten Variablen auf 1 und alle negierten Variablen auf 0 gesetzt sind. Maxterme hingegen evaluieren eine boolesche Funktion zu 0, wenn alle nicht negierten Variablen auf 0 und alle negierten Variablen auf 1 gesetzt sind. Der Hauptunterschied liegt also in der spezifischen Belegung der Variablen, die für die Bewertung der Funktion entscheidend ist.",
+    "difficulty": "easy",
+    "createdAt": "2025-12-04T21:43:56.508Z",
+    "completed": false
+  },
+  {
+    "id": "1764884636508-yqwgcekui",
+    "moduleId": "1764882526572-1te27dzgp",
+    "scriptId": "1764882533604-wl83j95hc",
+    "question": "Gegeben sind die Minterme m1, m3, m4 und m7. Wie lautet die zugehörige KNF dieser Funktion? Stellen Sie die KNF auf und erklären Sie den Prozess.",
+    "solution": "Zunächst bestimmen wir die Maxterme für die gegebenen Minterme. Die Maxterme sind die Kombinationen der Variablen, die nicht zu den Mintermen gehören. Für m1 (001), m3 (011), m4 (100) und m7 (111) erhalten wir die Maxterme M0, M2, M5 und M6. Die KNF lautet also: (a + b + ¬c)(¬a + ¬b + c)(¬a + b + ¬c). Der Prozess beinhaltet die Identifikation der Maxterme, die die Kombinationen darstellen, bei denen die Funktion 0 ist.",
+    "difficulty": "hard",
+    "createdAt": "2025-12-04T21:43:56.508Z",
+    "completed": false
+  },
+  {
+    "id": "1764884636508-bh6pmafa4",
+    "moduleId": "1764882526572-1te27dzgp",
+    "scriptId": "1764882533604-wl83j95hc",
+    "question": "Was ist der Unterschied zwischen der disjunktiven Normalform (DNF) und der konjunktiven Normalform (KNF)?",
+    "solution": "Die disjunktive Normalform (DNF) ist eine ODER-Verknüpfung von Mintermen, die die Bedingungen beschreibt, unter denen die Funktion den Wert 1 hat. Die konjunktive Normalform (KNF) ist eine UND-Verknüpfung von Maxtermen, die die Bedingungen beschreibt, unter denen die Funktion den Wert 0 hat. Zusammenfassend gesagt, DNF beschreibt die positiven Fälle (1), während KNF die negativen Fälle (0) beschreibt.",
+    "difficulty": "medium",
+    "createdAt": "2025-12-04T21:43:56.508Z",
+    "completed": false
+  },
+  {
+    "id": "1764884636508-y319cxhul",
+    "moduleId": "1764882526572-1te27dzgp",
+    "scriptId": "1764882533604-wl83j95hc",
+    "question": "Erstellen Sie ein Karnaugh-Diagramm für die folgende Funktion: y = f(a, b, c) mit den Mintermen m0, m1, m2, m5, m6. Wie lautet die vereinfachte DNF?",
+    "solution": "Um das Karnaugh-Diagramm zu erstellen, zeichnen wir ein 2x4-Diagramm für die 3 Variablen a, b, c. Wir tragen die Einsen in die Zellen ein, die den Mintermen entsprechen: m0 (000), m1 (001), m2 (010), m5 (101), m6 (110). Nach dem Ausfüllen des Diagramms suchen wir nach den größten Blöcken von Einsen. In diesem Fall können wir einen 2x1 Block für m0 und m1 sowie einen 2x2 Block für m5 und m6 bilden. Die vereinfachte DNF lautet: y = ¬a¬b + a + bc.",
+    "difficulty": "hard",
+    "createdAt": "2025-12-04T21:43:56.508Z",
+    "completed": false
+  },
+  {
+    "id": "1764884636508-vjziqm0o0",
+    "moduleId": "1764882526572-1te27dzgp",
+    "scriptId": "1764882533604-wl83j95hc",
+    "question": "Gegeben ist die Wahrheitstabelle für eine Funktion mit drei Variablen. Wie lautet die disjunktive Normalform (DNF) dieser Funktion?",
+    "solution": "Um die DNF zu bestimmen, identifizieren wir alle Zeilen der Wahrheitstabelle, in denen die Funktion den Wert 1 hat und bilden die entsprechenden Minterme. Zum Beispiel, wenn die Wahrheitstabelle für die Kombinationen (1, 0, 1), (0, 1, 1) und (1, 1, 0) den Wert 1 ergibt, dann ist die DNF: m1 + m3 + m5 = a¬bc + ¬ab¬c + ab¬c. Diese Minterme werden dann in einer ODER-Verknüpfung zusammengefasst.",
+    "difficulty": "medium",
+    "createdAt": "2025-12-04T21:43:56.508Z",
+    "completed": false
+  }
+]

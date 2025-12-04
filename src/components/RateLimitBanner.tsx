@@ -6,6 +6,24 @@ import { Button } from './ui/button'
 
 const RATE_LIMIT_COOLDOWN_KEY = 'llm-rate-limit-cooldown'
 
+// Lokale Storage-Helfer
+function getLocalStorage<T>(key: string): T | null {
+  try {
+    const item = localStorage.getItem(key)
+    return item ? JSON.parse(item) : null
+  } catch {
+    return null
+  }
+}
+
+function deleteLocalStorage(key: string): void {
+  try {
+    localStorage.removeItem(key)
+  } catch (e) {
+    console.warn('localStorage removeItem failed:', e)
+  }
+}
+
 export function RateLimitBanner() {
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null)
   const [dismissed, setDismissed] = useState(false)
@@ -17,7 +35,7 @@ export function RateLimitBanner() {
       const info = await rateLimitTracker.getInfo()
       setRateLimitInfo(info)
       
-      const cooldown = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
+      const cooldown = getLocalStorage<number>(RATE_LIMIT_COOLDOWN_KEY)
       setCooldownUntil(cooldown || null)
     }
     loadInfo()
@@ -29,8 +47,8 @@ export function RateLimitBanner() {
       }
     })
 
-    const interval = setInterval(async () => {
-      const cooldown = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
+    const interval = setInterval(() => {
+      const cooldown = getLocalStorage<number>(RATE_LIMIT_COOLDOWN_KEY)
       setCooldownUntil(cooldown || null)
       
       if (cooldown) {
@@ -38,7 +56,7 @@ export function RateLimitBanner() {
         setCooldownMinutes(Math.ceil(Math.max(0, remaining) / 60000))
         
         if (remaining <= 0) {
-          await spark.kv.delete(RATE_LIMIT_COOLDOWN_KEY)
+          deleteLocalStorage(RATE_LIMIT_COOLDOWN_KEY)
           setCooldownUntil(null)
         }
       }
