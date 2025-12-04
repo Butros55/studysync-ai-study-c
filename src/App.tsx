@@ -28,9 +28,7 @@ import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
 import { taskQueue } from './lib/task-queue'
 import { llmWithRetry } from './lib/llm-utils'
-
-const LLM_MODEL_STANDARD = 'gpt-4o-mini'
-const LLM_MODEL_VISION = 'gpt-4o'
+import { useLLMModel } from './hooks/use-llm-model'
 
 function App() {
   const [modules, setModules] = useKV<Module[]>('modules', [])
@@ -38,6 +36,8 @@ function App() {
   const [notes, setNotes] = useKV<StudyNote[]>('notes', [])
   const [tasks, setTasks] = useKV<Task[]>('tasks', [])
   const [flashcards, setFlashcards] = useKV<Flashcard[]>('flashcards', [])
+
+  const { standardModel, visionModel } = useLLMModel()
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
@@ -187,7 +187,7 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const notesContent = await llmWithRetry(prompt, LLM_MODEL_STANDARD, false, 1, 'generate-notes', script.moduleId)
+        const notesContent = await llmWithRetry(prompt, standardModel, false, 1, 'generate-notes', script.moduleId)
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
@@ -286,7 +286,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const response = await llmWithRetry(prompt, LLM_MODEL_STANDARD, true, 1, 'generate-tasks', script.moduleId)
+        const response = await llmWithRetry(prompt, standardModel, true, 1, 'generate-tasks', script.moduleId)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
@@ -390,7 +390,7 @@ WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzli
 
 Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
 
-          const visionResponse = await llmWithRetry(visionPrompt, LLM_MODEL_VISION, false)
+          const visionResponse = await llmWithRetry(visionPrompt, visionModel, false)
           transcription = visionResponse.trim()
           userAnswer = transcription
           
@@ -444,7 +444,7 @@ Gib deine Antwort als JSON zurück:
   "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-        const response = await llmWithRetry(evaluationPrompt, LLM_MODEL_STANDARD, true, 1, 'task-submit', activeTask.moduleId)
+        const response = await llmWithRetry(evaluationPrompt, standardModel, true, 1, 'task-submit', activeTask.moduleId)
         const evaluation = JSON.parse(response)
 
         toast.dismiss('task-submit')
@@ -642,7 +642,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const response = await llmWithRetry(prompt, LLM_MODEL_STANDARD, true, 1, 'generate-flashcards', note.moduleId)
+        const response = await llmWithRetry(prompt, standardModel, true, 1, 'generate-flashcards', note.moduleId)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
@@ -801,7 +801,7 @@ WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzli
 
 Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
 
-          const visionResponse = await llmWithRetry(visionPrompt, LLM_MODEL_VISION, false, 1, 'handwriting-analysis', task.moduleId)
+          const visionResponse = await llmWithRetry(visionPrompt, visionModel, false, 1, 'handwriting-analysis', task.moduleId)
           transcription = visionResponse.trim()
           userAnswer = transcription
         } catch (transcriptionError) {
@@ -850,7 +850,7 @@ Gib deine Antwort als JSON zurück:
   "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-        const response = await llmWithRetry(evaluationPrompt, LLM_MODEL_STANDARD, true, 1, 'task-submit', task.moduleId)
+        const response = await llmWithRetry(evaluationPrompt, standardModel, true, 1, 'task-submit', task.moduleId)
         const evaluation = JSON.parse(response)
 
         toast.dismiss('quiz-submit')
