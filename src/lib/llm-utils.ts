@@ -4,7 +4,7 @@ export async function llmWithRetry(
   prompt: string,
   model: string = 'gpt-5',
   jsonMode: boolean = false,
-  maxRetries: number = 5
+  maxRetries: number = 1
 ): Promise<string> {
   let lastError: Error | null = null
   
