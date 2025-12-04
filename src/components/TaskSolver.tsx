@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface TaskSolverProps {
   task: Task
   onClose: () => void
-  onSubmit: (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => void
+  onSubmit: (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => Promise<void>
   feedback?: {
     isCorrect: boolean
     hints?: string[]
@@ -44,12 +44,18 @@ export function TaskSolver({
   const [clearCanvasTrigger, setClearCanvasTrigger] = useState(0)
   const [hasCanvasContent, setHasCanvasContent] = useState(false)
   const [canvasDataUrl, setCanvasDataUrl] = useState<string>('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = () => {
-    if (inputMode === 'type' && textAnswer.trim()) {
-      onSubmit(textAnswer.trim(), false)
-    } else if (inputMode === 'draw' && hasCanvasContent && canvasDataUrl) {
-      onSubmit('handwritten-solution', true, canvasDataUrl)
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    try {
+      if (inputMode === 'type' && textAnswer.trim()) {
+        await onSubmit(textAnswer.trim(), false)
+      } else if (inputMode === 'draw' && hasCanvasContent && canvasDataUrl) {
+        await onSubmit('handwritten-solution', true, canvasDataUrl)
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -209,19 +215,25 @@ export function TaskSolver({
                 </Tabs>
               </div>
 
-              <div className="flex-1 mb-4">
+              <div className="flex-1 mb-4 relative">
                 {inputMode === 'draw' ? (
-                  <AdvancedDrawingCanvas
-                    onContentChange={setHasCanvasContent}
-                    clearTrigger={clearCanvasTrigger}
-                    onCanvasDataUrl={setCanvasDataUrl}
-                  />
+                  <div className="relative">
+                    <AdvancedDrawingCanvas
+                      onContentChange={setHasCanvasContent}
+                      clearTrigger={clearCanvasTrigger}
+                      onCanvasDataUrl={setCanvasDataUrl}
+                    />
+                    {isSubmitting && (
+                      <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none" />
+                    )}
+                  </div>
                 ) : (
                   <Textarea
                     value={textAnswer}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Schreibe deine Lösung hier..."
                     className="min-h-[400px] font-mono resize-none"
+                    disabled={isSubmitting}
                   />
                 )}
               </div>
@@ -231,17 +243,17 @@ export function TaskSolver({
                   variant="outline"
                   onClick={handleClear}
                   className="flex-1"
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || isSubmitting}
                 >
                   <Eraser size={18} className="mr-2" />
                   Löschen
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={!canSubmit || feedback?.isCorrect}
+                  disabled={!canSubmit || feedback?.isCorrect || isSubmitting}
                   className="flex-1"
                 >
-                  Lösung einreichen
+                  {isSubmitting ? 'Wird überprüft...' : 'Lösung einreichen'}
                 </Button>
               </div>
             </div>

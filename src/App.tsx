@@ -319,10 +319,11 @@ Beispielformat:
       let transcription = ''
 
       if (isHandwritten && canvasDataUrl) {
-        toast.loading('Analysiere deine Handschrift...')
+        toast.loading('Analysiere deine Handschrift...', { id: 'task-submit' })
         
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const visionPrompt = spark.llmPrompt`Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
+        try {
+          // @ts-ignore - spark.llmPrompt template literal typing
+          const visionPrompt = spark.llmPrompt`Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
         
 Analysiere das folgende Bild einer handschriftlichen Lösung und transkribiere GENAU was du siehst.
 
@@ -334,20 +335,27 @@ WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzli
 
 Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
 
-        const visionResponse = await llmWithRetry(visionPrompt, 'gpt-4o', false)
-        transcription = visionResponse.trim()
-        userAnswer = transcription
-        
-        console.log('=== HANDSCHRIFT TRANSKRIPTION ===')
-        console.log('Frage:', activeTask.question)
-        console.log('Transkribiert:', transcription)
-        console.log('================================')
+          const visionResponse = await llmWithRetry(visionPrompt, 'gpt-4o', false)
+          transcription = visionResponse.trim()
+          userAnswer = transcription
+          
+          console.log('=== HANDSCHRIFT TRANSKRIPTION ===')
+          console.log('Frage:', activeTask.question)
+          console.log('Transkribiert:', transcription)
+          console.log('================================')
+        } catch (transcriptionError) {
+          console.error('Fehler bei Handschrift-Transkription:', transcriptionError)
+          toast.dismiss('task-submit')
+          toast.error('Fehler beim Analysieren der Handschrift. Bitte versuche es erneut oder nutze die Texteingabe.')
+          throw transcriptionError
+        }
       }
 
-      toast.loading('Überprüfe deine Antwort...')
+      toast.loading('Überprüfe deine Antwort...', { id: 'task-submit' })
       
-      // @ts-ignore - spark.llmPrompt template literal typing
-      const evaluationPrompt = spark.llmPrompt`Du bist ein Dozent, der die Antwort eines Studenten bewertet.
+      try {
+        // @ts-ignore - spark.llmPrompt template literal typing
+        const evaluationPrompt = spark.llmPrompt`Du bist ein Dozent, der die Antwort eines Studenten bewertet.
 
 Fragestellung: ${activeTask.question}
 Musterlösung: ${activeTask.solution}
@@ -361,27 +369,46 @@ Gib deine Antwort als JSON zurück:
   "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-      const response = await llmWithRetry(evaluationPrompt, 'gpt-4o', true)
-      const evaluation = JSON.parse(response)
+        const response = await llmWithRetry(evaluationPrompt, 'gpt-4o', true)
+        const evaluation = JSON.parse(response)
 
-      toast.dismiss()
-      setTaskFeedback({
-        ...evaluation,
-        transcription: isHandwritten ? transcription : undefined
-      })
+        toast.dismiss('task-submit')
+        setTaskFeedback({
+          ...evaluation,
+          transcription: isHandwritten ? transcription : undefined
+        })
 
-      if (evaluation.isCorrect) {
-        setTasks((current) =>
-          (current || []).map((t) =>
-            t.id === activeTask.id ? { ...t, completed: true } : t
+        if (evaluation.isCorrect) {
+          setTasks((current) =>
+            (current || []).map((t) =>
+              t.id === activeTask.id ? { ...t, completed: true } : t
+            )
           )
-        )
-        toast.success('Richtige Antwort!')
+          toast.success('Richtige Antwort!')
+        }
+      } catch (evaluationError) {
+        console.error('Fehler bei Antwort-Bewertung:', evaluationError)
+        toast.dismiss('task-submit')
+        toast.error('Fehler beim Bewerten der Antwort. Bitte versuche es erneut.')
+        throw evaluationError
       }
     } catch (error) {
       console.error('Fehler bei Antwortüberprüfung:', error)
-      toast.dismiss()
-      toast.error('Fehler beim Überprüfen der Antwort. Bitte versuche es erneut.')
+      toast.dismiss('task-submit')
+      
+      if (error instanceof Error) {
+        if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
+          toast.error('API-Limit erreicht. Bitte warte einen Moment und versuche es erneut.')
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          toast.error('Netzwerkfehler. Bitte überprüfe deine Internetverbindung.')
+        } else {
+          toast.error(`Fehler: ${error.message}`)
+        }
+      } else {
+        toast.error('Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.')
+      }
+      
+      throw error
     }
   }
 
