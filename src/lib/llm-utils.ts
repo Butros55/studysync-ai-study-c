@@ -1,4 +1,5 @@
 import { rateLimitTracker } from './rate-limit-tracker'
+import { debugStore } from './debug-store'
 
 export async function llmWithRetry(
   prompt: string,
@@ -32,13 +33,50 @@ export async function llmWithRetry(
         await new Promise(resolve => setTimeout(resolve, 3000))
       }
       
+      debugStore.addLog({
+        type: 'llm-request',
+        data: {
+          prompt: prompt.substring(0, 500),
+          model,
+          jsonMode,
+          attempt: attempt + 1,
+          maxRetries,
+        },
+      })
+      
       await rateLimitTracker.recordCall()
       const response = await spark.llm(prompt, model, jsonMode)
+      
+      debugStore.addLog({
+        type: 'llm-response',
+        data: {
+          prompt: prompt.substring(0, 200),
+          model,
+          jsonMode,
+          response: response.substring(0, 1000),
+          attempt: attempt + 1,
+        },
+      })
+      
       return response
       
     } catch (error) {
       lastError = error as Error
       const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+      
+      debugStore.addLog({
+        type: 'llm-error',
+        data: {
+          prompt: prompt.substring(0, 200),
+          model,
+          jsonMode,
+          error: errorMessage,
+          errorStack,
+          attempt: attempt + 1,
+          maxRetries,
+        },
+      })
       
       if (errorMessage.includes('429') || errorMessage.includes('Too many requests')) {
         console.warn(`Rate limit hit on attempt ${attempt + 1}/${maxRetries}`)

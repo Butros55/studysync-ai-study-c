@@ -9,6 +9,7 @@ import { TasksTab } from './TasksTab'
 import { FlashcardsTab } from './FlashcardsTab'
 import { RateLimitIndicator } from './RateLimitIndicator'
 import { RateLimitBanner } from './RateLimitBanner'
+import { DebugModeToggle } from './DebugModeToggle'
 
 interface ModuleViewProps {
   module: Module
@@ -77,7 +78,10 @@ export function ModuleView({
                 <p className="text-sm text-muted-foreground">{module.code}</p>
               </div>
             </div>
-            <RateLimitIndicator />
+            <div className="flex items-center gap-3">
+              <DebugModeToggle />
+              <RateLimitIndicator />
+            </div>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { RateLimitIndicator } from './RateLimitIndicator'
+import { DebugModeToggle } from './DebugModeToggle'
 import { X, ArrowsClockwise, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -101,6 +102,7 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <DebugModeToggle />
               <RateLimitIndicator />
               <Button
                 variant="ghost"

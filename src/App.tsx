@@ -11,6 +11,7 @@ import { NotificationCenter, PipelineTask } from './components/NotificationCente
 import { StatisticsDashboard } from './components/StatisticsDashboard'
 import { RateLimitIndicator } from './components/RateLimitIndicator'
 import { RateLimitBanner } from './components/RateLimitBanner'
+import { DebugModeToggle } from './components/DebugModeToggle'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
@@ -860,6 +861,7 @@ Beispielformat:
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <DebugModeToggle />
                 <RateLimitIndicator />
                 <Button variant="outline" onClick={() => setShowStatistics(true)}>
                   <ChartLine size={18} className="mr-2" />

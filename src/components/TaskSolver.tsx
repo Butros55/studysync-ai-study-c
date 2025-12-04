@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RateLimitIndicator } from './RateLimitIndicator'
+import { DebugModeToggle } from './DebugModeToggle'
 import {
   X,
   CheckCircle,
@@ -104,6 +105,7 @@ export function TaskSolver({
             <h2 className="font-semibold">Aufgabe lösen</h2>
           </div>
           <div className="flex items-center gap-3">
+            <DebugModeToggle />
             <RateLimitIndicator />
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X size={20} />

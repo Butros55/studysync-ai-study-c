@@ -16,6 +16,7 @@ import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import { Separator } from './ui/separator'
 import { RateLimitIndicator } from './RateLimitIndicator'
+import { DebugModeToggle } from './DebugModeToggle'
 import { format, formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
 import {
@@ -106,7 +107,10 @@ export function StatisticsDashboard({
                 </p>
               </div>
             </div>
-            <RateLimitIndicator />
+            <div className="flex items-center gap-3">
+              <DebugModeToggle />
+              <RateLimitIndicator />
+            </div>
           </div>
         </div>
       </div>
