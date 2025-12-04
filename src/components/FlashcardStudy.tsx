@@ -3,9 +3,16 @@ import { Flashcard } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { RateLimitIndicator } from './RateLimitIndicator'
 import { DebugModeToggle } from './DebugModeToggle'
-import { X, ArrowsClockwise, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { X, ArrowsClockwise, CaretLeft, CaretRight, List, ArrowLeft } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -90,9 +97,9 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
       <div className="border-b bg-card shrink-0">
         <div className="max-w-4xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between mb-2 gap-2">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
-                <X size={18} className="sm:w-5 sm:h-5" />
+                <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
               </Button>
               <div className="min-w-0">
                 <h2 className="font-semibold text-sm sm:text-base">Karteikarten-Modus</h2>
@@ -106,12 +113,34 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
                 <DebugModeToggle />
                 <RateLimitIndicator />
               </div>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden">
+                    <List size={18} />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[280px]">
+                  <SheetHeader>
+                    <SheetTitle>Optionen</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Debug-Modus</p>
+                      <DebugModeToggle />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">API-Status</p>
+                      <RateLimitIndicator />
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
-                className="h-8 w-8 sm:h-10 sm:w-10"
+                className="h-8 w-8 sm:h-10 sm:w-10 hidden sm:flex"
               >
                 <CaretLeft size={18} className="sm:w-5 sm:h-5" />
               </Button>
@@ -120,9 +149,17 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
                 size="icon"
                 onClick={handleNext}
                 disabled={currentIndex >= flashcards.length - 1}
-                className="h-8 w-8 sm:h-10 sm:w-10"
+                className="h-8 w-8 sm:h-10 sm:w-10 hidden sm:flex"
               >
                 <CaretRight size={18} className="sm:w-5 sm:h-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8 sm:h-10 sm:w-10 hidden sm:flex"
+              >
+                <X size={18} className="sm:w-5 sm:h-5" />
               </Button>
             </div>
           </div>

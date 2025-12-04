@@ -148,28 +148,28 @@ export function ScriptsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0">
         <div>
           <h2 className="text-xl font-semibold">Kursskripte</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Lade Vorlesungsnotizen und Kursmaterialien hoch
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {scripts.length > 0 && (
             <>
-              <Button variant="outline" onClick={onGenerateAllNotes}>
-                <Sparkle size={18} className="mr-2" />
+              <Button variant="outline" onClick={onGenerateAllNotes} className="w-full sm:w-auto text-sm justify-start sm:justify-center">
+                <Sparkle size={16} className="mr-2 sm:w-[18px] sm:h-[18px]" />
                 Alle Notizen erstellen
               </Button>
-              <Button variant="outline" onClick={onGenerateAllTasks}>
-                <Sparkle size={18} className="mr-2" />
+              <Button variant="outline" onClick={onGenerateAllTasks} className="w-full sm:w-auto text-sm justify-start sm:justify-center">
+                <Sparkle size={16} className="mr-2 sm:w-[18px] sm:h-[18px]" />
                 Alle Aufgaben erstellen
               </Button>
             </>
           )}
-          <Button onClick={() => setUploadDialogOpen(true)}>
-            <Plus size={18} className="mr-2" />
+          <Button onClick={() => setUploadDialogOpen(true)} className="w-full sm:w-auto text-sm justify-start sm:justify-center">
+            <Plus size={16} className="mr-2 sm:w-[18px] sm:h-[18px]" />
             Skript hochladen
           </Button>
         </div>

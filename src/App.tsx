@@ -13,7 +13,14 @@ import { RateLimitIndicator } from './components/RateLimitIndicator'
 import { RateLimitBanner } from './components/RateLimitBanner'
 import { DebugModeToggle } from './components/DebugModeToggle'
 import { Button } from './components/ui/button'
-import { Plus, ChartLine } from '@phosphor-icons/react'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from './components/ui/sheet'
+import { Plus, ChartLine, List } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -854,7 +861,7 @@ Beispielformat:
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
                 <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                   Dein KI-gestützter Lernbegleiter für die Uni
@@ -865,6 +872,28 @@ Beispielformat:
                   <DebugModeToggle />
                   <RateLimitIndicator />
                 </div>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="sm:hidden h-9 w-9 p-0">
+                      <List size={16} />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[280px]">
+                    <SheetHeader>
+                      <SheetTitle>Optionen</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-4">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Debug-Modus</p>
+                        <DebugModeToggle />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">API-Status</p>
+                        <RateLimitIndicator />
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
                 <Button variant="outline" onClick={() => setShowStatistics(true)} size="sm" className="flex-1 sm:flex-none">
                   <ChartLine size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Statistiken</span>

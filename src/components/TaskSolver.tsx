@@ -6,6 +6,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { RateLimitIndicator } from './RateLimitIndicator'
 import { DebugModeToggle } from './DebugModeToggle'
 import {
@@ -17,6 +24,8 @@ import {
   Keyboard,
   PencilLine,
   Info,
+  ArrowLeft,
+  List,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -98,7 +107,15 @@ export function TaskSolver({
     <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden">
       <div className="border-b bg-card shrink-0">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onClose} 
+              className="h-8 w-8 sm:h-10 sm:w-10 shrink-0"
+            >
+              <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
+            </Button>
             <Badge variant="outline" className={`${getDifficultyColor(task.difficulty)} text-xs shrink-0`}>
               {getDifficultyLabel(task.difficulty)}
             </Badge>
@@ -109,7 +126,29 @@ export function TaskSolver({
               <DebugModeToggle />
               <RateLimitIndicator />
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden">
+                  <List size={18} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px]">
+                <SheetHeader>
+                  <SheetTitle>Optionen</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Debug-Modus</p>
+                    <DebugModeToggle />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">API-Status</p>
+                    <RateLimitIndicator />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 hidden sm:flex">
               <X size={18} className="sm:w-5 sm:h-5" />
             </Button>
           </div>

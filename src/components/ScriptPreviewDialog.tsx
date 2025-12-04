@@ -7,9 +7,8 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FileText, FilePdf, X } from '@phosphor-icons/react'
+import { FileText, FilePdf } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils-app'
 import { PDFViewer } from './PDFViewer'
 import { PPTXViewer } from './PPTXViewer'
@@ -35,35 +34,25 @@ export function ScriptPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-                {script.fileType === 'pdf' ? (
-                  <FilePdf size={20} weight="duotone" />
-                ) : (
-                  <FileText size={20} weight="duotone" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-xl mb-2">{script.name}</DialogTitle>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Badge variant="secondary" className="text-xs uppercase">
-                    {script.fileType}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Uploaded {formatDate(script.uploadedAt)}
-                  </span>
-                </div>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+              {script.fileType === 'pdf' ? (
+                <FilePdf size={20} weight="duotone" />
+              ) : (
+                <FileText size={20} weight="duotone" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-xl mb-2">{script.name}</DialogTitle>
+              <div className="flex flex-wrap gap-2 items-center">
+                <Badge variant="secondary" className="text-xs uppercase">
+                  {script.fileType}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Uploaded {formatDate(script.uploadedAt)}
+                </span>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="flex-shrink-0"
-            >
-              <X size={18} />
-            </Button>
           </div>
         </DialogHeader>
 

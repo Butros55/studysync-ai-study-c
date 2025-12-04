@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { Module, Script, StudyNote, Task, Flashcard } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft } from '@phosphor-icons/react'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { ArrowLeft, List } from '@phosphor-icons/react'
 import { ScriptsTab } from './ScriptsTab'
 import { NotesTab } from './NotesTab'
 import { TasksTab } from './TasksTab'
@@ -61,7 +68,7 @@ export function ModuleView({
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 sm:mb-4">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
                 <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
               </Button>
@@ -73,15 +80,37 @@ export function ModuleView({
                   {module.code.substring(0, 2).toUpperCase()}
                 </span>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h1 className="text-lg sm:text-2xl font-semibold tracking-tight truncate">{module.name}</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">{module.code}</p>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3 shrink-0">
               <DebugModeToggle />
               <RateLimitIndicator />
             </div>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden absolute top-4 right-3">
+                  <List size={18} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px]">
+                <SheetHeader>
+                  <SheetTitle>Optionen</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Debug-Modus</p>
+                    <DebugModeToggle />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">API-Status</p>
+                    <RateLimitIndicator />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
