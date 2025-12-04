@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useState, useEffect, useCallback } from 'react'
+import { useModules, useScripts, useNotes, useTasks, useFlashcards } from './hooks/use-database'
 import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
 import { ModuleCard } from './components/ModuleCard'
 import { CreateModuleDialog } from './components/CreateModuleDialog'
@@ -32,11 +32,44 @@ import { llmWithRetry } from './lib/llm-utils'
 import { useLLMModel } from './hooks/use-llm-model'
 
 function App() {
-  const [modules, setModules] = useKV<Module[]>('modules', [])
-  const [scripts, setScripts] = useKV<Script[]>('scripts', [])
-  const [notes, setNotes] = useKV<StudyNote[]>('notes', [])
-  const [tasks, setTasks] = useKV<Task[]>('tasks', [])
-  const [flashcards, setFlashcards] = useKV<Flashcard[]>('flashcards', [])
+  // Datenbank-Hooks mit SQLite-Backend
+  const { 
+    data: modules, 
+    create: createModule, 
+    remove: removeModule,
+    setItems: setModules,
+    loading: modulesLoading 
+  } = useModules()
+  
+  const { 
+    data: scripts, 
+    create: createScript, 
+    remove: removeScript,
+    setItems: setScripts 
+  } = useScripts()
+  
+  const { 
+    data: notes, 
+    create: createNote, 
+    remove: removeNote,
+    setItems: setNotes 
+  } = useNotes()
+  
+  const { 
+    data: tasks, 
+    create: createTask, 
+    update: updateTask,
+    remove: removeTask,
+    setItems: setTasks 
+  } = useTasks()
+  
+  const { 
+    data: flashcards, 
+    create: createFlashcard, 
+    update: updateFlashcard,
+    remove: removeFlashcard,
+    setItems: setFlashcards 
+  } = useFlashcards()
 
   const { standardModel, visionModel } = useLLMModel()
 
@@ -61,7 +94,7 @@ function App() {
   const moduleTasks = tasks?.filter((t) => t.moduleId === selectedModuleId) || []
   const moduleFlashcards = flashcards?.filter((f) => f.moduleId === selectedModuleId) || []
 
-  const handleCreateModule = (name: string, code: string) => {
+  const handleCreateModule = async (name: string, code: string) => {
     const newModule: Module = {
       id: generateId(),
       name,
@@ -69,8 +102,13 @@ function App() {
       createdAt: new Date().toISOString(),
       color: getRandomColor(),
     }
-    setModules((current) => [...(current || []), newModule])
-    toast.success('Modul erfolgreich erstellt')
+    try {
+      await createModule(newModule)
+      toast.success('Modul erfolgreich erstellt')
+    } catch (error) {
+      console.error('Fehler beim Erstellen des Moduls:', error)
+      toast.error('Fehler beim Erstellen des Moduls')
+    }
   }
 
   const handleUploadScript = async (content: string, name: string, fileType?: string, fileData?: string) => {
@@ -109,7 +147,7 @@ function App() {
           fileData,
         }
         
-        setScripts((current) => [...(current || []), newScript])
+        await createScript(newScript)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
@@ -171,7 +209,7 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // @ts-ignore - spark.llmPrompt template literal typing
-        const prompt = spark.llmPrompt`Du bist ein Experten-Studienassistent. Analysiere das folgende Kursmaterial und erstelle umfassende Lernnotizen.
+        const prompt = `Du bist ein Experten-Studienassistent. Analysiere das folgende Kursmaterial und erstelle umfassende Lernnotizen.
 
 Kursmaterial:
 ${script.content}
@@ -204,7 +242,7 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
           generatedAt: new Date().toISOString(),
         }
 
-        setNotes((current) => [...(current || []), newNote])
+        await createNote(newNote)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
@@ -259,8 +297,7 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const prompt = spark.llmPrompt`Du bist ein Experten-Dozent. Basierend auf dem folgenden Kursmaterial, erstelle 3-5 Übungsaufgaben mit unterschiedlichen Schwierigkeitsgraden.
+        const prompt = `Du bist ein Experten-Dozent. Basierend auf dem folgenden Kursmaterial, erstelle 3-5 Übungsaufgaben mit unterschiedlichen Schwierigkeitsgraden.
 
 Kursmaterial:
 ${script.content}
@@ -319,7 +356,8 @@ Beispielformat:
           completed: false,
         }))
 
-        setTasks((current) => [...(current || []), ...newTasks])
+        // Alle Tasks in die Datenbank speichern
+        await Promise.all(newTasks.map(task => createTask(task)))
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
@@ -378,8 +416,7 @@ Beispielformat:
         )
         
         try {
-          // @ts-ignore - spark.llmPrompt template literal typing
-          const visionPrompt = spark.llmPrompt`Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
+          const visionPrompt = `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
         
 Analysiere das folgende Bild einer handschriftlichen Lösung und transkribiere GENAU was du siehst.
 
@@ -430,8 +467,7 @@ Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 
       toast.loading('Überprüfe deine Antwort...', { id: 'task-submit' })
       
       try {
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const evaluationPrompt = spark.llmPrompt`Du bist ein Dozent, der die Antwort eines Studenten bewertet.
+        const evaluationPrompt = `Du bist ein Dozent, der die Antwort eines Studenten bewertet.
 
 Fragestellung: ${activeTask.question}
 Musterlösung: ${activeTask.solution}
@@ -460,11 +496,7 @@ Gib deine Antwort als JSON zurück:
         })
 
         if (evaluation.isCorrect) {
-          setTasks((current) =>
-            (current || []).map((t) =>
-              t.id === activeTask.id ? { ...t, completed: true } : t
-            )
-          )
+          await updateTask(activeTask.id, { completed: true, completedAt: new Date().toISOString() })
           toast.success('Richtige Antwort!')
         }
       } catch (evaluationError) {
@@ -553,18 +585,43 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
-  const handleDeleteScript = (scriptId: string) => {
-    setScripts((current) => (current || []).filter((s) => s.id !== scriptId))
-    setNotes((current) => (current || []).filter((n) => n.scriptId !== scriptId))
-    setTasks((current) => (current || []).filter((t) => t.scriptId !== scriptId))
+  const handleDeleteScript = async (scriptId: string) => {
+    try {
+      // Zuerst verknüpfte Daten löschen
+      const relatedNotes = notes?.filter((n) => n.scriptId === scriptId) || []
+      const relatedTasks = tasks?.filter((t) => t.scriptId === scriptId) || []
+      
+      await Promise.all([
+        ...relatedNotes.map(n => removeNote(n.id)),
+        ...relatedTasks.map(t => removeTask(t.id)),
+        removeScript(scriptId)
+      ])
+      
+      toast.success('Skript gelöscht')
+    } catch (error) {
+      console.error('Fehler beim Löschen:', error)
+      toast.error('Fehler beim Löschen des Skripts')
+    }
   }
 
-  const handleDeleteNote = (noteId: string) => {
-    setNotes((current) => (current || []).filter((n) => n.id !== noteId))
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await removeNote(noteId)
+      toast.success('Notiz gelöscht')
+    } catch (error) {
+      console.error('Fehler beim Löschen:', error)
+      toast.error('Fehler beim Löschen der Notiz')
+    }
   }
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks((current) => (current || []).filter((t) => t.id !== taskId))
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await removeTask(taskId)
+      toast.success('Aufgabe gelöscht')
+    } catch (error) {
+      console.error('Fehler beim Löschen:', error)
+      toast.error('Fehler beim Löschen der Aufgabe')
+    }
   }
 
   const handleGenerateAllNotes = () => {
@@ -617,8 +674,7 @@ Gib deine Antwort als JSON zurück:
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const prompt = spark.llmPrompt`Du bist ein Experte für das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
+        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
 
 Notizen:
 ${note.content}
@@ -676,7 +732,8 @@ Beispielformat:
           repetitions: 0,
         }))
 
-        setFlashcards((current) => [...(current || []), ...newFlashcards])
+        // Alle Flashcards in die Datenbank speichern
+        await Promise.all(newFlashcards.map(flashcard => createFlashcard(flashcard)))
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
@@ -718,9 +775,14 @@ Beispielformat:
     })
   }
 
-  const handleDeleteFlashcard = (flashcardId: string) => {
-    setFlashcards((current) => (current || []).filter((f) => f.id !== flashcardId))
-    toast.success('Karteikarte gelöscht')
+  const handleDeleteFlashcard = async (flashcardId: string) => {
+    try {
+      await removeFlashcard(flashcardId)
+      toast.success('Karteikarte gelöscht')
+    } catch (error) {
+      console.error('Fehler beim Löschen:', error)
+      toast.error('Fehler beim Löschen der Karteikarte')
+    }
   }
 
   const handleStartFlashcardStudy = () => {
@@ -738,23 +800,20 @@ Beispielformat:
     setActiveFlashcards(dueCards)
   }
 
-  const handleReviewFlashcard = (flashcardId: string, quality: number) => {
+  const handleReviewFlashcard = async (flashcardId: string, quality: number) => {
     const card = flashcards?.find((f) => f.id === flashcardId)
     if (!card) return
 
     const update = calculateNextReview(card, quality)
     
-    setFlashcards((current) =>
-      (current || []).map((f) =>
-        f.id === flashcardId
-          ? {
-              ...f,
-              ...update,
-              lastReviewed: new Date().toISOString(),
-            }
-          : f
-      )
-    )
+    try {
+      await updateFlashcard(flashcardId, {
+        ...update,
+        lastReviewed: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren der Karteikarte:', error)
+    }
   }
 
   const handleQuizSubmit = async (
@@ -789,8 +848,7 @@ Beispielformat:
         )
         
         try {
-          // @ts-ignore - spark.llmPrompt template literal typing
-          const visionPrompt = spark.llmPrompt`Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
+          const visionPrompt = `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
         
 Analysiere das folgende Bild einer handschriftlichen Lösung und transkribiere GENAU was du siehst.
 
@@ -836,8 +894,7 @@ Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 
       toast.loading('Überprüfe deine Antwort...', { id: 'quiz-submit' })
       
       try {
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const evaluationPrompt = spark.llmPrompt`Du bist ein Dozent, der die Antwort eines Studenten bewertet.
+        const evaluationPrompt = `Du bist ein Dozent, der die Antwort eines Studenten bewertet.
 
 Fragestellung: ${task.question}
 Musterlösung: ${task.solution}
