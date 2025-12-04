@@ -35,6 +35,10 @@ interface ModuleViewProps {
   onDeleteTask: (taskId: string) => void
   onDeleteNote: (noteId: string) => void
   onDeleteFlashcard: (flashcardId: string) => void
+  onBulkDeleteScripts: (ids: string[]) => void
+  onBulkDeleteNotes: (ids: string[]) => void
+  onBulkDeleteTasks: (ids: string[]) => void
+  onBulkDeleteFlashcards: (ids: string[]) => void
   onGenerateAllNotes: () => void
   onGenerateAllTasks: () => void
   onGenerateAllFlashcards: () => void
@@ -57,6 +61,10 @@ export function ModuleView({
   onDeleteTask,
   onDeleteNote,
   onDeleteFlashcard,
+  onBulkDeleteScripts,
+  onBulkDeleteNotes,
+  onBulkDeleteTasks,
+  onBulkDeleteFlashcards,
   onGenerateAllNotes,
   onGenerateAllTasks,
   onGenerateAllFlashcards,
@@ -146,13 +154,19 @@ export function ModuleView({
               onGenerateNotes={onGenerateNotes}
               onGenerateTasks={onGenerateTasks}
               onDeleteScript={onDeleteScript}
+              onBulkDeleteScripts={onBulkDeleteScripts}
               onGenerateAllNotes={onGenerateAllNotes}
               onGenerateAllTasks={onGenerateAllTasks}
             />
           </TabsContent>
 
           <TabsContent value="notes">
-            <NotesTab notes={notes} scripts={scripts} onDeleteNote={onDeleteNote} />
+            <NotesTab
+              notes={notes}
+              scripts={scripts}
+              onDeleteNote={onDeleteNote}
+              onBulkDeleteNotes={onBulkDeleteNotes}
+            />
           </TabsContent>
 
           <TabsContent value="flashcards">
@@ -161,6 +175,7 @@ export function ModuleView({
               notes={notes}
               onGenerateFlashcards={onGenerateFlashcards}
               onDeleteFlashcard={onDeleteFlashcard}
+              onBulkDeleteFlashcards={onBulkDeleteFlashcards}
               onStartStudy={onStartFlashcardStudy}
               onGenerateAllFlashcards={onGenerateAllFlashcards}
             />
@@ -171,6 +186,7 @@ export function ModuleView({
               tasks={tasks} 
               onSolveTask={onSolveTask}
               onDeleteTask={onDeleteTask}
+              onBulkDeleteTasks={onBulkDeleteTasks}
             />
           </TabsContent>
         </Tabs>

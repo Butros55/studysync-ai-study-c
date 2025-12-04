@@ -99,6 +99,33 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
     [...completedTasks, ...errorTasks].filter(t => !autoDismissedIds.has(t.id))
   )
 
+  const getCategoryInfo = (task: PipelineTask) => {
+    const statusLabel = task.status === 'completed'
+      ? 'Erfolg'
+      : task.status === 'error'
+      ? 'Fehler'
+      : 'Laufend'
+
+    return {
+      id: `${task.status}-${task.type}`,
+      label: `${statusLabel}: ${getTypeLabel(task.type)}`,
+    }
+  }
+
+  const groupedPopupTasks = (() => {
+    const groups: { categoryId: string; label: string; tasks: PipelineTask[] }[] = []
+    visiblePopupTasks.forEach((task) => {
+      const { id, label } = getCategoryInfo(task)
+      const lastGroup = groups[groups.length - 1]
+      if (lastGroup && lastGroup.categoryId === id) {
+        lastGroup.tasks.push(task)
+      } else {
+        groups.push({ categoryId: id, label, tasks: [task] })
+      }
+    })
+    return groups
+  })()
+
   return (
     <div className="fixed top-4 right-4 z-[100]">
       <div className="flex flex-col items-end gap-3">
@@ -288,62 +315,73 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
         </AnimatePresence>
 
         <AnimatePresence>
-          {visiblePopupTasks.map((task, index) => (
-            <motion.div
-              key={task.id}
-              initial={{ opacity: 0, x: 100, scale: 0.8 }}
-              animate={{ 
-                opacity: 1, 
-                x: 0, 
-                scale: 1,
-                y: isOpen ? index * 10 : 0
-              }}
-              exit={{ opacity: 0, x: 100, scale: 0.8 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              style={{ zIndex: 50 - index }}
-            >
-              <Card className="w-80 p-4 shadow-lg border-2 bg-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="mt-0.5">
-                      {task.status === 'processing' || task.status === 'pending' ? (
-                        (() => {
-                          const Icon = getTypeIcon(task.type)
-                          return <Icon size={18} className="text-primary" />
-                        })()
-                      ) : task.status === 'completed' ? (
-                        <Check size={18} className="text-accent" weight="bold" />
-                      ) : (
-                        <Warning size={18} className="text-destructive" weight="bold" />
-                      )}
+          {groupedPopupTasks.map((group, index) => {
+            const latest = group.tasks[group.tasks.length - 1]
+            const count = group.tasks.length
+            return (
+              <motion.div
+                key={`${group.categoryId}-${group.tasks[0].id}`}
+                initial={{ opacity: 0, x: 100, scale: 0.8 }}
+                animate={{ 
+                  opacity: 1, 
+                  x: 0, 
+                  scale: 1,
+                  y: isOpen ? index * 10 : 0
+                }}
+                exit={{ opacity: 0, x: 100, scale: 0.8 }}
+                transition={{ type: "spring", duration: 0.4 }}
+                style={{ zIndex: 50 - index }}
+              >
+                <Card className="w-80 p-4 shadow-lg border-2 bg-card relative">
+                  {count > 1 && (
+                    <div className="absolute -top-2 -right-2 rounded-full bg-primary text-primary-foreground text-[10px] px-2 py-1 shadow-md">
+                      {count}x
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm mb-0.5">
-                        {task.status === 'processing' || task.status === 'pending' 
-                          ? getTypeLabel(task.type)
-                          : task.status === 'completed'
-                          ? 'Abgeschlossen'
-                          : 'Fehlgeschlagen'
-                        }
+                  )}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="mt-0.5">
+                        {latest.status === 'processing' || latest.status === 'pending' ? (
+                          (() => {
+                            const Icon = getTypeIcon(latest.type)
+                            return <Icon size={18} className="text-primary" />
+                          })()
+                        ) : latest.status === 'completed' ? (
+                          <Check size={18} className="text-accent" weight="bold" />
+                        ) : (
+                          <Warning size={18} className="text-destructive" weight="bold" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm mb-0.5">
+                          {group.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {latest.name}
+                        </p>
+                        {latest.error && (
+                          <p className="text-xs text-destructive mt-1">{latest.error}</p>
+                        )}
+                        {count > 1 && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            + {count - 1} weitere in diesem Stapel
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {(latest.status === 'processing' || latest.status === 'pending') && (
+                    <div className="space-y-2">
+                      <Progress value={latest.progress} className="h-2" />
+                      <p className="text-xs text-muted-foreground text-right">
+                        {Math.round(latest.progress)}%
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">{task.name}</p>
-                      {task.error && (
-                        <p className="text-xs text-destructive mt-1">{task.error}</p>
-                      )}
                     </div>
-                  </div>
-                </div>
-                {(task.status === 'processing' || task.status === 'pending') && (
-                  <div className="space-y-2">
-                    <Progress value={task.progress} className="h-2" />
-                    <p className="text-xs text-muted-foreground text-right">
-                      {Math.round(task.progress)}%
-                    </p>
-                  </div>
-                )}
-              </Card>
-            </motion.div>
-          ))}
+                  )}
+                </Card>
+              </motion.div>
+            )
+          })}
         </AnimatePresence>
       </div>
     </div>

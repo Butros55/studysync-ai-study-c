@@ -6,7 +6,8 @@ type QueueTask = {
 class TaskQueue {
   private queue: QueueTask[] = []
   private isProcessing = false
-  private minDelayBetweenTasks = 15000
+  // Paid plans can process quickly; keep a small guard delay
+  private minDelayBetweenTasks = 500
   private consecutiveErrors = 0
   private maxConsecutiveErrors = 2
 

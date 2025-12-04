@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react'
 import { Flashcard, StudyNote } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from './EmptyState'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Cards,
   Trash,
@@ -19,6 +21,7 @@ interface FlashcardsTabProps {
   notes: StudyNote[]
   onGenerateFlashcards: (noteId: string) => void
   onDeleteFlashcard: (flashcardId: string) => void
+  onBulkDeleteFlashcards: (ids: string[]) => void
   onStartStudy: () => void
   onGenerateAllFlashcards: () => void
 }
@@ -28,9 +31,22 @@ export function FlashcardsTab({
   notes,
   onGenerateFlashcards,
   onDeleteFlashcard,
+  onBulkDeleteFlashcards,
   onStartStudy,
   onGenerateAllFlashcards,
 }: FlashcardsTabProps) {
+  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setSelectedCards((prev) => {
+      const valid = new Set<string>()
+      flashcards.forEach((c) => {
+        if (prev.has(c.id)) valid.add(c.id)
+      })
+      return valid
+    })
+  }, [flashcards])
+
   const getDueFlashcards = () => {
     const now = new Date()
     return flashcards.filter((card) => {
@@ -44,6 +60,22 @@ export function FlashcardsTab({
 
   const getCardsByNote = (noteId: string) => {
     return flashcards.filter((card) => card.noteId === noteId)
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedCards((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedCards)
+    if (ids.length === 0) return
+    if (!confirm(`Sollen ${ids.length} Karteikarten gelöscht werden?`)) return
+    await onBulkDeleteFlashcards(ids)
+    setSelectedCards(new Set())
   }
 
   if (flashcards.length === 0 && notes.length === 0) {
@@ -134,6 +166,12 @@ export function FlashcardsTab({
           </p>
         </div>
         <div className="flex gap-2">
+          {selectedCards.size > 0 && (
+            <Button variant="destructive" onClick={handleBulkDelete}>
+              <Trash size={18} className="mr-2" />
+              {selectedCards.size} löschen
+            </Button>
+          )}
           {notes.some((note) => getCardsByNote(note.id).length === 0) && (
             <Button variant="outline" onClick={onGenerateAllFlashcards}>
               <Sparkle size={18} className="mr-2" />
@@ -194,6 +232,11 @@ export function FlashcardsTab({
           return (
             <Card key={card.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start gap-4">
+                <Checkbox
+                  checked={selectedCards.has(card.id)}
+                  onCheckedChange={() => toggleSelect(card.id)}
+                  className="mt-1"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     {isDue && (

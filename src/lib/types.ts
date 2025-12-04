@@ -28,9 +28,11 @@ export interface Task {
   id: string
   moduleId: string
   scriptId?: string
+  title?: string
   question: string
   solution: string
   difficulty: 'easy' | 'medium' | 'hard'
+  tags?: string[]
   createdAt: string
   completed: boolean
 }
