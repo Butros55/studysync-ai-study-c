@@ -6,9 +6,9 @@ type QueueTask = {
 class TaskQueue {
   private queue: QueueTask[] = []
   private isProcessing = false
-  private minDelayBetweenTasks = 8000
+  private minDelayBetweenTasks = 15000
   private consecutiveErrors = 0
-  private maxConsecutiveErrors = 3
+  private maxConsecutiveErrors = 2
 
   async add(task: QueueTask) {
     this.queue.push(task)

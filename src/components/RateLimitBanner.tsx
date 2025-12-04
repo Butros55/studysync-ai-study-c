@@ -1,17 +1,24 @@
 import { useEffect, useState } from 'react'
 import { rateLimitTracker, RateLimitInfo } from '@/lib/rate-limit-tracker'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
-import { Warning, X } from '@phosphor-icons/react'
+import { Warning, X, FireExtinguisher } from '@phosphor-icons/react'
 import { Button } from './ui/button'
+
+const RATE_LIMIT_COOLDOWN_KEY = 'llm-rate-limit-cooldown'
 
 export function RateLimitBanner() {
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null)
   const [dismissed, setDismissed] = useState(false)
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
+  const [cooldownMinutes, setCooldownMinutes] = useState(0)
 
   useEffect(() => {
     const loadInfo = async () => {
       const info = await rateLimitTracker.getInfo()
       setRateLimitInfo(info)
+      
+      const cooldown = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
+      setCooldownUntil(cooldown || null)
     }
     loadInfo()
 
@@ -22,10 +29,56 @@ export function RateLimitBanner() {
       }
     })
 
-    return unsubscribe
+    const interval = setInterval(async () => {
+      const cooldown = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
+      setCooldownUntil(cooldown || null)
+      
+      if (cooldown) {
+        const remaining = cooldown - Date.now()
+        setCooldownMinutes(Math.ceil(Math.max(0, remaining) / 60000))
+        
+        if (remaining <= 0) {
+          await spark.kv.delete(RATE_LIMIT_COOLDOWN_KEY)
+          setCooldownUntil(null)
+        }
+      }
+    }, 1000)
+
+    return () => {
+      unsubscribe()
+      clearInterval(interval)
+    }
   }, [])
 
-  if (!rateLimitInfo || dismissed) return null
+  if (dismissed) return null
+
+  if (cooldownUntil && cooldownUntil > Date.now()) {
+    return (
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4">
+        <Alert variant="destructive" className="relative">
+          <FireExtinguisher className="h-5 w-5" weight="fill" />
+          <AlertTitle className="flex items-center justify-between">
+            <span>API-Abkühlphase aktiv</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto p-1 hover:bg-transparent"
+              onClick={() => setDismissed(true)}
+            >
+              <X size={16} />
+            </Button>
+          </AlertTitle>
+          <AlertDescription className="text-sm">
+            Die API wurde wegen zu vieler Anfragen (429-Fehler) pausiert. 
+            <strong> Noch {cooldownMinutes} Minute{cooldownMinutes !== 1 ? 'n' : ''}</strong> Wartezeit. 
+            Danach kannst du wieder Anfragen senden.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (!rateLimitInfo) return null
 
   const remaining = rateLimitTracker.getRemainingCalls(rateLimitInfo)
   
@@ -35,7 +88,7 @@ export function RateLimitBanner() {
   const minutes = Math.ceil(timeUntilReset / 60000)
 
   return (
-    <div className="max-w-7xl mx-auto px-6 pt-4">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4">
       <Alert variant="destructive" className="relative">
         <Warning className="h-5 w-5" weight="fill" />
         <AlertTitle className="flex items-center justify-between">
