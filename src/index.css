@@ -13,6 +13,18 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+  
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  @supports (padding: max(0px)) {
+    body {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
 }
 
 :root {
@@ -69,4 +81,6 @@
   --radius-xl: calc(var(--radius) * 2);
   --radius-2xl: calc(var(--radius) * 3);
   --radius-full: 9999px;
+  
+  --spacing-safe: env(safe-area-inset-bottom);
 }

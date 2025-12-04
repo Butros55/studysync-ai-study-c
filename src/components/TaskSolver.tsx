@@ -95,32 +95,34 @@ export function TaskSolver({
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Badge variant="outline" className={getDifficultyColor(task.difficulty)}>
+    <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden">
+      <div className="border-b bg-card shrink-0">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Badge variant="outline" className={`${getDifficultyColor(task.difficulty)} text-xs shrink-0`}>
               {getDifficultyLabel(task.difficulty)}
             </Badge>
-            <h2 className="font-semibold">Aufgabe lösen</h2>
+            <h2 className="font-semibold text-sm sm:text-base truncate">Aufgabe lösen</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <DebugModeToggle />
-            <RateLimitIndicator />
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X size={20} />
+          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+            <div className="hidden sm:flex items-center gap-3">
+              <DebugModeToggle />
+              <RateLimitIndicator />
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10">
+              <X size={18} className="sm:w-5 sm:h-5" />
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
+          <div className="flex flex-col gap-4 sm:gap-6">
             <div>
-              <h3 className="font-medium mb-4">Fragestellung</h3>
-              <Card className="p-6">
-                <p className="leading-relaxed whitespace-pre-wrap">{task.question}</p>
+              <h3 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Fragestellung</h3>
+              <Card className="p-4 sm:p-6">
+                <p className="leading-relaxed whitespace-pre-wrap text-sm sm:text-base">{task.question}</p>
               </Card>
 
               <AnimatePresence mode="wait">
@@ -129,15 +131,15 @@ export function TaskSolver({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="mt-6 space-y-4"
+                    className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
                   >
                     {feedback.transcription && (
-                      <Alert>
-                        <Info size={18} />
+                      <Alert className="text-sm">
+                        <Info size={16} className="sm:w-[18px] sm:h-[18px]" />
                         <AlertDescription>
                           <div className="space-y-2">
                             <p className="font-medium">KI-Transkription deiner Handschrift:</p>
-                            <div className="bg-muted/50 p-3 rounded-md text-sm font-mono">
+                            <div className="bg-muted/50 p-2 sm:p-3 rounded-md text-xs sm:text-sm font-mono overflow-x-auto">
                               {feedback.transcription}
                             </div>
                           </div>
@@ -146,17 +148,17 @@ export function TaskSolver({
                     )}
 
                     {feedback.isCorrect ? (
-                      <Card className="p-6 bg-accent/10 border-accent/20">
-                        <div className="flex items-start gap-3">
-                          <CheckCircle size={24} className="text-accent mt-0.5" weight="fill" />
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-accent mb-2">Richtig!</h4>
-                            <p className="text-sm leading-relaxed mb-4">
+                      <Card className="p-4 sm:p-6 bg-accent/10 border-accent/20">
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <CheckCircle size={20} className="text-accent mt-0.5 shrink-0 sm:w-6 sm:h-6" weight="fill" />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-accent mb-2 text-sm sm:text-base">Richtig!</h4>
+                            <p className="text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">
                               Sehr gut! Deine Lösung ist korrekt.
                             </p>
                             {onNextTask && (
-                              <Button onClick={onNextTask} className="bg-accent hover:bg-accent/90">
-                                <ArrowRight size={18} className="mr-2" />
+                              <Button onClick={onNextTask} className="bg-accent hover:bg-accent/90 w-full sm:w-auto text-sm">
+                                <ArrowRight size={16} className="mr-2 sm:w-[18px] sm:h-[18px]" />
                                 Nächste Aufgabe
                               </Button>
                             )}
@@ -164,19 +166,19 @@ export function TaskSolver({
                         </div>
                       </Card>
                     ) : (
-                      <Card className="p-6 bg-warning/10 border-warning/20">
-                        <div className="flex items-start gap-3">
+                      <Card className="p-4 sm:p-6 bg-warning/10 border-warning/20">
+                        <div className="flex items-start gap-2 sm:gap-3">
                           <Lightbulb
-                            size={24}
-                            className="text-warning-foreground mt-0.5"
+                            size={20}
+                            className="text-warning-foreground mt-0.5 shrink-0 sm:w-6 sm:h-6"
                             weight="fill"
                           />
-                          <div className="flex-1">
-                            <h4 className="font-semibold mb-2">Noch nicht ganz richtig</h4>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold mb-2 text-sm sm:text-base">Noch nicht ganz richtig</h4>
                             {feedback.hints && feedback.hints.length > 0 && (
                               <div className="space-y-2">
-                                <p className="text-sm font-medium">Hinweise:</p>
-                                <ul className="list-disc list-inside space-y-1 text-sm">
+                                <p className="text-xs sm:text-sm font-medium">Hinweise:</p>
+                                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                                   {feedback.hints.map((hint, idx) => (
                                     <li key={idx}>{hint}</li>
                                   ))}
@@ -187,7 +189,7 @@ export function TaskSolver({
                               onClick={handleClear}
                               variant="outline"
                               size="sm"
-                              className="mt-4"
+                              className="mt-3 sm:mt-4 w-full sm:w-auto text-xs sm:text-sm"
                             >
                               Nochmal versuchen
                             </Button>
@@ -201,16 +203,16 @@ export function TaskSolver({
             </div>
 
             <div className="flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">Deine Lösung</h3>
-                <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')}>
-                  <TabsList>
-                    <TabsTrigger value="draw">
-                      <PencilLine size={16} className="mr-2" />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 sm:mb-4">
+                <h3 className="font-medium text-sm sm:text-base">Deine Lösung</h3>
+                <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')} className="w-full sm:w-auto">
+                  <TabsList className="w-full sm:w-auto grid grid-cols-2">
+                    <TabsTrigger value="draw" className="text-xs sm:text-sm">
+                      <PencilLine size={14} className="mr-1.5 sm:mr-2 sm:w-4 sm:h-4" />
                       Zeichnen
                     </TabsTrigger>
-                    <TabsTrigger value="type">
-                      <Keyboard size={16} className="mr-2" />
+                    <TabsTrigger value="type" className="text-xs sm:text-sm">
+                      <Keyboard size={14} className="mr-1.5 sm:mr-2 sm:w-4 sm:h-4" />
                       Tippen
                     </TabsTrigger>
                   </TabsList>
@@ -224,9 +226,10 @@ export function TaskSolver({
                       onContentChange={setHasCanvasContent}
                       clearTrigger={clearCanvasTrigger}
                       onCanvasDataUrl={setCanvasDataUrl}
+                      isMobile={true}
                     />
                     {isSubmitting && (
-                      <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none" />
+                      <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none z-10" />
                     )}
                   </div>
                 ) : (
@@ -234,28 +237,29 @@ export function TaskSolver({
                     value={textAnswer}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Schreibe deine Lösung hier..."
-                    className="min-h-[400px] font-mono resize-none"
+                    className="min-h-[300px] sm:min-h-[400px] font-mono resize-none text-sm sm:text-base"
                     disabled={isSubmitting}
                   />
                 )}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3 pb-4 sm:pb-0">
                 <Button
                   variant="outline"
                   onClick={handleClear}
-                  className="flex-1"
+                  className="flex-1 text-xs sm:text-sm h-10 sm:h-auto"
                   disabled={!canSubmit || isSubmitting}
                 >
-                  <Eraser size={18} className="mr-2" />
-                  Löschen
+                  <Eraser size={16} className="mr-1.5 sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">Löschen</span>
+                  <span className="sm:hidden">Löschen</span>
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit || feedback?.isCorrect || isSubmitting}
-                  className="flex-1"
+                  className="flex-1 text-xs sm:text-sm h-10 sm:h-auto"
                 >
-                  {isSubmitting ? 'Wird überprüft...' : 'Lösung einreichen'}
+                  {isSubmitting ? 'Prüfe...' : 'Einreichen'}
                 </Button>
               </div>
             </div>

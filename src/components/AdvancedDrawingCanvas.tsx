@@ -16,6 +16,7 @@ interface AdvancedDrawingCanvasProps {
   onContentChange: (hasContent: boolean) => void
   clearTrigger: number
   onCanvasDataUrl?: (dataUrl: string) => void
+  isMobile?: boolean
 }
 
 type Tool = 'pen' | 'eraser'
@@ -24,6 +25,7 @@ export function AdvancedDrawingCanvas({
   onContentChange,
   clearTrigger,
   onCanvasDataUrl,
+  isMobile = false,
 }: AdvancedDrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -309,31 +311,33 @@ export function AdvancedDrawingCanvas({
   return (
     <div
       className={cn(
-        'flex flex-col bg-muted/30 rounded-lg border transition-all'
+        'flex flex-col bg-muted/30 rounded-lg border transition-all touch-none'
       )}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 px-2 sm:px-4 py-2 sm:py-3 border-b bg-card/50">
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
           <Button
             variant={tool === 'pen' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setTool('pen')}
+            className="h-8 px-2 sm:px-3 shrink-0"
           >
-            <PencilSimple size={18} />
+            <PencilSimple size={16} className="sm:w-[18px] sm:h-[18px]" />
           </Button>
           <Button
             variant={tool === 'eraser' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setTool('eraser')}
+            className="h-8 px-2 sm:px-3 shrink-0"
           >
-            <Eraser size={18} />
+            <Eraser size={16} className="sm:w-[18px] sm:h-[18px]" />
           </Button>
 
-          <Separator orientation="vertical" className="h-6 mx-2" />
+          <Separator orientation="vertical" className="h-6 mx-1 sm:mx-2 shrink-0" />
 
           {tool === 'pen' ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Größe:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-xs text-muted-foreground hidden sm:inline shrink-0">Größe:</span>
               <input
                 type="range"
                 min="1"
@@ -350,13 +354,13 @@ export function AdvancedDrawingCanvas({
                     }
                   }
                 }}
-                className="w-20"
+                className="w-16 sm:w-20"
               />
-              <Badge variant="secondary">{penSize}px</Badge>
+              <Badge variant="secondary" className="text-xs shrink-0">{penSize}px</Badge>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Größe:</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-xs text-muted-foreground hidden sm:inline shrink-0">Größe:</span>
               <input
                 type="range"
                 min="10"
@@ -373,47 +377,56 @@ export function AdvancedDrawingCanvas({
                     }
                   }
                 }}
-                className="w-20"
+                className="w-16 sm:w-20"
               />
-              <Badge variant="secondary">{eraserSize}px</Badge>
+              <Badge variant="secondary" className="text-xs shrink-0">{eraserSize}px</Badge>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={undo} disabled={historyStepRef.current <= 0}>
-            <ArrowCounterClockwise size={18} />
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto">
+          <Button variant="ghost" size="sm" onClick={undo} disabled={historyStepRef.current <= 0} className="h-8 px-2 sm:px-3 shrink-0">
+            <ArrowCounterClockwise size={16} className="sm:w-[18px] sm:h-[18px]" />
           </Button>
 
-          <Separator orientation="vertical" className="h-6 mx-2" />
+          <Separator orientation="vertical" className="h-6 mx-1 sm:mx-2 shrink-0 hidden sm:block" />
 
-          <Button variant="ghost" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.5}>
-            <MagnifyingGlassMinus size={18} />
-          </Button>
-          <Badge variant="outline" className="min-w-[60px] justify-center">
-            {Math.round(zoom * 100)}%
-          </Badge>
-          <Button variant="ghost" size="sm" onClick={handleZoomIn} disabled={zoom >= 3}>
-            <MagnifyingGlassPlus size={18} />
-          </Button>
+          <div className="hidden sm:flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.5} className="shrink-0">
+              <MagnifyingGlassMinus size={18} />
+            </Button>
+            <Badge variant="outline" className="min-w-[60px] justify-center shrink-0">
+              {Math.round(zoom * 100)}%
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={handleZoomIn} disabled={zoom >= 3} className="shrink-0">
+              <MagnifyingGlassPlus size={18} />
+            </Button>
 
-          <Separator orientation="vertical" className="h-6 mx-2" />
+            <Separator orientation="vertical" className="h-6 mx-2 shrink-0" />
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsExpanded(!isExpanded)
-              setTimeout(() => initCanvas(), 100)
-            }}
-            title={isExpanded ? 'Verkleinern' : 'Vergrößern'}
-          >
-            <ArrowsOutSimple size={18} />
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsExpanded(!isExpanded)
+                setTimeout(() => initCanvas(), 100)
+              }}
+              title={isExpanded ? 'Verkleinern' : 'Vergrößern'}
+              className="shrink-0"
+            >
+              <ArrowsOutSimple size={18} />
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div ref={containerRef} className={cn("flex-1 overflow-hidden bg-white relative", isExpanded ? "min-h-[calc(100vh-140px)]" : "min-h-[400px]")}>
+      <div 
+        ref={containerRef} 
+        className={cn(
+          "flex-1 overflow-hidden bg-white relative touch-none", 
+          isExpanded ? "min-h-[calc(100vh-200px)] sm:min-h-[calc(100vh-140px)]" : isMobile ? "min-h-[350px]" : "min-h-[400px]"
+        )}
+      >
         <canvas
           ref={canvasRef}
           className="absolute pointer-events-none"
@@ -440,7 +453,7 @@ export function AdvancedDrawingCanvas({
         />
       </div>
 
-      <div className="px-4 py-2 border-t bg-card/50 text-xs text-muted-foreground">
+      <div className="hidden sm:block px-4 py-2 border-t bg-card/50 text-xs text-muted-foreground">
         <span>Tipp: Shift + Ziehen zum Verschieben | Strg + Scroll zum Zoomen</span>
       </div>
     </div>

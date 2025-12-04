@@ -852,24 +852,27 @@ Beispielformat:
       
       <div className="min-h-screen bg-background">
         <div className="border-b bg-card">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight">StudyMate</h1>
-                <p className="text-muted-foreground mt-1">
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
+                <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                   Dein KI-gestützter Lernbegleiter für die Uni
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <DebugModeToggle />
-                <RateLimitIndicator />
-                <Button variant="outline" onClick={() => setShowStatistics(true)}>
-                  <ChartLine size={18} className="mr-2" />
-                  Statistiken
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="hidden sm:flex items-center gap-3">
+                  <DebugModeToggle />
+                  <RateLimitIndicator />
+                </div>
+                <Button variant="outline" onClick={() => setShowStatistics(true)} size="sm" className="flex-1 sm:flex-none">
+                  <ChartLine size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">Statistiken</span>
                 </Button>
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus size={18} className="mr-2" />
-                  Neues Modul
+                <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="flex-1 sm:flex-none">
+                  <Plus size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">Neues Modul</span>
+                  <span className="sm:hidden">Modul</span>
                 </Button>
               </div>
             </div>
@@ -878,7 +881,7 @@ Beispielformat:
 
         <RateLimitBanner />
 
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
           {!modules || modules.length === 0 ? (
             <EmptyState
               title="Noch keine Module"
@@ -887,7 +890,7 @@ Beispielformat:
               onAction={() => setCreateDialogOpen(true)}
             />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {modules.map((module) => (
                 <ModuleCard
                   key={module.id}

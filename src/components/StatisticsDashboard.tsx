@@ -92,22 +92,22 @@ export function StatisticsDashboard({
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft size={20} />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
+                <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
               </Button>
-              <div className="flex-1">
-                <h1 className="text-3xl font-semibold tracking-tight">Statistiken</h1>
-                <p className="text-muted-foreground mt-1">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-3xl font-semibold tracking-tight truncate">Statistiken</h1>
+                <p className="text-muted-foreground mt-1 text-xs sm:text-base truncate">
                   {selectedModule
                     ? `Fortschritt für ${selectedModule.name}`
                     : 'Dein Lernfortschritt im Überblick'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3 shrink-0">
               <DebugModeToggle />
               <RateLimitIndicator />
             </div>
@@ -116,37 +116,37 @@ export function StatisticsDashboard({
       </div>
 
       {!hasData ? (
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <Card className="p-12 text-center">
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
-                <TrendUp size={40} className="text-muted-foreground" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-8 sm:py-16">
+          <Card className="p-8 sm:p-12 text-center">
+            <div className="flex justify-center mb-4 sm:mb-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center">
+                <TrendUp size={32} className="text-muted-foreground sm:w-10 sm:h-10" />
               </div>
             </div>
-            <h2 className="text-2xl font-semibold mb-2">Noch keine Daten</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-2">Noch keine Daten</h2>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
               Beginne mit dem Lernen, um deine Statistiken zu sehen. Lade Skripte hoch, generiere Notizen und
               löse Aufgaben, um deinen Fortschritt zu verfolgen.
             </p>
           </Card>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Übersicht</TabsTrigger>
-              <TabsTrigger value="activity">Aktivität</TabsTrigger>
-              <TabsTrigger value="modules">Module</TabsTrigger>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
+          <Tabs defaultValue="overview" className="space-y-4 sm:space-y-6">
+            <TabsList className="w-full sm:w-auto grid grid-cols-3">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">Übersicht</TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs sm:text-sm">Aktivität</TabsTrigger>
+              <TabsTrigger value="modules" className="text-xs sm:text-sm">Module</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Fire size={24} className="text-accent" />
+            <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <Card className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Fire size={20} className="text-accent sm:w-6 sm:h-6" />
                     </div>
-                    <Badge variant="secondary" className="font-semibold">
+                    <Badge variant="secondary" className="font-semibold text-xs sm:text-sm">
                       {overallStats.currentStreak} Tage
                     </Badge>
                   </div>

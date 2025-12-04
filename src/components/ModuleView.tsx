@@ -59,26 +59,26 @@ export function ModuleView({
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft size={20} />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 sm:mb-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+              <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
+                <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
               </Button>
               <div
-                className="w-12 h-12 rounded-lg flex items-center justify-center text-white"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-white shrink-0"
                 style={{ backgroundColor: module.color }}
               >
-                <span className="font-semibold text-lg">
+                <span className="font-semibold text-base sm:text-lg">
                   {module.code.substring(0, 2).toUpperCase()}
                 </span>
               </div>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">{module.name}</h1>
-                <p className="text-sm text-muted-foreground">{module.code}</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-semibold tracking-tight truncate">{module.name}</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{module.code}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3">
               <DebugModeToggle />
               <RateLimitIndicator />
             </div>
@@ -88,13 +88,25 @@ export function ModuleView({
 
       <RateLimitBanner />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="scripts">Skripte ({scripts.length})</TabsTrigger>
-            <TabsTrigger value="notes">Notizen ({notes.length})</TabsTrigger>
-            <TabsTrigger value="flashcards">Karteikarten ({flashcards.length})</TabsTrigger>
-            <TabsTrigger value="tasks">Aufgaben ({tasks.length})</TabsTrigger>
+          <TabsList className="mb-4 sm:mb-6 w-full grid grid-cols-4 sm:w-auto sm:inline-flex h-auto">
+            <TabsTrigger value="scripts" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <span className="hidden sm:inline">Skripte ({scripts.length})</span>
+              <span className="sm:hidden">Skr. {scripts.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <span className="hidden sm:inline">Notizen ({notes.length})</span>
+              <span className="sm:hidden">Not. {notes.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="flashcards" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <span className="hidden sm:inline">Karteikarten ({flashcards.length})</span>
+              <span className="sm:hidden">Kart. {flashcards.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <span className="hidden sm:inline">Aufgaben ({tasks.length})</span>
+              <span className="sm:hidden">Aufg. {tasks.length}</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="scripts">
