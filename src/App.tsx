@@ -10,6 +10,7 @@ import { QuizMode } from './components/QuizMode'
 import { EmptyState } from './components/EmptyState'
 import { NotificationCenter, PipelineTask } from './components/NotificationCenter'
 import { StatisticsDashboard } from './components/StatisticsDashboard'
+import { CostTrackingDashboard } from './components/CostTrackingDashboard'
 import { RateLimitIndicator } from './components/RateLimitIndicator'
 import { RateLimitBanner } from './components/RateLimitBanner'
 import { DebugModeToggle } from './components/DebugModeToggle'
@@ -21,7 +22,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from './components/ui/sheet'
-import { Plus, ChartLine, List, Sparkle } from '@phosphor-icons/react'
+import { Plus, ChartLine, List, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -43,6 +44,7 @@ function App() {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
+  const [showCostTracking, setShowCostTracking] = useState(false)
   const [showQuizMode, setShowQuizMode] = useState(false)
   const [taskFeedback, setTaskFeedback] = useState<{
     isCorrect: boolean
@@ -185,7 +187,7 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const notesContent = await llmWithRetry(prompt, LLM_MODEL_STANDARD, false)
+        const notesContent = await llmWithRetry(prompt, LLM_MODEL_STANDARD, false, 1, 'generate-notes', script.moduleId)
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
@@ -284,7 +286,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const response = await llmWithRetry(prompt, LLM_MODEL_STANDARD, true)
+        const response = await llmWithRetry(prompt, LLM_MODEL_STANDARD, true, 1, 'generate-tasks', script.moduleId)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
@@ -442,7 +444,7 @@ Gib deine Antwort als JSON zurück:
   "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-        const response = await llmWithRetry(evaluationPrompt, LLM_MODEL_STANDARD, true)
+        const response = await llmWithRetry(evaluationPrompt, LLM_MODEL_STANDARD, true, 1, 'task-submit', activeTask.moduleId)
         const evaluation = JSON.parse(response)
 
         toast.dismiss('task-submit')
@@ -640,7 +642,7 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
         )
 
-        const response = await llmWithRetry(prompt, LLM_MODEL_STANDARD, true)
+        const response = await llmWithRetry(prompt, LLM_MODEL_STANDARD, true, 1, 'generate-flashcards', note.moduleId)
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
@@ -799,7 +801,7 @@ WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzli
 
 Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
 
-          const visionResponse = await llmWithRetry(visionPrompt, LLM_MODEL_VISION, false)
+          const visionResponse = await llmWithRetry(visionPrompt, LLM_MODEL_VISION, false, 1, 'handwriting-analysis', task.moduleId)
           transcription = visionResponse.trim()
           userAnswer = transcription
         } catch (transcriptionError) {
@@ -848,7 +850,7 @@ Gib deine Antwort als JSON zurück:
   "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
 }`
 
-        const response = await llmWithRetry(evaluationPrompt, LLM_MODEL_STANDARD, true)
+        const response = await llmWithRetry(evaluationPrompt, LLM_MODEL_STANDARD, true, 1, 'task-submit', task.moduleId)
         const evaluation = JSON.parse(response)
 
         toast.dismiss('quiz-submit')
@@ -1015,6 +1017,19 @@ Gib deine Antwort als JSON zurück:
     )
   }
 
+  if (showCostTracking) {
+    return (
+      <>
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <CostTrackingDashboard onBack={() => setShowCostTracking(false)} />
+      </>
+    )
+  }
+
   if (selectedModule) {
     return (
       <>
@@ -1114,6 +1129,10 @@ Gib deine Antwort als JSON zurück:
                 <Button variant="outline" onClick={() => setShowStatistics(true)} size="sm" className="flex-1 sm:flex-none">
                   <ChartLine size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Statistiken</span>
+                </Button>
+                <Button variant="outline" onClick={() => setShowCostTracking(true)} size="sm" className="flex-1 sm:flex-none">
+                  <CurrencyDollar size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">Kosten</span>
                 </Button>
                 <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="flex-1 sm:flex-none">
                   <Plus size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />

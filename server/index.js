@@ -14,9 +14,48 @@ const openai = new OpenAI({
 
 const DEFAULT_MODEL = 'gpt-4o-mini'
 
+const MODEL_PRICING = {
+  'gpt-4o': {
+    input: 2.50 / 1_000_000,
+    output: 10.00 / 1_000_000,
+  },
+  'gpt-4o-mini': {
+    input: 0.150 / 1_000_000,
+    output: 0.600 / 1_000_000,
+  },
+  'gpt-4o-2024-11-20': {
+    input: 2.50 / 1_000_000,
+    output: 10.00 / 1_000_000,
+  },
+  'gpt-4-turbo': {
+    input: 10.00 / 1_000_000,
+    output: 30.00 / 1_000_000,
+  },
+  'gpt-4': {
+    input: 30.00 / 1_000_000,
+    output: 60.00 / 1_000_000,
+  },
+  'gpt-3.5-turbo': {
+    input: 0.50 / 1_000_000,
+    output: 1.50 / 1_000_000,
+  },
+}
+
+function calculateCost(model, promptTokens, completionTokens) {
+  const pricing = MODEL_PRICING[model]
+  
+  if (!pricing) {
+    console.warn(`Unknown model pricing for: ${model}, using gpt-4o-mini as fallback`)
+    const fallback = MODEL_PRICING['gpt-4o-mini']
+    return promptTokens * fallback.input + completionTokens * fallback.output
+  }
+  
+  return promptTokens * pricing.input + completionTokens * pricing.output
+}
+
 app.post('/api/llm', async (req, res) => {
   try {
-    const { prompt, model = DEFAULT_MODEL, jsonMode = false } = req.body
+    const { prompt, model = DEFAULT_MODEL, jsonMode = false, operation = 'unknown', moduleId } = req.body
 
     if (!prompt) {
       return res.status(400).json({ 
@@ -32,7 +71,7 @@ app.post('/api/llm', async (req, res) => {
       })
     }
 
-    console.log(`[LLM] Request - Model: ${model}, JSON Mode: ${jsonMode}, Prompt length: ${prompt.length}`)
+    console.log(`[LLM] Request - Model: ${model}, JSON Mode: ${jsonMode}, Operation: ${operation}, Prompt length: ${prompt.length}`)
 
     const requestOptions = {
       model: model,
@@ -52,13 +91,26 @@ app.post('/api/llm', async (req, res) => {
     const completion = await openai.chat.completions.create(requestOptions)
 
     const responseText = completion.choices[0]?.message?.content || ''
+    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+    const cost = calculateCost(
+      completion.model,
+      usage.prompt_tokens,
+      usage.completion_tokens
+    )
     
-    console.log(`[LLM] Response - Length: ${responseText.length}, Tokens: ${completion.usage?.total_tokens || 'N/A'}`)
+    console.log(`[LLM] Response - Length: ${responseText.length}, Tokens: ${usage.total_tokens}, Cost: $${cost.toFixed(6)}`)
 
     res.json({ 
       response: responseText,
-      usage: completion.usage,
-      model: completion.model
+      usage: {
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        cost: cost,
+      },
+      model: completion.model,
+      operation,
+      moduleId
     })
 
   } catch (error) {

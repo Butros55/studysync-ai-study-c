@@ -1,5 +1,8 @@
 import { rateLimitTracker } from './rate-limit-tracker'
 import { debugStore } from './debug-store'
+import { TokenUsage } from './types'
+import { calculateCost } from './cost-tracker'
+import { generateId } from './utils-app'
 
 const RATE_LIMIT_COOLDOWN_KEY = 'llm-rate-limit-cooldown'
 const RATE_LIMIT_COOLDOWN_DURATION = 5 * 60 * 1000
@@ -36,7 +39,9 @@ export async function llmWithRetry(
   prompt: string,
   model: string = 'gpt-4o-mini',
   jsonMode: boolean = false,
-  maxRetries: number = 1
+  maxRetries: number = 1,
+  operation: string = 'unknown',
+  moduleId?: string
 ): Promise<string> {
   if (await isInCooldown()) {
     const remainingMs = await getRemainingCooldown()
@@ -88,6 +93,8 @@ export async function llmWithRetry(
           prompt,
           model,
           jsonMode,
+          operation,
+          moduleId,
         }),
       })
 
@@ -110,6 +117,23 @@ export async function llmWithRetry(
 
       const data = await response.json()
       const responseText = data.response
+      
+      if (data.usage) {
+        const usageRecord: TokenUsage = {
+          id: generateId(),
+          timestamp: new Date().toISOString(),
+          model: data.model || model,
+          promptTokens: data.usage.promptTokens || 0,
+          completionTokens: data.usage.completionTokens || 0,
+          totalTokens: data.usage.totalTokens || 0,
+          cost: data.usage.cost || 0,
+          operation: operation,
+          moduleId: moduleId,
+        }
+        
+        const existingUsage = await spark.kv.get<TokenUsage[]>('token-usage') || []
+        await spark.kv.set('token-usage', [...existingUsage, usageRecord])
+      }
       
       debugStore.addLog({
         type: 'llm-response',

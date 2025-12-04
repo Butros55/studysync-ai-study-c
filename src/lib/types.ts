@@ -62,3 +62,26 @@ export interface FlashcardReview {
   quality: number
   reviewedAt: string
 }
+
+export interface TokenUsage {
+  id: string
+  timestamp: string
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cost: number
+  operation: string
+  moduleId?: string
+}
+
+export interface CostSummary {
+  totalCost: number
+  totalTokens: number
+  totalRequests: number
+  costByModel: Record<string, number>
+  tokensByModel: Record<string, number>
+  requestsByModel: Record<string, number>
+  costByOperation: Record<string, number>
+  recentUsage: TokenUsage[]
+}
