@@ -5,7 +5,7 @@ export interface RateLimitInfo {
 }
 
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000
-const MAX_CALLS_PER_HOUR = 40
+const MAX_CALLS_PER_HOUR = 30
 
 export class RateLimitTracker {
   private static instance: RateLimitTracker

@@ -172,9 +172,11 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
                                 <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
                                   Prompt
                                 </h4>
-                                <pre className="text-xs bg-background p-3 rounded-md overflow-x-auto border">
-                                  {log.data.prompt}
-                                </pre>
+                                <div className="text-xs bg-background p-3 rounded-md border max-w-full overflow-hidden">
+                                  <pre className="whitespace-pre-wrap break-words font-mono">
+                                    {log.data.prompt}
+                                  </pre>
+                                </div>
                               </div>
                             )}
 
@@ -183,9 +185,11 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
                                 <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
                                   Antwort
                                 </h4>
-                                <pre className="text-xs bg-background p-3 rounded-md overflow-x-auto border whitespace-pre-wrap">
-                                  {log.data.response}
-                                </pre>
+                                <div className="text-xs bg-background p-3 rounded-md border max-w-full overflow-hidden">
+                                  <pre className="whitespace-pre-wrap break-words font-mono">
+                                    {log.data.response}
+                                  </pre>
+                                </div>
                               </div>
                             )}
 
@@ -194,9 +198,11 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
                                 <h4 className="text-xs font-semibold mb-2 uppercase text-destructive">
                                   Fehler
                                 </h4>
-                                <pre className="text-xs bg-destructive/5 p-3 rounded-md overflow-x-auto border border-destructive/20 text-destructive">
-                                  {log.data.error}
-                                </pre>
+                                <div className="text-xs bg-destructive/5 p-3 rounded-md border border-destructive/20 text-destructive max-w-full overflow-hidden">
+                                  <pre className="whitespace-pre-wrap break-words font-mono">
+                                    {log.data.error}
+                                  </pre>
+                                </div>
                               </div>
                             )}
 
@@ -205,9 +211,11 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
                                 <h4 className="text-xs font-semibold mb-2 uppercase text-destructive">
                                   Stack Trace
                                 </h4>
-                                <pre className="text-xs bg-destructive/5 p-3 rounded-md overflow-x-auto border border-destructive/20 text-destructive font-mono">
-                                  {log.data.errorStack}
-                                </pre>
+                                <div className="text-xs bg-destructive/5 p-3 rounded-md border border-destructive/20 text-destructive max-w-full overflow-hidden">
+                                  <pre className="whitespace-pre-wrap break-words font-mono">
+                                    {log.data.errorStack}
+                                  </pre>
+                                </div>
                               </div>
                             )}
                           </div>

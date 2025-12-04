@@ -1,73 +1,57 @@
-# Rate Limiting Improvements
+# Rate Limiting & Error Handling Improvements
 
-## Zusammenfassung der Änderungen
+## Zusammenfassung der neuesten Änderungen (v2)
 
-Die 429-Fehler (Too Many Requests) wurden durch folgende Maßnahmen behoben:
+Die 429-Fehler (Too Many Requests) und Token-Limit-Fehler wurden durch folgende Maßnahmen behoben:
 
-### 1. Konservativere Rate Limits
-- **Vorher**: 60 Anfragen pro Stunde
-- **Jetzt**: 40 Anfragen pro Stunde (33% Reduktion)
+### 1. Korrektes Modell verwenden
+- **Problem**: Verwendung des nicht-existenten Modells `gpt-5`
+- **Lösung**: Standardmodell ist jetzt `gpt-4o`
+- **Vorteil**: 
+  - `gpt-4o` hat ein Token-Limit von **128.000 Tokens** (statt 8.000)
+  - Besser für lange Dokumente und Skripte geeignet
+  - Höhere Qualität der Antworten
+
+### 2. Konservativere Rate Limits
+- **Vorher**: 40 Anfragen pro Stunde
+- **Jetzt**: 30 Anfragen pro Stunde (25% Reduktion)
 - Dies gibt mehr Puffer, um GitHub's API-Limits nicht zu überschreiten
 
-### 2. Längere Wartezeiten zwischen Anfragen
-- **Vorher**: 4 Sekunden zwischen Aufgaben
-- **Jetzt**: 8 Sekunden zwischen Aufgaben (100% Erhöhung)
-- Bei Fehlern: Automatische Verlängerung der Wartezeit
-
 ### 3. Verbesserte Fehlerbehandlung
-- Exponentieller Backoff bei Wiederholungsversuchen (2s, 4s, 8s, 16s, 32s)
-- Intelligente Fehlererkennung für 429-Fehler
-- Automatisches Pausieren bei mehreren aufeinanderfolgenden Fehlern
+- **Rate Limit Fehler**: Sofortiger Abbruch mit klarer Fehlermeldung
+- **Token Limit Fehler**: Spezielle Fehlermeldung für zu lange Dokumente
+- **Keine unnötigen Retries**: Nur 1 Versuch bei Rate-Limit-Fehlern
+- Exponentieller Backoff bei Wiederholungsversuchen (2s, 4s, 8s, 16s)
 
-### 4. Proaktive Limitprüfung
+### 4. Token-Limit-Fehler beheben
+Wenn du den Fehler "Token-Limit erreicht" bekommst:
+
+1. **Dokument aufteilen**: Teile große PDFs/PPTX in kleinere Teile
+2. **Kürzere Skripte**: Lade nur relevante Seiten hoch
+3. **Zusammenfassungen**: Nutze Zusammenfassungen statt komplette Dokumente
+
+### 5. Proaktive Limitprüfung
 - Vor jeder Anfrage wird geprüft, ob noch Kapazität vorhanden ist
-- Bei weniger als 5 verbleibenden Anfragen: zusätzliche 3 Sekunden Wartezeit
+- Bei weniger als 10 verbleibenden Anfragen: zusätzliche 2-5 Sekunden Wartezeit
 - Bei 0 verbleibenden Anfragen: Fehlermeldung mit Wartezeit bis zum Reset
 
-### 5. Visuelle Warnungen
-- **Rate-Limit-Banner**: Erscheint automatisch bei niedrigem Limit
-- **Rate-Limit-Indikator**: Zeigt verbleibende Anfragen und Reset-Zeit
-- **Farbkodierung**:
-  - Grün (>50%): Alles in Ordnung
-  - Gelb (20-50%): Moderate Nutzung
-  - Rot (<20%): Kritisches Limit
+### 6. Debug-Konsole Verbesserungen
+- **Kein horizontales Scrollen mehr**: Alle Texte werden automatisch umgebrochen
+- **Lesbare Fehler**: Stack Traces und lange Texte sind vollständig sichtbar
+- **Word-Wrap**: Alle Code-Blöcke nutzen `break-words` für bessere Lesbarkeit
 
-### 6. Manueller Reset
-- Button zum Zurücksetzen des Zählers
-- Nützlich, wenn das Limit fälschlicherweise erreicht wurde
-- Zu finden im Rate-Limit-Indikator (oben rechts)
+## Was tun bei Fehlern?
 
-## Was tun bei 429-Fehlern?
-
+### 429 (Rate Limit) Fehler
 1. **Warten**: Das Limit resettet automatisch nach 1 Stunde
-2. **Reset-Button nutzen**: Manuelles Zurücksetzen im Rate-Limit-Indikator
-3. **Weniger Batch-Operationen**: Nicht alle Skripte gleichzeitig verarbeiten
-4. **Zeit zwischen Aktionen**: Warte 8-10 Sekunden zwischen manuellen Aktionen
+2. **Rate-Limit-Indikator prüfen**: Oben rechts siehst du, wann der Reset ist
+3. **Weniger Aktionen**: Nicht alle Skripte gleichzeitig verarbeiten
+4. **Zeit zwischen Aktionen**: Warte 10-15 Sekunden zwischen manuellen Aktionen
 
-## Technische Details
-
-### Task Queue
-```typescript
-- Minimale Wartezeit: 8000ms (8 Sekunden)
-- Bei Fehlern: Wartezeit × (Fehleranzahl + 1)
-- Maximaler Backoff: 60000ms (1 Minute)
-```
-
-### LLM Retry Logic
-```typescript
-- Maximale Versuche: 5
-- Backoff: 2s × 2^attempt (2s, 4s, 8s, 16s, 32s)
-- Maximaler Backoff: 60s
-- Zusätzlicher Jitter: 0-2s zufällig
-```
-
-### Rate Limit Tracking
-```typescript
-- Tracking-Fenster: 60 Minuten
-- Maximale Anfragen: 40 pro Stunde
-- Automatisches Reset: Nach 60 Minuten
-- Persistenz: spark.kv Storage
-```
+### Token-Limit Fehler
+1. **Dokument kürzen**: Reduziere die Länge des Dokuments
+2. **Aufteilen**: Lade das Dokument in mehreren Teilen hoch
+3. **Text extrahieren**: Bei PDFs nur relevante Seiten hochladen
 
 ## Best Practices
 
@@ -75,7 +59,31 @@ Die 429-Fehler (Too Many Requests) wurden durch folgende Maßnahmen behoben:
 2. **Skripte einzeln hochladen**: Nicht alle auf einmal
 3. **Rate-Limit beobachten**: Nutze den Indikator oben rechts
 4. **Bei Warnungen pausieren**: Wenn das Banner erscheint, warte mit weiteren Aktionen
-5. **Reset nutzen**: Bei Unsicherheit den Zähler zurücksetzen
+5. **Kürzere Dokumente**: Teile große Dokumente in kleinere Abschnitte
+
+## Technische Details
+
+### Modellauswahl
+```typescript
+- Standard-Modell: gpt-4o (128k Tokens)
+- Fallback: gpt-4o-mini (8k Tokens) - nur bei Bedarf
+- JSON-Modus: Aktiviert für strukturierte Ausgaben
+```
+
+### Rate Limit Tracking
+```typescript
+- Tracking-Fenster: 60 Minuten
+- Maximale Anfragen: 30 pro Stunde
+- Automatisches Reset: Nach 60 Minuten
+- Persistenz: spark.kv Storage
+```
+
+### LLM Retry Logic
+```typescript
+- Standard-Versuche: 1 (keine Retries bei Rate-Limit)
+- Bei anderen Fehlern: Sofortiger Fehler mit Details
+- Wartezeiten: 2-5 Sekunden bei niedrigem Limit
+```
 
 ## Monitoring
 
@@ -85,10 +93,16 @@ Der Rate-Limit-Indikator zeigt:
 - Farbcodierte Status-Warnung
 - Detaillierte Informationen beim Klick
 
+Die Debug-Konsole zeigt:
+- Alle API-Anfragen und -Antworten
+- Vollständige Fehlermeldungen mit Stack Traces
+- Token-Informationen und Modell-Details
+- Kein horizontales Scrollen mehr
+
 ## Support
 
-Falls weiterhin 429-Fehler auftreten:
-1. Prüfe den Rate-Limit-Indikator
-2. Warte mindestens 10 Minuten
-3. Nutze den manuellen Reset
-4. Reduziere die Anzahl paralleler Operationen
+Falls weiterhin Fehler auftreten:
+1. Prüfe den Rate-Limit-Indikator (oben rechts)
+2. Öffne die Debug-Konsole für Details (Debug-Modus aktivieren)
+3. Warte mindestens 10 Minuten bei Rate-Limit-Fehlern
+4. Teile große Dokumente in kleinere Teile bei Token-Limit-Fehlern

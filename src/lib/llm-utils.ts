@@ -3,7 +3,7 @@ import { debugStore } from './debug-store'
 
 export async function llmWithRetry(
   prompt: string,
-  model: string = 'gpt-5',
+  model: string = 'gpt-4o',
   jsonMode: boolean = false,
   maxRetries: number = 1
 ): Promise<string> {
@@ -28,9 +28,10 @@ export async function llmWithRetry(
         throw new Error(`Ratenlimit erreicht. Reset in ${Math.ceil(timeUntilReset / 60000)} Minuten. Bitte warte, bevor du weitere Anfragen sendest.`)
       }
       
-      if (remaining <= 5) {
+      if (remaining <= 10) {
         console.warn(`Nur noch ${remaining} API-Aufrufe verfügbar in dieser Stunde`)
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        const delayTime = remaining <= 5 ? 5000 : 2000
+        await new Promise(resolve => setTimeout(resolve, delayTime))
       }
       
       debugStore.addLog({
@@ -78,13 +79,13 @@ export async function llmWithRetry(
         },
       })
       
-      if (errorMessage.includes('429') || errorMessage.includes('Too many requests')) {
+      if (errorMessage.includes('429') || errorMessage.includes('Too many requests') || errorMessage.includes('rate limit')) {
         console.warn(`Rate limit hit on attempt ${attempt + 1}/${maxRetries}`)
-        
-        if (attempt === maxRetries - 1) {
-          throw new Error('GitHub API-Ratenlimit erreicht. Bitte warte einige Minuten, bevor du weitere Anfragen sendest.')
-        }
-        continue
+        throw new Error('GitHub API-Ratenlimit erreicht. Bitte warte einige Minuten, bevor du weitere Anfragen sendest.')
+      }
+      
+      if (errorMessage.includes('token') && errorMessage.includes('limit')) {
+        throw new Error('Token-Limit erreicht. Das Dokument ist zu lang. Bitte teile es in kleinere Abschnitte auf.')
       }
       
       if (errorMessage.includes('Ratenlimit erreicht')) {
@@ -95,5 +96,9 @@ export async function llmWithRetry(
     }
   }
   
-  throw new Error(`LLM request failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`)
+  if (lastError) {
+    throw lastError
+  }
+  
+  throw new Error('LLM request failed with unknown error')
 }
