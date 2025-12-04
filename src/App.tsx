@@ -590,10 +590,12 @@ Gib deine Antwort als JSON zurück:
       // Zuerst verknüpfte Daten löschen
       const relatedNotes = notes?.filter((n) => n.scriptId === scriptId) || []
       const relatedTasks = tasks?.filter((t) => t.scriptId === scriptId) || []
+      const relatedFlashcards = relatedNotes.flatMap((n) => flashcards?.filter((f) => f.noteId === n.id) || [])
       
       await Promise.all([
-        ...relatedNotes.map(n => removeNote(n.id)),
-        ...relatedTasks.map(t => removeTask(t.id)),
+        ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
+        ...relatedNotes.map((n) => removeNote(n.id)),
+        ...relatedTasks.map((t) => removeTask(t.id)),
         removeScript(scriptId)
       ])
       
@@ -604,9 +606,14 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
-  const handleDeleteNote = async (noteId: string) => {
+  
+const handleDeleteNote = async (noteId: string) => {
     try {
-      await removeNote(noteId)
+      const relatedFlashcards = flashcards?.filter((f) => f.noteId === noteId) || []
+      await Promise.all([
+        ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
+        removeNote(noteId),
+      ])
       toast.success('Notiz gelöscht')
     } catch (error) {
       console.error('Fehler beim Löschen:', error)
@@ -614,7 +621,8 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
-  const handleDeleteTask = async (taskId: string) => {
+  
+const handleDeleteTask = async (taskId: string) => {
     try {
       await removeTask(taskId)
       toast.success('Aufgabe gelöscht')
@@ -782,6 +790,59 @@ Beispielformat:
     } catch (error) {
       console.error('Fehler beim Löschen:', error)
       toast.error('Fehler beim Löschen der Karteikarte')
+    }
+  }
+
+  const handleBulkDeleteScripts = async (ids: string[]) => {
+    try {
+      const relatedNotes = notes?.filter((n) => ids.includes(n.scriptId)) || []
+      const relatedTasks = tasks?.filter((t) => ids.includes(t.scriptId || '')) || []
+      const relatedFlashcards = relatedNotes.flatMap((n) => flashcards?.filter((f) => f.noteId === n.id) || [])
+
+      await Promise.all([
+        ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
+        ...relatedNotes.map((n) => removeNote(n.id)),
+        ...relatedTasks.map((t) => removeTask(t.id)),
+        ...ids.map((id) => removeScript(id)),
+      ])
+      toast.success(`${ids.length} Skripte gelöscht`)
+    } catch (error) {
+      console.error('Fehler beim Bulk-Löschen der Skripte:', error)
+      toast.error('Fehler beim Löschen der Skripte')
+    }
+  }
+
+  const handleBulkDeleteNotes = async (ids: string[]) => {
+    try {
+      const relatedFlashcards = flashcards?.filter((f) => ids.includes(f.noteId)) || []
+      await Promise.all([
+        ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
+        ...ids.map((id) => removeNote(id)),
+      ])
+      toast.success(`${ids.length} Notizen gelöscht`)
+    } catch (error) {
+      console.error('Fehler beim Bulk-Löschen der Notizen:', error)
+      toast.error('Fehler beim Löschen der Notizen')
+    }
+  }
+
+  const handleBulkDeleteTasks = async (ids: string[]) => {
+    try {
+      await Promise.all(ids.map((id) => removeTask(id)))
+      toast.success(`${ids.length} Aufgaben gelöscht`)
+    } catch (error) {
+      console.error('Fehler beim Bulk-Löschen der Aufgaben:', error)
+      toast.error('Fehler beim Löschen der Aufgaben')
+    }
+  }
+
+  const handleBulkDeleteFlashcards = async (ids: string[]) => {
+    try {
+      await Promise.all(ids.map((id) => removeFlashcard(id)))
+      toast.success(`${ids.length} Karteikarten gelöscht`)
+    } catch (error) {
+      console.error('Fehler beim Bulk-Löschen der Karteikarten:', error)
+      toast.error('Fehler beim Löschen der Karteikarten')
     }
   }
 
@@ -1115,6 +1176,10 @@ Gib deine Antwort als JSON zurück:
           onDeleteTask={handleDeleteTask}
           onDeleteNote={handleDeleteNote}
           onDeleteFlashcard={handleDeleteFlashcard}
+          onBulkDeleteScripts={handleBulkDeleteScripts}
+          onBulkDeleteNotes={handleBulkDeleteNotes}
+          onBulkDeleteTasks={handleBulkDeleteTasks}
+          onBulkDeleteFlashcards={handleBulkDeleteFlashcards}
           onGenerateAllNotes={handleGenerateAllNotes}
           onGenerateAllTasks={handleGenerateAllTasks}
           onGenerateAllFlashcards={handleGenerateAllFlashcards}

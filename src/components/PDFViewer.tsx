@@ -3,7 +3,6 @@ import * as pdfjsLib from 'pdfjs-dist'
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { Button } from './ui/button'
-import { Skeleton } from './ui/skeleton'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
@@ -17,10 +16,20 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
   const [pageImages, setPageImages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [longLoad, setLongLoad] = useState(false)
 
   useEffect(() => {
     loadPDF()
   }, [fileData])
+
+  useEffect(() => {
+    if (!loading) {
+      setLongLoad(false)
+      return
+    }
+    const timer = setTimeout(() => setLongLoad(true), 10000)
+    return () => clearTimeout(timer)
+  }, [loading])
 
   useEffect(() => {
     if (pdf && currentPage) {
@@ -90,7 +99,12 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
   if (loading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="w-full h-[600px]" />
+        <div className={`w-full ${longLoad ? 'h-[460px]' : 'h-[620px]'} rounded-lg border border-muted bg-gradient-to-b from-sky-50 to-slate-100 flex items-center justify-center transition-all duration-300`}>
+          <div className="flex flex-col items-center gap-3 text-slate-500">
+            <div className="h-10 w-10 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
+            <p className="text-sm font-medium">PDF wird geladen...</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -115,7 +129,12 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
             className="w-full h-auto"
           />
         ) : (
-          <Skeleton className="w-full h-[600px]" />
+          <div className={`w-full ${longLoad ? 'h-[460px]' : 'h-[620px]'} rounded-lg border border-muted bg-gradient-to-b from-sky-50 to-slate-100 flex items-center justify-center transition-all duration-300`}>
+            <div className="flex flex-col items-center gap-3 text-slate-500">
+              <div className="h-8 w-8 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
+              <p className="text-sm font-medium">Seite wird geladen...</p>
+            </div>
+          </div>
         )}
       </div>
 

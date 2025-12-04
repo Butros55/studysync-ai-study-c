@@ -3,7 +3,6 @@ import { Flashcard, StudyNote } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { EmptyState } from './EmptyState'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Cards,
@@ -70,13 +69,23 @@ export function FlashcardsTab({
     })
   }
 
+  const toggleSelectAll = () => {
+    setSelectedCards((prev) => {
+      const allSelected = prev.size === flashcards.length && flashcards.length > 0
+      return allSelected ? new Set() : new Set(flashcards.map((c) => c.id))
+    })
+  }
+
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedCards)
     if (ids.length === 0) return
-    if (!confirm(`Sollen ${ids.length} Karteikarten gelöscht werden?`)) return
+    if (!confirm(`Sollen ${ids.length} Karteikarten geloescht werden?`)) return
     await onBulkDeleteFlashcards(ids)
     setSelectedCards(new Set())
   }
+
+  const hasSelection = selectedCards.size > 0
+  const allSelected = flashcards.length > 0 && selectedCards.size === flashcards.length
 
   if (flashcards.length === 0 && notes.length === 0) {
     return (
@@ -99,12 +108,9 @@ export function FlashcardsTab({
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Sparkle size={32} className="text-primary" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">
-            Generiere Karteikarten aus deinen Notizen
-          </h3>
+          <h3 className="text-lg font-semibold mb-2">Karteikarten generieren</h3>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Erstelle automatisch interaktive Lernkarten aus deinen vorhandenen Notizen, um mit dem
-            Lernen zu beginnen.
+            Erstelle automatisch Lernkarten aus deinen vorhandenen Notizen.
           </p>
           <Button onClick={onGenerateAllFlashcards}>
             <Sparkle size={18} className="mr-2" />
@@ -123,16 +129,16 @@ export function FlashcardsTab({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <IdentificationCard size={18} className="text-muted-foreground shrink-0" />
-                      <h4 className="font-medium truncate">Notiz vom {new Date(note.generatedAt).toLocaleDateString('de-DE')}</h4>
+                      <h4 className="font-medium truncate">
+                        Notiz vom {new Date(note.generatedAt).toLocaleDateString('de-DE')}
+                      </h4>
                     </div>
                     {hasCards ? (
                       <p className="text-sm text-muted-foreground">
                         {noteCards.length} Karteikarte{noteCards.length !== 1 ? 'n' : ''}
                       </p>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Noch keine Karteikarten generiert
-                      </p>
+                      <p className="text-sm text-muted-foreground">Noch keine Karteikarten generiert</p>
                     )}
                   </div>
                   {!hasCards && (
@@ -152,26 +158,25 @@ export function FlashcardsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold mb-1">Karteikarten</h3>
           <p className="text-sm text-muted-foreground">
-            {dueCards.length > 0 ? (
-              <>
-                {dueCards.length} Karte{dueCards.length !== 1 ? 'n' : ''} fällig
-              </>
-            ) : (
-              'Alle Karten gelernt!'
-            )}
+            {dueCards.length > 0 ? `${dueCards.length} Karten faellig` : 'Alle Karten gelernt!'}
           </p>
-        </div>
-        <div className="flex gap-2">
-          {selectedCards.size > 0 && (
-            <Button variant="destructive" onClick={handleBulkDelete}>
-              <Trash size={18} className="mr-2" />
-              {selectedCards.size} löschen
+          <div className="flex gap-2 mt-3 flex-wrap">
+            <Button variant="outline" size="sm" onClick={toggleSelectAll} disabled={flashcards.length === 0}>
+              {allSelected ? 'Auswahl aufheben' : 'Alle auswaehlen'}
             </Button>
-          )}
+            {hasSelection && (
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                <Trash size={14} className="mr-2" />
+                {selectedCards.size} loeschen
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {notes.some((note) => getCardsByNote(note.id).length === 0) && (
             <Button variant="outline" onClick={onGenerateAllFlashcards}>
               <Sparkle size={18} className="mr-2" />
@@ -199,39 +204,28 @@ export function FlashcardsTab({
             </div>
           </div>
         </Card>
-
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-              <Lightning size={20} className="text-accent" />
+              <Clock size={20} className="text-accent" />
             </div>
             <div>
               <p className="text-2xl font-semibold">{dueCards.length}</p>
-              <p className="text-sm text-muted-foreground">Fällig</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center">
-              <Clock size={20} className="text-secondary" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">{totalCards - dueCards.length}</p>
-              <p className="text-sm text-muted-foreground">Gelernt</p>
+              <p className="text-sm text-muted-foreground">Faellig</p>
             </div>
           </div>
         </Card>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid gap-4">
         {flashcards.map((card) => {
-          const isDue = !card.nextReview || new Date(card.nextReview) <= new Date()
+          const dueLabel = card.nextReview
+            ? formatDistanceToNow(new Date(card.nextReview), { addSuffix: true, locale: de })
+            : 'Sofort'
 
           return (
-            <Card key={card.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start gap-4">
+            <Card key={card.id} className="p-4">
+              <div className="flex items-start gap-3">
                 <Checkbox
                   checked={selectedCards.has(card.id)}
                   onCheckedChange={() => toggleSelect(card.id)}
@@ -239,34 +233,24 @@ export function FlashcardsTab({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    {isDue && (
-                      <Badge variant="default" className="shrink-0">
-                        Fällig
-                      </Badge>
-                    )}
-                    {!isDue && card.nextReview && (
-                      <Badge variant="secondary" className="shrink-0">
-                        <Clock size={14} className="mr-1" />
-                        {formatDistanceToNow(new Date(card.nextReview), {
-                          addSuffix: true,
-                          locale: de,
-                        })}
-                      </Badge>
-                    )}
-                    {card.repetitions > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {card.repetitions}x wiederholt
-                      </span>
-                    )}
+                    <Badge variant="outline">Front</Badge>
+                    <span className="text-xs text-muted-foreground">Faellig {dueLabel}</span>
                   </div>
-                  <p className="font-medium mb-1 line-clamp-2">{card.front}</p>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{card.back}</p>
+                  <p className="font-medium text-sm leading-relaxed whitespace-pre-wrap">{card.front}</p>
+                  <div className="mt-3">
+                    <Badge variant="outline">Back</Badge>
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{card.back}</p>
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onDeleteFlashcard(card.id)}
-                  className="shrink-0"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm('Diese Karte geloescht werden?')) {
+                      onDeleteFlashcard(card.id)
+                    }
+                  }}
                 >
                   <Trash size={18} />
                 </Button>
