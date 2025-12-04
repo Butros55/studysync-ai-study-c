@@ -4,6 +4,8 @@ import { debugStore } from './debug-store'
 const RATE_LIMIT_COOLDOWN_KEY = 'llm-rate-limit-cooldown'
 const RATE_LIMIT_COOLDOWN_DURATION = 5 * 60 * 1000
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
 async function isInCooldown(): Promise<boolean> {
   const cooldownUntil = await spark.kv.get<number>(RATE_LIMIT_COOLDOWN_KEY)
   if (!cooldownUntil) return false
@@ -32,7 +34,7 @@ async function getRemainingCooldown(): Promise<number> {
 
 export async function llmWithRetry(
   prompt: string,
-  model: string = 'gpt-4o',
+  model: string = 'gpt-4o-mini',
   jsonMode: boolean = false,
   maxRetries: number = 1
 ): Promise<string> {
@@ -58,12 +60,7 @@ export async function llmWithRetry(
       const info = await rateLimitTracker.getInfo()
       const remaining = rateLimitTracker.getRemainingCalls(info)
       
-      if (remaining <= 0) {
-        const timeUntilReset = rateLimitTracker.getTimeUntilReset(info)
-        throw new Error(`Ratenlimit erreicht. Reset in ${Math.ceil(timeUntilReset / 60000)} Minuten. Bitte warte, bevor du weitere Anfragen sendest.`)
-      }
-      
-      if (remaining <= 10) {
+      if (remaining <= 10 && remaining > 0) {
         console.warn(`Nur noch ${remaining} API-Aufrufe verfügbar in dieser Stunde`)
         const delayTime = remaining <= 5 ? 5000 : 2000
         await new Promise(resolve => setTimeout(resolve, delayTime))
@@ -81,7 +78,38 @@ export async function llmWithRetry(
       })
       
       await rateLimitTracker.recordCall()
-      const response = await spark.llm(prompt, model, jsonMode)
+      
+      const response = await fetch(`${API_BASE_URL}/api/llm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          model,
+          jsonMode,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ 
+          error: 'Unbekannter Fehler', 
+          details: response.statusText 
+        }))
+        
+        if (response.status === 429) {
+          throw new Error(`Rate Limit erreicht: ${errorData.details || 'Zu viele Anfragen'}`)
+        }
+        
+        if (response.status === 413) {
+          throw new Error(`Token-Limit überschritten: ${errorData.details || 'Text ist zu lang'}`)
+        }
+        
+        throw new Error(errorData.details || errorData.error || 'API-Fehler')
+      }
+
+      const data = await response.json()
+      const responseText = data.response
       
       debugStore.addLog({
         type: 'llm-response',
@@ -89,12 +117,13 @@ export async function llmWithRetry(
           prompt: prompt.substring(0, 200),
           model,
           jsonMode,
-          response: response.substring(0, 1000),
+          response: responseText.substring(0, 1000),
           attempt: attempt + 1,
+          usage: data.usage,
         },
       })
       
-      return response
+      return responseText
       
     } catch (error) {
       lastError = error as Error
@@ -114,11 +143,11 @@ export async function llmWithRetry(
         },
       })
       
-      if (errorMessage.includes('429') || errorMessage.includes('Too many requests') || errorMessage.includes('rate limit')) {
+      if (errorMessage.includes('429') || errorMessage.includes('Too many requests') || errorMessage.includes('rate limit') || errorMessage.includes('Rate Limit')) {
         console.warn(`Rate limit hit on attempt ${attempt + 1}/${maxRetries}`)
         await setCooldown()
         
-        throw new Error('GitHub API-Ratenlimit erreicht (429). Die API ist für 5 Minuten pausiert, um weitere Fehler zu vermeiden. Bitte warte, bevor du weitere Anfragen sendest.')
+        throw new Error('OpenAI API-Ratenlimit erreicht (429). Die API ist für 5 Minuten pausiert, um weitere Fehler zu vermeiden. Bitte warte, bevor du weitere Anfragen sendest.')
       }
       
       if (errorMessage.includes('token') && errorMessage.includes('limit')) {
@@ -127,6 +156,10 @@ export async function llmWithRetry(
       
       if (errorMessage.includes('Ratenlimit erreicht') || errorMessage.includes('Abkühlung')) {
         throw error
+      }
+      
+      if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
+        throw new Error('Verbindung zum Backend fehlgeschlagen. Stelle sicher, dass der Server läuft (npm run server).')
       }
       
       throw error
