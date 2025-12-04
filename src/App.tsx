@@ -107,9 +107,18 @@ function App() {
 
         toast.success(`"${name}" erfolgreich hochgeladen`)
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
         setPipelineTasks((current) =>
           current.map((t) =>
-            t.id === taskId ? { ...t, status: 'error', error: 'Upload fehlgeschlagen', timestamp: Date.now() } : t
+            t.id === taskId ? { 
+              ...t, 
+              status: 'error', 
+              error: 'Upload fehlgeschlagen',
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              timestamp: Date.now() 
+            } : t
           )
         )
         toast.error(`Fehler beim Hochladen von "${name}"`)
@@ -187,9 +196,18 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
 
         toast.success(`Notizen für "${script.name}" erfolgreich erstellt`)
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
         setPipelineTasks((current) =>
           current.map((t) =>
-            t.id === taskId ? { ...t, status: 'error', error: 'Erstellung fehlgeschlagen', timestamp: Date.now() } : t
+            t.id === taskId ? { 
+              ...t, 
+              status: 'error', 
+              error: 'Erstellung fehlgeschlagen',
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              timestamp: Date.now() 
+            } : t
           )
         )
         toast.error(`Fehler beim Erstellen der Notizen für "${script.name}"`)
@@ -294,12 +312,16 @@ Beispielformat:
         toast.success(`${newTasks.length} Aufgaben für "${script.name}" erstellt`)
       } catch (error) {
         console.error('Fehler bei Aufgabenerstellung:', error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
         setPipelineTasks((current) =>
           current.map((t) =>
             t.id === taskId ? { 
               ...t, 
               status: 'error', 
               error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
               timestamp: Date.now()
             } : t
           )
@@ -314,12 +336,30 @@ Beispielformat:
   const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
     if (!activeTask) return
 
+    const taskId = generateId()
+    
     try {
       let userAnswer = answer
       let transcription = ''
 
+      setPipelineTasks((current) => [
+        ...current,
+        {
+          id: taskId,
+          type: 'task-submit',
+          name: 'Aufgabe wird überprüft',
+          progress: 0,
+          status: 'processing',
+          timestamp: Date.now(),
+        },
+      ])
+
       if (isHandwritten && canvasDataUrl) {
         toast.loading('Analysiere deine Handschrift...', { id: 'task-submit' })
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 10, name: 'Handschrift wird analysiert' } : t))
+        )
         
         try {
           // @ts-ignore - spark.llmPrompt template literal typing
@@ -346,10 +386,30 @@ Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 
         } catch (transcriptionError) {
           console.error('Fehler bei Handschrift-Transkription:', transcriptionError)
           toast.dismiss('task-submit')
-          toast.error('Fehler beim Analysieren der Handschrift. Bitte versuche es erneut oder nutze die Texteingabe.')
+          
+          const errorMessage = transcriptionError instanceof Error ? transcriptionError.message : String(transcriptionError)
+          const errorStack = transcriptionError instanceof Error ? transcriptionError.stack : undefined
+          
+          setPipelineTasks((current) =>
+            current.map((t) =>
+              t.id === taskId ? { 
+                ...t, 
+                status: 'error', 
+                error: 'Fehler beim Analysieren der Handschrift',
+                errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+                timestamp: Date.now()
+              } : t
+            )
+          )
+          
+          toast.error('Fehler beim Analysieren der Handschrift. Siehe Benachrichtigungen für Details.')
           throw transcriptionError
         }
       }
+
+      setPipelineTasks((current) =>
+        current.map((t) => (t.id === taskId ? { ...t, progress: 50, name: 'Antwort wird bewertet' } : t))
+      )
 
       toast.loading('Überprüfe deine Antwort...', { id: 'task-submit' })
       
@@ -373,6 +433,11 @@ Gib deine Antwort als JSON zurück:
         const evaluation = JSON.parse(response)
 
         toast.dismiss('task-submit')
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+        )
+        
         setTaskFeedback({
           ...evaluation,
           transcription: isHandwritten ? transcription : undefined
@@ -389,23 +454,65 @@ Gib deine Antwort als JSON zurück:
       } catch (evaluationError) {
         console.error('Fehler bei Antwort-Bewertung:', evaluationError)
         toast.dismiss('task-submit')
-        toast.error('Fehler beim Bewerten der Antwort. Bitte versuche es erneut.')
+        
+        const errorMessage = evaluationError instanceof Error ? evaluationError.message : String(evaluationError)
+        const errorStack = evaluationError instanceof Error ? evaluationError.stack : undefined
+        
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { 
+              ...t, 
+              status: 'error', 
+              error: 'Fehler beim Bewerten der Antwort',
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              timestamp: Date.now()
+            } : t
+          )
+        )
+        
+        toast.error('Fehler beim Bewerten der Antwort. Siehe Benachrichtigungen für Details.')
         throw evaluationError
       }
     } catch (error) {
       console.error('Fehler bei Antwortüberprüfung:', error)
       toast.dismiss('task-submit')
       
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+      
+      setPipelineTasks((current) => {
+        const existing = current.find(t => t.id === taskId)
+        if (existing && existing.status === 'error') {
+          return current
+        }
+        
+        return current.map((t) =>
+          t.id === taskId ? { 
+            ...t, 
+            status: 'error', 
+            error: error instanceof Error 
+              ? (error.message.includes('rate limit') || error.message.includes('Rate limit')
+                ? 'API-Limit erreicht'
+                : error.message.includes('network') || error.message.includes('fetch')
+                ? 'Netzwerkfehler'
+                : 'Fehler bei der Aufgabenprüfung')
+              : 'Unerwarteter Fehler',
+            errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+            timestamp: Date.now()
+          } : t
+        )
+      })
+      
       if (error instanceof Error) {
         if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
-          toast.error('API-Limit erreicht. Bitte warte einen Moment und versuche es erneut.')
+          toast.error('API-Limit erreicht. Bitte warte einen Moment.')
         } else if (error.message.includes('network') || error.message.includes('fetch')) {
           toast.error('Netzwerkfehler. Bitte überprüfe deine Internetverbindung.')
         } else {
           toast.error(`Fehler: ${error.message}`)
         }
       } else {
-        toast.error('Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.')
+        toast.error('Ein unerwarteter Fehler ist aufgetreten.')
       }
       
       throw error
@@ -562,12 +669,16 @@ Beispielformat:
         toast.success(`${newFlashcards.length} Karteikarten erstellt`)
       } catch (error) {
         console.error('Fehler bei Karteikarten-Erstellung:', error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
         setPipelineTasks((current) =>
           current.map((t) =>
             t.id === taskId ? { 
               ...t, 
               status: 'error', 
               error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
               timestamp: Date.now()
             } : t
           )

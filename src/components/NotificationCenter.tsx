@@ -9,11 +9,12 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 export interface PipelineTask {
   id: string
-  type: 'upload' | 'generate-notes' | 'generate-tasks' | 'generate-flashcards'
+  type: 'upload' | 'generate-notes' | 'generate-tasks' | 'generate-flashcards' | 'task-submit'
   name: string
   progress: number
   status: 'pending' | 'processing' | 'completed' | 'error'
   error?: string
+  errorDetails?: string
   timestamp: number
 }
 
@@ -27,6 +28,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
   const [isOpen, setIsOpen] = useState(false)
   const [hasNewNotifications, setHasNewNotifications] = useState(false)
   const [autoDismissedIds, setAutoDismissedIds] = useState<Set<string>>(new Set())
+  const [expandedErrorIds, setExpandedErrorIds] = useState<Set<string>>(new Set())
 
   const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending')
   const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -64,6 +66,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
       case 'generate-notes': return FileText
       case 'generate-tasks': return ListChecks
       case 'generate-flashcards': return Cards
+      case 'task-submit': return Check
       default: return FileText
     }
   }
@@ -74,8 +77,21 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
       case 'generate-notes': return 'Notizen generieren'
       case 'generate-tasks': return 'Aufgaben generieren'
       case 'generate-flashcards': return 'Karteikarten generieren'
+      case 'task-submit': return 'Aufgabe einreichen'
       default: return 'Verarbeitung'
     }
+  }
+
+  const toggleErrorDetails = (taskId: string) => {
+    setExpandedErrorIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
   }
 
   const totalNotifications = activeTasks.length + recentTasks.length
@@ -223,6 +239,33 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
                                     <p className="text-xs text-destructive mt-1">
                                       {task.error}
                                     </p>
+                                  )}
+                                  {task.errorDetails && (
+                                    <div className="mt-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-xs px-2"
+                                        onClick={() => toggleErrorDetails(task.id)}
+                                      >
+                                        {expandedErrorIds.has(task.id) ? 'Details verbergen' : 'Details anzeigen'}
+                                      </Button>
+                                      <AnimatePresence>
+                                        {expandedErrorIds.has(task.id) && (
+                                          <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/20 text-xs font-mono whitespace-pre-wrap break-all max-h-40 overflow-y-auto">
+                                              {task.errorDetails}
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </div>
                                   )}
                                   <p className="text-xs text-muted-foreground/60 mt-2">
                                     {new Date(task.timestamp).toLocaleTimeString([], { 
