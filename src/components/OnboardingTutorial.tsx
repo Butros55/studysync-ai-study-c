@@ -261,12 +261,6 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
                 </div>
               </div>
 
-              {/* Keyboard Hint */}
-              <div className="bg-muted/30 px-4 py-2 text-center">
-                <span className="text-xs text-muted-foreground">
-                  ← → Pfeiltasten zum Navigieren • ESC zum Überspringen
-                </span>
-              </div>
             </Card>
 
             {/* Step Dots */}

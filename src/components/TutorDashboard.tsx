@@ -244,79 +244,82 @@ export function TutorDashboard({
             <Card key={module.id} className="overflow-hidden">
               {/* Modul-Header */}
               <div 
-                className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                className="p-3 sm:p-4 flex items-start gap-2 sm:gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
                 onClick={() => toggleModule(module.id)}
               >
                 <div 
-                  className="w-12 h-12 rounded-lg flex items-center justify-center text-white shrink-0"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-white shrink-0"
                   style={{ backgroundColor: module.color }}
                 >
-                  <span className="font-semibold text-lg">
+                  <span className="font-semibold text-base sm:text-lg">
                     {module.code.substring(0, 2).toUpperCase()}
                   </span>
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold truncate">{module.name}</h3>
+                  <div className="flex items-start sm:items-center gap-1 sm:gap-2 mb-1 flex-wrap">
+                    <h3 className="font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{module.name}</h3>
                     {daysUntilExam !== null && daysUntilExam <= 7 && (
                       <Badge variant="destructive" className="text-[10px] shrink-0">
                         <Clock size={10} className="mr-1" />
-                        {daysUntilExam} Tage
+                        {daysUntilExam}d
                       </Badge>
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      {formatExamDate(module.examDate)}
+                      <Calendar size={12} className="sm:w-[14px] sm:h-[14px]" />
+                      <span className="hidden sm:inline">{formatExamDate(module.examDate)}</span>
+                      <span className="sm:hidden">{daysUntilExam !== null ? `${daysUntilExam}d` : '–'}</span>
                     </span>
-                    <span>·</span>
-                    <span>{completedTasks}/{moduleTasks.length} erledigt</span>
+                    <span className="hidden sm:inline">·</span>
+                    <span>{completedTasks}/{moduleTasks.length}</span>
                   </div>
 
                   {/* Kompakter Fortschrittsbalken */}
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-1.5 sm:mt-2 flex items-center gap-2">
                     <Progress value={progress * 100} className="h-1.5 flex-1" />
                     <span className="text-xs text-muted-foreground">{Math.round(progress * 100)}%</span>
                   </div>
 
-                  {/* Schwache Themen kompakt */}
+                  {/* Schwache Themen kompakt - nur auf Desktop */}
                   {weakTopics.length > 0 && (
-                    <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-2">
+                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-yellow-600 mt-2">
                       <Warning size={12} />
                       <span>Schwach: {weakTopics.slice(0, 2).join(', ')}{weakTopics.length > 2 && ` +${weakTopics.length - 2}`}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                   {onEditModule && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-7 w-7 sm:h-8 sm:w-8"
                       onClick={(e) => {
                         e.stopPropagation()
                         onEditModule(module)
                       }}
                     >
-                      <PencilSimple size={16} />
+                      <PencilSimple size={14} className="sm:w-4 sm:h-4" />
                     </Button>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-7 px-2 sm:h-8 sm:px-3 text-xs sm:text-sm"
                     onClick={(e) => {
                       e.stopPropagation()
                       onSelectModule(module.id)
                     }}
                   >
-                    Öffnen
+                    <span className="hidden sm:inline">Öffnen</span>
+                    <ArrowRight size={14} className="sm:hidden" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    {isExpanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
+                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                    {isExpanded ? <CaretUp size={14} className="sm:w-4 sm:h-4" /> : <CaretDown size={14} className="sm:w-4 sm:h-4" />}
                   </Button>
                 </div>
               </div>

@@ -480,41 +480,42 @@ export function FilesTab({
             <Card key={category} className="overflow-hidden">
               <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category)}>
                 <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn('p-2 rounded-lg bg-muted', config.color)}>
-                          <CategoryIcon className="w-5 h-5" weight="duotone" />
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 sm:py-4 px-3 sm:px-6">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className={cn('p-1.5 sm:p-2 rounded-lg bg-muted shrink-0', config.color)}>
+                          <CategoryIcon className="w-4 h-4 sm:w-5 sm:h-5" weight="duotone" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
 
-                          <CardTitle className="text-base font-medium flex items-center gap-2">
-                            {config.pluralLabel}
-                            <Badge variant="secondary" className="font-normal">
+                          <CardTitle className="text-sm sm:text-base font-medium flex items-center gap-2">
+                            <span className="truncate">{config.pluralLabel}</span>
+                            <Badge variant="secondary" className="font-normal shrink-0">
                               {categoryScripts.length}
                             </Badge>
                           </CardTitle>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">
                             {config.description}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                         <Button
                           variant="outline"
                           size="sm"
+                          className="h-7 px-2 sm:h-8 sm:px-3 text-xs sm:text-sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             triggerUpload(category)
                           }}
                         >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Hochladen
+                          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Hochladen</span>
                         </Button>
                         {isExpanded ? (
-                          <CaretDown className="w-5 h-5 text-muted-foreground" />
+                          <CaretDown className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                         ) : (
-                          <CaretRight className="w-5 h-5 text-muted-foreground" />
+                          <CaretRight className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                         )}
                       </div>
                     </div>
