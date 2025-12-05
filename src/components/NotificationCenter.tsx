@@ -29,6 +29,11 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
   const [hasNewNotifications, setHasNewNotifications] = useState(false)
   const [autoDismissedIds, setAutoDismissedIds] = useState<Set<string>>(new Set())
   const [expandedErrorIds, setExpandedErrorIds] = useState<Set<string>>(new Set())
+  const [anchor, setAnchor] = useState<{ top: number; right: number }>({ top: 16, right: 16 })
+  const [dragging, setDragging] = useState(false)
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
+  const [anchorStart, setAnchorStart] = useState<{ top: number; right: number } | null>(null)
+  const dragHoldTimeout = 600
 
   const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending')
   const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -54,10 +59,13 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
   }, [completedTasks, errorTasks, autoDismissedIds])
 
   const handleOpen = () => {
-    setIsOpen(!isOpen)
-    if (!isOpen) {
-      setHasNewNotifications(false)
-    }
+    setIsOpen((prev) => {
+      const next = !prev
+      if (next === true) {
+        setHasNewNotifications(false)
+      }
+      return next
+    })
   }
 
   const getTypeIcon = (type: string) => {
@@ -126,9 +134,45 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
     return groups
   })()
 
+  const handleBellMouseDown = (e: React.MouseEvent) => {
+    const timeout = window.setTimeout(() => {
+      setDragging(true)
+      setDragStart({ x: e.clientX, y: e.clientY })
+      setAnchorStart({ ...anchor })
+    }, dragHoldTimeout)
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      if (!dragging || !dragStart || !anchorStart) return
+      const deltaX = moveEvent.clientX - dragStart.x
+      const deltaY = moveEvent.clientY - dragStart.y
+      setAnchor({
+        top: Math.max(8, anchorStart.top + deltaY),
+        right: Math.max(8, anchorStart.right - deltaX),
+      })
+    }
+
+    const handleUp = (upEvent: MouseEvent) => {
+      window.clearTimeout(timeout)
+      if (!dragging) {
+        handleOpen()
+      }
+      setDragging(false)
+      setDragStart(null)
+      setAnchorStart(null)
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+  }
+
   return (
     <>
-    <div className="fixed top-4 right-4 z-[100]">
+    <div
+      className="fixed z-[100]"
+      style={{ top: anchor.top, right: anchor.right }}
+    >
       <div className="flex flex-col items-end gap-3">
         <motion.div
           initial={false}
@@ -142,7 +186,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
               "relative h-11 w-11 rounded-full shadow-lg transition-all",
               isOpen && "shadow-xl"
             )}
-            onClick={handleOpen}
+            onMouseDown={handleBellMouseDown}
           >
             <Bell size={20} weight={isOpen ? "fill" : "regular"} />
             {totalNotifications > 0 && (
@@ -165,7 +209,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
               transition={{ type: "spring", duration: 0.3 }}
             >
-              <Card className="w-96 shadow-2xl border-2 overflow-hidden">
+              <Card className="w-96 shadow-2xl border-2 overflow-hidden mt-2 self-end">
                 <div className="p-4 border-b bg-muted/30">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Benachrichtigungen</h3>

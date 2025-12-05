@@ -148,9 +148,6 @@ export function TaskSolver({
                 </div>
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10 hidden sm:flex">
-              <X size={18} className="sm:w-5 sm:h-5" />
-            </Button>
           </div>
         </div>
       </div>
