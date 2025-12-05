@@ -1,0 +1,369 @@
+import { useState, useCallback } from 'react'
+import { Module, Script, ExamSession, ExamTask, ExamResults, TopicStats } from '@/lib/types'
+import { ExamSetup, ExamConfig } from './ExamSetup'
+import { ExamPreparation } from './ExamPreparation'
+import { ExamSessionScreen } from './ExamSessionScreen'
+import { ExamResultsScreen } from './ExamResultsScreen'
+import { 
+  extractExamStyle, 
+  generateExamTasks, 
+  evaluateExamAnswer 
+} from '@/lib/exam-generator'
+import { generateId } from '@/lib/utils-app'
+import { useLLMModel } from '@/hooks/use-llm-model'
+import { loadModuleStats, saveModuleStats } from '@/lib/recommendations'
+import { toast } from 'sonner'
+
+interface ExamModeProps {
+  module: Module
+  scripts: Script[]
+  onBack: () => void
+}
+
+type ExamPhase = 'setup' | 'preparing' | 'in-progress' | 'results'
+
+export function ExamMode({ module, scripts, onBack }: ExamModeProps) {
+  const [phase, setPhase] = useState<ExamPhase>('setup')
+  const [session, setSession] = useState<ExamSession | null>(null)
+  const [results, setResults] = useState<ExamResults | null>(null)
+  const [preparationProgress, setPreparationProgress] = useState(0)
+  const [preparationStep, setPreparationStep] = useState<'style' | 'generating' | 'finalizing'>('style')
+  const [generatedCount, setGeneratedCount] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+
+  const { standardModel } = useLLMModel()
+
+  // Kategorisiere Skripte
+  const categorizedScripts = {
+    scripts: scripts.filter(s => s.category === 'script' || !s.category),
+    exercises: scripts.filter(s => s.category === 'exercise'),
+    solutions: scripts.filter(s => s.category === 'solution'),
+    exams: scripts.filter(s => s.category === 'exam'),
+  }
+
+  // Lade Modul-Statistiken für Schwachstellenanalyse
+  const getTopicStats = (): TopicStats[] => {
+    const allStats = loadModuleStats()
+    const moduleStats = allStats.find(s => s.moduleId === module.id)
+    return moduleStats?.topics || []
+  }
+
+  // Starte Prüfungsvorbereitung
+  const handleStartExam = useCallback(async (config: ExamConfig) => {
+    setPhase('preparing')
+    setPreparationProgress(0)
+    setPreparationStep('style')
+    
+    try {
+      // Schritt 1: Stilprofil extrahieren
+      setPreparationStep('style')
+      setPreparationProgress(10)
+      
+      const styleProfile = await extractExamStyle(categorizedScripts.exams, standardModel)
+      setPreparationProgress(25)
+
+      // Schritt 2: Aufgaben generieren
+      setPreparationStep('generating')
+      
+      const taskCount = config.taskCount === 'auto' 
+        ? Math.max(3, Math.min(10, Math.floor(config.duration / 8)))
+        : config.taskCount
+      
+      setTotalCount(taskCount)
+      setGeneratedCount(0)
+
+      const moduleData = {
+        scripts: categorizedScripts.scripts,
+        exercises: categorizedScripts.exercises,
+        solutions: categorizedScripts.solutions,
+        exams: categorizedScripts.exams,
+        topicStats: getTopicStats(),
+      }
+
+      const examTasks = await generateExamTasks(
+        styleProfile,
+        moduleData,
+        module.id,
+        taskCount,
+        config.difficultyMix,
+        standardModel,
+        (current, total) => {
+          setGeneratedCount(current)
+          setPreparationProgress(25 + (current / total) * 60)
+        }
+      )
+
+      // Schritt 3: Session finalisieren
+      setPreparationStep('finalizing')
+      setPreparationProgress(90)
+
+      const newSession: ExamSession = {
+        id: generateId(),
+        moduleId: module.id,
+        startedAt: new Date().toISOString(),
+        duration: config.duration,
+        difficultyMix: config.difficultyMix,
+        tasks: examTasks,
+        status: 'in-progress',
+      }
+
+      setSession(newSession)
+      setPreparationProgress(100)
+      
+      // Kurze Verzögerung für UX
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      setPhase('in-progress')
+      toast.success('Prüfung gestartet! Viel Erfolg!')
+
+    } catch (error) {
+      console.error('Fehler bei Prüfungsvorbereitung:', error)
+      toast.error('Fehler bei der Prüfungsvorbereitung. Bitte versuche es erneut.')
+      setPhase('setup')
+    }
+  }, [categorizedScripts, module.id, standardModel])
+
+  // Aktualisiere Task-Antwort
+  const handleUpdateTask = useCallback((taskId: string, updates: Partial<ExamTask>) => {
+    setSession(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        tasks: prev.tasks.map(t => 
+          t.id === taskId ? { ...t, ...updates } : t
+        ),
+      }
+    })
+  }, [])
+
+  // Prüfung abgeben und auswerten
+  const handleSubmitExam = useCallback(async () => {
+    if (!session) return
+
+    toast.info('Prüfung wird ausgewertet...')
+
+    const updatedSession: ExamSession = {
+      ...session,
+      status: 'submitted',
+      submittedAt: new Date().toISOString(),
+    }
+    setSession(updatedSession)
+
+    try {
+      // Bewerte alle Aufgaben
+      const taskResults = await Promise.all(
+        session.tasks.map(async (task) => {
+          if (task.examStatus === 'unanswered') {
+            return {
+              taskId: task.id,
+              isCorrect: false,
+              earnedPoints: 0,
+              maxPoints: task.points || 10,
+              feedback: 'Keine Antwort eingereicht.',
+            }
+          }
+
+          const evaluation = await evaluateExamAnswer(task, standardModel)
+          return {
+            taskId: task.id,
+            isCorrect: evaluation.isCorrect,
+            earnedPoints: evaluation.earnedPoints,
+            maxPoints: task.points || 10,
+            feedback: evaluation.feedback,
+          }
+        })
+      )
+
+      // Berechne Gesamtergebnis
+      const totalScore = taskResults.reduce((sum, r) => sum + r.earnedPoints, 0)
+      const maxScore = taskResults.reduce((sum, r) => sum + r.maxPoints, 0)
+      const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0
+      const correctCount = taskResults.filter(r => r.isCorrect).length
+      const incorrectCount = taskResults.filter(r => !r.isCorrect && r.earnedPoints === 0).length
+      const unansweredCount = session.tasks.filter(t => t.examStatus === 'unanswered').length
+
+      // Themenanalyse
+      const topicMap = new Map<string, { correct: number; total: number }>()
+      session.tasks.forEach((task, index) => {
+        const topic = task.topic || 'Allgemein'
+        const result = taskResults[index]
+        const current = topicMap.get(topic) || { correct: 0, total: 0 }
+        topicMap.set(topic, {
+          correct: current.correct + (result.isCorrect ? 1 : 0),
+          total: current.total + 1,
+        })
+      })
+
+      const topicAnalysis = Array.from(topicMap.entries()).map(([topic, stats]) => ({
+        topic,
+        correct: stats.correct,
+        total: stats.total,
+        percentage: (stats.correct / stats.total) * 100,
+        isWeak: (stats.correct / stats.total) < 0.5,
+      }))
+
+      const weakTopics = topicAnalysis.filter(t => t.isWeak).map(t => t.topic)
+      const strongTopics = topicAnalysis.filter(t => t.percentage >= 75).map(t => t.topic)
+
+      // Empfehlungen generieren
+      const recommendations: string[] = []
+      if (weakTopics.length > 0) {
+        recommendations.push(`Konzentriere dich auf diese Themen: ${weakTopics.join(', ')}`)
+      }
+      if (percentage < 50) {
+        recommendations.push('Wiederhole die Grundlagen aus den Vorlesungsskripten.')
+        recommendations.push('Löse mehr Übungsaufgaben zu den schwachen Themen.')
+      } else if (percentage < 75) {
+        recommendations.push('Übe besonders die mittelschweren und schweren Aufgaben.')
+      } else {
+        recommendations.push('Super Leistung! Vertiefe dein Wissen mit komplexeren Aufgaben.')
+      }
+      recommendations.push('Nutze den Karteikarten-Modus für regelmäßige Wiederholung.')
+
+      const examResults: ExamResults = {
+        totalScore,
+        maxScore,
+        percentage,
+        correctCount,
+        incorrectCount,
+        unansweredCount,
+        taskResults,
+        topicAnalysis,
+        recommendations,
+        weakTopics,
+        strongTopics,
+      }
+
+      // Speichere Statistiken
+      const allStats = loadModuleStats()
+      let moduleStats = allStats.find(s => s.moduleId === module.id)
+      if (!moduleStats) {
+        moduleStats = {
+          moduleId: module.id,
+          topics: [],
+          lastUpdated: new Date().toISOString(),
+        }
+        allStats.push(moduleStats)
+      }
+
+      // Update topic stats
+      session.tasks.forEach((task, index) => {
+        const topic = task.topic || 'Allgemein'
+        const result = taskResults[index]
+        let topicStat = moduleStats!.topics.find(t => t.topic === topic)
+        if (!topicStat) {
+          topicStat = { topic, correct: 0, incorrect: 0 }
+          moduleStats!.topics.push(topicStat)
+        }
+        if (result.isCorrect) {
+          topicStat.correct++
+        } else {
+          topicStat.incorrect++
+        }
+        topicStat.lastPracticed = new Date().toISOString()
+      })
+      moduleStats.lastUpdated = new Date().toISOString()
+      saveModuleStats(allStats)
+
+      setResults(examResults)
+      setSession({
+        ...updatedSession,
+        status: 'evaluated',
+        results: examResults,
+      })
+      setPhase('results')
+      
+      toast.success('Auswertung abgeschlossen!')
+
+    } catch (error) {
+      console.error('Fehler bei Auswertung:', error)
+      toast.error('Fehler bei der Auswertung. Ergebnisse können unvollständig sein.')
+      
+      // Fallback Ergebnisse
+      const fallbackResults: ExamResults = {
+        totalScore: 0,
+        maxScore: session.tasks.reduce((sum, t) => sum + (t.points || 10), 0),
+        percentage: 0,
+        correctCount: 0,
+        incorrectCount: session.tasks.length,
+        unansweredCount: 0,
+        taskResults: session.tasks.map(t => ({
+          taskId: t.id,
+          isCorrect: false,
+          earnedPoints: 0,
+          maxPoints: t.points || 10,
+          feedback: 'Auswertung fehlgeschlagen.',
+        })),
+        topicAnalysis: [],
+        recommendations: ['Bitte versuche die Prüfung erneut.'],
+        weakTopics: [],
+        strongTopics: [],
+      }
+      setResults(fallbackResults)
+      setPhase('results')
+    }
+  }, [session, module.id, standardModel])
+
+  // Exit handler
+  const handleExit = useCallback(() => {
+    setPhase('setup')
+    setSession(null)
+    setResults(null)
+  }, [])
+
+  // Retry handler
+  const handleRetry = useCallback(() => {
+    setPhase('setup')
+    setSession(null)
+    setResults(null)
+  }, [])
+
+  // Render based on phase
+  switch (phase) {
+    case 'setup':
+      return (
+        <ExamSetup
+          module={module}
+          scripts={scripts}
+          onBack={onBack}
+          onStartExam={handleStartExam}
+        />
+      )
+
+    case 'preparing':
+      return (
+        <ExamPreparation
+          module={module}
+          progress={preparationProgress}
+          currentStep={preparationStep}
+          generatedCount={generatedCount}
+          totalCount={totalCount}
+        />
+      )
+
+    case 'in-progress':
+      if (!session) return null
+      return (
+        <ExamSessionScreen
+          session={session}
+          onUpdateTask={handleUpdateTask}
+          onSubmitExam={handleSubmitExam}
+          onExit={handleExit}
+        />
+      )
+
+    case 'results':
+      if (!session || !results) return null
+      return (
+        <ExamResultsScreen
+          session={session}
+          results={results}
+          onBack={onBack}
+          onRetry={handleRetry}
+        />
+      )
+
+    default:
+      return null
+  }
+}

@@ -254,3 +254,91 @@ export interface CostSummary {
   costByOperation: Record<string, number>
   recentUsage: TokenUsage[]
 }
+
+// =========================================
+// PRÜFUNGSMODUS TYPEN
+// =========================================
+
+// Stil-Muster aus Probeklausuren
+export interface ExamSubtaskPattern {
+  type: 'multiple-choice' | 'open-question' | 'calculation' | 'proof' | 'code' | 'diagram' | 'table'
+  description: string
+  pointsRange: [number, number]
+  frequency: number // wie oft kommt dieses Muster vor (0-1)
+}
+
+// Stilprofil einer Probeklausur
+export interface ExamStyleProfile {
+  commonPhrases: string[]
+  typicalDifficultyMix: { easy: number; medium: number; hard: number }
+  typicalStructures: ExamSubtaskPattern[]
+  topicDistribution: Record<string, number>
+  formattingPatterns: {
+    usesTables?: boolean
+    usesFormulas?: boolean
+    usesLongText?: boolean
+    usesMultipleChoice?: boolean
+    usesSubtasks?: boolean
+  }
+  averageTaskCount: number
+  averagePointsPerTask: number
+}
+
+// Status einer einzelnen Prüfungsaufgabe
+export type ExamTaskStatus = 'unanswered' | 'answered' | 'flagged'
+
+// Erweiterte Aufgabe für Prüfungsmodus
+export interface ExamTask extends Task {
+  examStatus: ExamTaskStatus
+  userAnswer?: string
+  canvasDataUrl?: string
+  isHandwritten?: boolean
+  points?: number
+  earnedPoints?: number
+}
+
+// Prüfungssession
+export interface ExamSession {
+  id: string
+  moduleId: string
+  startedAt: string
+  duration: number // in Minuten
+  difficultyMix: { easy: number; medium: number; hard: number }
+  tasks: ExamTask[]
+  status: 'preparing' | 'in-progress' | 'submitted' | 'evaluated'
+  submittedAt?: string
+  timeRemaining?: number // in Sekunden
+  results?: ExamResults
+}
+
+// Auswertungsergebnisse
+export interface ExamResults {
+  totalScore: number
+  maxScore: number
+  percentage: number
+  correctCount: number
+  incorrectCount: number
+  unansweredCount: number
+  taskResults: ExamTaskResult[]
+  topicAnalysis: ExamTopicAnalysis[]
+  recommendations: string[]
+  weakTopics: string[]
+  strongTopics: string[]
+}
+
+export interface ExamTaskResult {
+  taskId: string
+  isCorrect: boolean
+  earnedPoints: number
+  maxPoints: number
+  feedback?: string
+}
+
+export interface ExamTopicAnalysis {
+  topic: string
+  correct: number
+  total: number
+  percentage: number
+  isWeak: boolean
+}
+

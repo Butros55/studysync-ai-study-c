@@ -9,7 +9,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ArrowLeft, PencilSimple, Calendar, House, FolderOpen, Note, Cards, ClipboardText } from '@phosphor-icons/react'
+import { ArrowLeft, PencilSimple, Calendar, House, FolderOpen, Note, Cards, ClipboardText, Exam } from '@phosphor-icons/react'
 import { ModuleDashboard } from './ModuleDashboard'
 import { FilesTab } from './FilesTab'
 import { NotesTab } from './NotesTab'
@@ -44,6 +44,7 @@ interface ModuleViewProps {
   onGenerateAllFlashcards: () => void
   onStartFlashcardStudy: () => void
   onEditModule?: (module: Module) => void
+  onStartExamMode?: () => void
 }
 
 export function ModuleView({
@@ -71,6 +72,7 @@ export function ModuleView({
   onGenerateAllFlashcards,
   onStartFlashcardStudy,
   onEditModule,
+  onStartExamMode,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('dashboard')
 
@@ -120,6 +122,12 @@ export function ModuleView({
               </div>
             </div>
             <div className="hidden sm:flex items-center gap-2 shrink-0">
+              {onStartExamMode && (
+                <Button variant="outline" size="sm" onClick={onStartExamMode}>
+                  <Exam size={16} className="mr-2" weight="duotone" />
+                  Prüfungsmodus
+                </Button>
+              )}
               <DebugModeToggle />
             </div>
           </div>

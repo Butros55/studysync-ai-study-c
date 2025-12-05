@@ -31,6 +31,8 @@ interface AdvancedDrawingCanvasProps {
   onTaskUpdate?: (updates: Partial<Task>) => void
   /** Callback um Canvas zu leeren */
   onClear?: () => void
+  /** Prüfungsmodus - keine Hinweise und kein Feedback während Bearbeitung */
+  examMode?: boolean
 }
 
 export function AdvancedDrawingCanvas({
@@ -47,6 +49,7 @@ export function AdvancedDrawingCanvas({
   onNextTask,
   onTaskUpdate,
   onClear,
+  examMode = false,
 }: AdvancedDrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)

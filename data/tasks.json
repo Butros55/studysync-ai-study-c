@@ -1,1100 +1,1730 @@
 [
   {
-    "id": "1764927911795-2jm8jmem8",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927711396-igij5dhh4",
-    "title": "### Funktion erkennen (Definition)",
-    "question": "### Funktion erkennen (Definition)\n\n- Gegeben ist die Zuordnung: Jedem Radius \\(r\\in \\mathbb{R}\\) mit \\(r \\ge 0\\) wird das Kugelvolumen \\(V=\\frac{4}{3}\\pi r^3\\) zugeordnet.\n- a) Nenne Definitionsmenge und Wertemenge (ohne genaue Zahlen, nur in Worten oder Mengenform).\n- b) Wie heißt \\(r\\), wie heißt \\(V\\) nach der Definition einer Funktion?",
-    "solution": "a) Definitionsmenge: \\(D = \\{ r \\in \\mathbb{R} \\mid r \\ge 0 \\}\\). Wertemenge: \\(f(D) = \\{ V \\in \\mathbb{R} \\mid V \\ge 0 \\}\\).\nb) \\(r\\): unabhängige Variable / Argument. \\(V\\): abhängige Variable / Funktionswert.",
-    "difficulty": "easy",
-    "topic": "Begriff der Funktion",
-    "module": "Mathematik",
-    "tags": [
-      "Definition",
-      "Funktion",
-      "Grundbegriffe"
-    ],
-    "createdAt": "2025-12-05T09:45:11.795Z",
-    "completed": false
-  },
-  {
-    "id": "1764927911795-t3pqij4yl",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927711396-igij5dhh4",
-    "title": "### Explizit oder implizit",
-    "question": "### Explizit oder implizit?\n\nOrdne die folgenden Darstellungen jeweils als *explizit* oder *implizit* ein:\n- a) \\(y = 3x - 2\\)\n- b) \\(x^2 - y = 0\\)\n- c) \\(x\\cdot y + \\sqrt{y} - 5 = 0\\)",
-    "solution": "a) explizit (Form \\(y = f(x)\\)).\n b) implizit (Form \\(F(x,y)=0\\), entspricht \\(y = x^2\\)).\n c) implizit (\\(F(x,y)=0\\), nicht einfach nach \\(y\\) auflösbar).",
-    "difficulty": "easy",
-    "topic": "Darstellungsformen von Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "explizit",
-      "implizit",
-      "Funktionsgleichung"
-    ],
-    "createdAt": "2025-12-05T09:45:11.795Z",
-    "completed": false
-  },
-  {
-    "id": "1764927911795-epp57s4xa",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927711396-igij5dhh4",
-    "title": "### Von Wertepaaren zur Wertetabelle",
-    "question": "### Von Wertepaaren zur Wertetabelle\n\nGegeben sind Messwerte einer Funktion \\(f\\): \\((1;2), (2;4), (3;9)\\).\n- a) Stelle diese Werte als kleine Wertetabelle mit Zeilen \\(x\\) und \\(y\\) dar.\n- b) Gib die (vermutete) explizite Funktionsgleichung \\(y = f(x)\\) an.",
-    "solution": "a) Wertetabelle:\n- \\(x\\): 1, 2, 3\n- \\(y\\): 2, 4, 9\nb) Mögliche Vermutung: \\(f(x) = x^2\\) passt nicht zu \\(x=1\\) (dort wäre \\(1\\)), also eher \\(f(x) = 2x\\) passt für \\(x=1,2\\), aber nicht für \\(x=3\\). Eine einheitliche einfache Funktionsgleichung ist aus diesen drei Punkten nicht eindeutig erkennbar.",
+    "id": "1764953968073-ttar3v5pg",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951215001-x5otld1ik",
+    "title": "### Physikalische Grenzen vs",
+    "question": "### Physikalische Grenzen vs. Mooresches Gesetz\n\nNennen Sie **zwei konkrete physikalische Grenzen** der Prozessorentwicklung, die dem Mooreschen Gesetz entgegenstehen, und erklären Sie **jeweils in einem kurzen Satz**, warum sie problematisch sind.",
+    "solution": "- Beispiel 1: **Leckströme / Stromverbrauch** – bei immer kleineren Strukturen steigen Leckströme und Leistungsdichte stark an, Kühlung wird zum Problem.\n- Beispiel 2: **Signal-Laufzeiten** – bei hohen Taktraten und langen Leitungen werden Verzögerungen kritisch, Synchronisation wird schwieriger.\n- Weitere mögliche Antworten: Quanten-/Tunneleffekte, Fertigungsgenauigkeit, Wärmeabfuhr.",
     "difficulty": "medium",
-    "topic": "Wertetabelle und Funktionsbegriff",
-    "module": "Mathematik",
+    "topic": "Mooresches Gesetz und physikalische Grenzen",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Wertetabelle",
-      "Interpretation",
-      "Funktion"
+      "theorie",
+      "rechnersysteme",
+      "hardware-trends"
     ],
-    "createdAt": "2025-12-05T09:45:11.795Z",
+    "createdAt": "2025-12-05T16:59:28.073Z",
     "completed": false
   },
   {
-    "id": "1764927911795-37081nnoz",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927711396-igij5dhh4",
-    "title": "### Implizite Darstellung auflösen",
-    "question": "### Implizite Darstellung auflösen\n\nBetrachte die implizite Gleichung \\(x^2\\cdot y - 2 = 0\\).\n- a) Löse nach \\(y\\) auf und gib die explizite Darstellung \\(y = f(x)\\) an (für \\(x \\ne 0\\)).\n- b) Bestimme Definitionsmenge und Wertemenge der so erhaltenen Funktion.",
-    "solution": "a) \\(x^2 y - 2 = 0 \\Rightarrow x^2 y = 2 \\Rightarrow y = \\frac{2}{x^2}\\), also \\(f(x) = \\frac{2}{x^2}\\) für \\(x \\ne 0\\).\nb) Definitionsmenge: \\(D = \\mathbb{R} \\setminus \\{0\\}\\). Wertemenge: \\(f(D) = (0, \\infty)\\), da \\(x^2>0\\) und somit \\(\\frac{2}{x^2} > 0\\).",
+    "id": "1764953968073-t74br7wbg",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951215001-x5otld1ik",
+    "title": "### Gajski-Kuhn Y-Diagramm verstehen",
+    "question": "### Gajski-Kuhn Y-Diagramm verstehen\n\nErläutern Sie **kurz die drei Achsen** des Gajski-Kuhn Y-Diagramms und ordnen Sie **je ein Beispiel** zu:\n\na) Verhaltenssicht  \nb) Struktursicht  \nc) Geometrische/physische Sicht",
+    "solution": "- a) **Verhaltenssicht**: beschreibt, *was* das System tun soll (z.B. Algorithmus in Pseudocode oder Zustandsautomat).\n- b) **Struktursicht**: beschreibt, *woraus* das System besteht (z.B. Register, ALU, Busse in einem Prozessorblockschaltbild).\n- c) **Geometrische Sicht**: beschreibt die *räumliche Anordnung* (z.B. Chip-Layout, Platzierung von Blöcken auf Silizium).",
     "difficulty": "medium",
-    "topic": "Explizite und implizite Darstellung",
-    "module": "Mathematik",
+    "topic": "Systementwurf und Y-Diagramm",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "explizit",
-      "implizit",
-      "Definitionsmenge",
-      "Wertemenge"
+      "systementwurf",
+      "gajski-kuhn",
+      "modellierung"
     ],
-    "createdAt": "2025-12-05T09:45:11.795Z",
+    "createdAt": "2025-12-05T16:59:28.073Z",
     "completed": false
   },
   {
-    "id": "1764927911795-vrqwkmkjo",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927711396-igij5dhh4",
-    "title": "### Graph und Funktionsbegriff (konzeptionell)",
-    "question": "### Graph und Funktionsbegriff (konzeptionell)\n\nGegeben ist eine Kurve in der Ebene, die zu jedem \\(x\\in[-2,2]\\) genau einen Punkt \\((x,y)\\) enthält.\n- a) Erkläre in 1–2 Sätzen, warum diese Kurve als Graph einer Funktion \\(f: D\\subset\\mathbb{R}\\to\\mathbb{R}\\) aufgefasst werden kann.\n- b) Formuliere kurz, wie man aus dem Graphen eine Wertetabelle und wie man umgekehrt aus einer Wertetabelle näherungsweise einen Graphen gewinnt.",
-    "solution": "a) Weil jedem \\(x\\) in \\([-2,2]\\) genau ein \\(y\\) zugeordnet ist, ist die Zuordnung \\(x \\mapsto y\\) eindeutig; damit erfüllt die Kurve die Definition einer reellwertigen Funktion auf \\(D=[-2,2]\\).\nb) Aus dem Graphen liest man für ausgewählte \\(x\\)-Werte die zugehörigen \\(y\\)-Werte ab und trägt sie als Wertepaar in eine Wertetabelle ein. Umgekehrt zeichnet man die in der Wertetabelle gegebenen Punkte \\((x,y)\\) in ein Koordinatensystem und verbindet sie (ggf. glatt), um einen approximativen Graphen zu erhalten.",
+    "id": "1764953968073-ay4xsemo9",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951215001-x5otld1ik",
+    "title": "### Horner-Schema – kurze Umrechnung",
+    "question": "### Horner-Schema – kurze Umrechnung\n\nWandeln Sie die Zahl \\((125)_8\\) **mit dem Horner-Schema** ins Dezimalsystem um. Notieren Sie die Zwischenschritte in der Horner-Form.",
+    "solution": "- Zerlegung: \\((125)_8 = 1·8^2 + 2·8^1 + 5·8^0\\).\n- Horner-Schema: \\(((1·8 + 2)·8 + 5) = (8 + 2)·8 + 5 = 10·8 + 5 = 80 + 5 = 85\\).\n- Ergebnis: \\((125)_8 = (85)_{10}\\).",
+    "difficulty": "easy",
+    "topic": "Zahlensysteme und Horner-Schema",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "zahlensysteme",
+      "horner-schema",
+      "umrechnung"
+    ],
+    "createdAt": "2025-12-05T16:59:28.073Z",
+    "completed": false
+  },
+  {
+    "id": "1764953968073-9ibc4fa2f",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951215001-x5otld1ik",
+    "title": "### Festkommazahl mit Vorzeichen interpretieren",
+    "question": "### Festkommazahl mit Vorzeichen interpretieren\n\nGegeben sei eine **16-Bit-Festkommazahl** mit Vorzeichenbit \\(s\\), \\(k = 13\\) Vorkommastellen und \\(j = 2\\) Nachkommastellen:  \n\\(b = 1\\,010\\,0010\\,0001\\,01_2\\).\n\na) Bestimmen Sie, ob die Zahl positiv oder negativ ist.  \nb) Berechnen Sie den **Dezimalwert** der Zahl.",
+    "solution": "- a) Erstes Bit \\(s = 1\\) ⇒ Zahl ist **negativ** (Zweierkomplement wird angenommen, wie üblich bei Vorzeichenbit).\n- Betrag (ohne Vorzeichenbit) in Dezimal: \\(0100\\,0100\\,0010\\,1_2 = 2^{12}·0 + 2^{11}·1 + 2^{10}·0 + 2^9·0 + 2^8·0 + 2^7·1 + 2^6·0 + 2^5·0 + 2^4·0 + 2^3·0 + 2^2·0 + 2^1·1 + 2^{-1}·1 = 2048 + 128 + 2 + 0{,}5 = 2178{,}5\\).\n- Mit Zweierkomplement und Skala \\(2^{-2}\\) ergibt sich ein negativer Wert; je nach angenommenem genauen Bitmuster wäre z.B. \\(-2178{,}5\\). (Dozent kann hier ein konkretes Muster vorgeben; Rechenweg ist entscheidend.)",
     "difficulty": "hard",
-    "topic": "Graph einer Funktion und Darstellungsformen",
-    "module": "Mathematik",
+    "topic": "Festkommazahlen und Binärdarstellung",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Graph",
+      "festkomma",
+      "binär",
+      "vorzeichenbit",
+      "zahlenumrechnung"
+    ],
+    "createdAt": "2025-12-05T16:59:28.073Z",
+    "completed": false
+  },
+  {
+    "id": "1764953968073-e0ubfeqcm",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951215001-x5otld1ik",
+    "title": "### KV-Diagramm und Minimalform",
+    "question": "### KV-Diagramm und Minimalform\n\nGegeben ist die Funktion \\(y = f(x_2, x_1, x_0)\\) mit der Wahrheitstafel:\n\n- \\(y = 1\\) für: \\(x_2x_1x_0 = 010, 100, 101, 110, 111\\)  \n- \\(y = 0\\) sonst.\n\na) Zeichnen Sie das **3-Variablen-KV-Diagramm** und markieren Sie alle 1en.  \nb) Bestimmen Sie die **disjunktive Minimalform (DMF)**.",
+    "solution": "- a) Im KV-Diagramm werden die Einsen in den Feldern für 010, 100, 101, 110, 111 eingetragen und möglichst zu großen Blöcken (4er- und 2er-Gruppen) zusammengefasst.\n- b) Eine mögliche DMF ist: \\(y = x_2 \\lor (\\bar{x}_2 x_1 \\bar{x}_0)\\).  \n  Alternativ äquivalente Minimalformen, z.B. \\(y = x_2 \\lor (x_1 \\bar{x}_0)\\), wenn die Gruppierung entsprechend gewählt wird.",
+    "difficulty": "hard",
+    "topic": "KV-Diagramm und Boolesche Minimierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "kv-diagramm",
+      "boolesche-algebra",
+      "minimierung",
+      "logik"
+    ],
+    "createdAt": "2025-12-05T16:59:28.073Z",
+    "completed": false
+  },
+  {
+    "id": "1764953995726-eo5hl0tmp",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951172126-td7oknkzj",
+    "title": "### Minterm-Liste aus Wahrheitstabelle",
+    "question": "### Minterm-Liste aus Wahrheitstabelle\n\nGegeben ist die Funktion y(x₃,x₂,x₁,x₀) mit y=1 für die Zeilen: 1, 2, 3, 6, 7, 8, 9, 15.\n- a) Schreiben Sie die Minterme in der Form m(i) als Menge auf.\n- b) Geben Sie die zugehörige disjunktive Normalform (DNF) ohne Minimierung an.",
+    "solution": "a) M = {m(1), m(2), m(3), m(6), m(7), m(8), m(9), m(15)}\n   bzw. als Indizes: {1,2,3,6,7,8,9,15}.\nb) y = x̄₃ x̄₂ x̄₁ x₀ ∨ x̄₃ x̄₂ x₁ x̄₀ ∨ x̄₃ x̄₂ x₁ x₀ ∨ x̄₃ x₂ x₁ x̄₀ ∨ x̄₃ x₂ x₁ x₀ ∨ x₃ x̄₂ x̄₁ x̄₀ ∨ x₃ x̄₂ x̄₁ x₀ ∨ x₃ x₂ x₁ x₀",
+    "difficulty": "easy",
+    "topic": "Boolesche Funktionen und DNF",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
       "Wertetabelle",
-      "Verständnis",
-      "Funktion"
+      "Minterme",
+      "DNF"
     ],
-    "createdAt": "2025-12-05T09:45:11.796Z",
+    "createdAt": "2025-12-05T16:59:55.726Z",
     "completed": false
   },
   {
-    "id": "1764927931338-3csr02dwi",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927714480-yerpmyiut",
-    "title": "### Easy: Ein einfaches lineares Gleichungssystem",
-    "question": "### Easy: Ein einfaches lineares Gleichungssystem\n\nGegeben sei das Gleichungssystem:\n- \\(2x + 3y = 7\\)\n- \\(x - y = 1\\)\n\nBestimmen Sie \\(x\\) und \\(y\\).",
-    "solution": "Aus \\(x - y = 1\\) folgt \\(x = 1 + y\\). Einsetzen in \\(2x + 3y = 7\\): \\(2(1 + y) + 3y = 7 \\Rightarrow 2 + 2y + 3y = 7 \\Rightarrow 5y = 5 \\Rightarrow y = 1\\). Dann \\(x = 1 + 1 = 2\\).",
+    "id": "1764953995726-rt03gji3t",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951172126-td7oknkzj",
+    "title": "### Erkennen von kombinierbaren Mintermen",
+    "question": "### Erkennen von kombinierbaren Mintermen\n\nBetrachten Sie die Minterme m(1)=0001, m(3)=0011, m(9)=1001, m(8)=1000.\n- a) Welche Paare lassen sich nach Quine–McCluskey direkt zu einem Implikanten 1. Ordnung kombinieren?\n- b) Geben Sie die kombinierbaren Paare in binärer Schreibweise mit „–” an der Stelle des Unterschieds an.",
+    "solution": "a) Kombinierbar sind Paare, die sich nur in einem Bit unterscheiden: (1,3), (1,9), (8,9).\n   (1,8) und (3,9) unterscheiden sich in mehr als einem Bit.\nb) (1,3): 00-1; (1,9): -001; (8,9): 100-.",
     "difficulty": "easy",
-    "topic": "Lineare Gleichungssysteme",
-    "module": "Mathematik",
+    "topic": "Quine–McCluskey – 1. Kombinationsschritt",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Gleichungssystem",
-      "Lineare Algebra",
-      "Rechnen"
+      "Quine-McCluskey",
+      "Implikanten",
+      "Binärdarstellung"
     ],
-    "createdAt": "2025-12-05T09:45:31.338Z",
+    "createdAt": "2025-12-05T16:59:55.726Z",
     "completed": false
   },
   {
-    "id": "1764927931338-5qsy10c34",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927714480-yerpmyiut",
-    "title": "### Easy: Aussagenlogik – Wahrheitstabelle",
-    "question": "### Easy: Aussagenlogik – Wahrheitstabelle\n\nGegeben sind Aussagen \\(A\\) und \\(B\\). Betrachten Sie die zusammengesetzte Aussage \\((A \\land B) \\Rightarrow A\\).\n- a) Erstellen Sie die Wahrheitstabelle.\n- b) Ist die Aussage eine Tautologie?",
-    "solution": "Wahrheitstabelle: Für (A,B) = (w,w): (A∧B)=w, Implikation w⇒w = w; (w,f): (A∧B)=f, f⇒w = w; (f,w): (A∧B)=f, f⇒f = w; (f,f): (A∧B)=f, f⇒f = w. In allen Fällen wahr, also Tautologie.",
-    "difficulty": "easy",
-    "topic": "Aussagenlogik",
-    "module": "Mathematik",
-    "tags": [
-      "Logik",
-      "Wahrheitstabelle",
-      "Tautologie"
-    ],
-    "createdAt": "2025-12-05T09:45:31.338Z",
-    "completed": false
-  },
-  {
-    "id": "1764927931338-nfwc9qa7j",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927714480-yerpmyiut",
-    "title": "### Medium: Mengenoperationen und Intervalle",
-    "question": "### Medium: Mengenoperationen und Intervalle\n\nGegeben seien die Mengen\n- \\(A = [0,5)\\)\n- \\(B = (2,8]\\)\n\nBestimmen Sie\n- a) \\(A \\cap B\\)\n- b) \\(A \\cup B\\)\nund geben Sie das Ergebnis jeweils als Intervall an.",
-    "solution": "a) Schnitt: gemeinsame Elemente von [0,5) und (2,8] sind (2,5). Also \\(A∩B = (2,5)\\). b) Vereinigung: von 0 bis 8, 0 ist enthalten (aus A), 8 ist enthalten (aus B). Also \\(A∪B = [0,8]\\).",
+    "id": "1764953995726-poerghffa",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951172126-td7oknkzj",
+    "title": "### Primimplikanten identifizieren",
+    "question": "### Primimplikanten identifizieren\n\nGegeben sind folgende Implikanten (mit „✓” bereits als nicht weiter kombinierbar markiert):\n- P₁: 1,3 → 00-1 ✓\n- P₂: 1,9 → -001 ✓\n- P₃: 7,15 → -111 ✓\n- P₄: 8,9 → 100- ✓\n- P₅: 2,3,6,7 → 0-1-\n- a) Welche dieser Implikanten sind Primimplikanten?\n- b) Begründen Sie kurz anhand von P₅, warum er ein Primimplikant ist oder nicht.",
+    "solution": "a) Primimplikanten sind alle, die nicht weiter kombiniert werden können: P₁, P₂, P₃, P₄, P₅.\n   (Im Material sind P₁–P₄ direkt mit ✓, P₅ als Endergebnis 2. Ordnung markiert.)\nb) P₅ (0-1-) deckt vier Minterme ab und kann mit keinem anderen Implikanten zu einem mit zwei „–” kombinierten Implikanten erweitert werden; daher ist er ein Primimplikant.",
     "difficulty": "medium",
-    "topic": "Mengen und Intervalle",
-    "module": "Mathematik",
+    "topic": "Primimplikanten",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Mengenlehre",
-      "Intervalle",
+      "Quine-McCluskey",
+      "Primimplikanten",
+      "Implikantenordnung"
+    ],
+    "createdAt": "2025-12-05T16:59:55.726Z",
+    "completed": false
+  },
+  {
+    "id": "1764953995726-95oaj8eci",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951172126-td7oknkzj",
+    "title": "### Primimplikantentafel lesen und wesentliche Primimplik...",
+    "question": "### Primimplikantentafel lesen und wesentliche Primimplikanten finden\n\nAuszug aus der Primimplikantentafel (● = abgedeckt):\n- P₅: 2,3,6,7 → 0-1- : deckt 2,3,6,7\n- P₁: 1,3 → 00-1 : deckt 1,3\n- P₂: 1,9 → -001 : deckt 1,9\n- P₃: 7,15 → -111 : deckt 7,15\n- P₄: 8,9 → 100- : deckt 8,9\n- a) Bestimmen Sie alle wesentlichen Primimplikanten (jeder Minterm, der nur von einem Primimplikanten abgedeckt wird, macht diesen wesentlich).\n- b) Welche Minterme sind nach Auswahl aller wesentlichen Primimplikanten bereits abgedeckt?",
+    "solution": "a) Minterm 2 wird nur von P₅ abgedeckt → P₅ wesentlich.\n   Minterm 6 nur von P₅ → bestätigt P₅. Minterm 15 nur von P₃ → P₃ wesentlich.\n   Minterm 8 nur von P₄ → P₄ wesentlich.\n   Wesentliche Primimplikanten: P₅ (0-1-), P₃ (-111), P₄ (100-).\nb) Abgedeckte Minterme: durch P₅ → {2,3,6,7}, durch P₃ → {7,15}, durch P₄ → {8,9}; insgesamt {2,3,6,7,8,9,15}.",
+    "difficulty": "medium",
+    "topic": "Primimplikantentafel und wesentliche Primimplikanten",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Primimplikantentafel",
+      "wesentliche Primimplikanten",
+      "Minimierung"
+    ],
+    "createdAt": "2025-12-05T16:59:55.726Z",
+    "completed": false
+  },
+  {
+    "id": "1764953995726-6avp7j0pw",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951172126-td7oknkzj",
+    "title": "### Vollständige Minimierung und Funktionsausdruck",
+    "question": "### Vollständige Minimierung und Funktionsausdruck\n\nGegeben sind die Primimplikanten (in Variablenform):\n- P₅: 0-1- → x̄₃ x₁\n- P₁: 00-1 → x̄₃ x̄₂ x₀\n- P₂: -001 → x̄₂ x̄₁ x₀\n- P₃: -111 → x₂ x₁ x₀\n- P₄: 100- → x₃ x̄₂ x̄₁\nAus der Tafel sind P₅, P₃, P₄ wesentliche Primimplikanten; Minterm 1 ist damit noch nicht abgedeckt.\n- a) Wählen Sie einen zusätzlichen Primimplikanten, um Minterm 1 abzudecken, und begründen Sie kurz.\n- b) Geben Sie die disjunktive Minimalform y(x₃,x₂,x₁,x₀) an.",
+    "solution": "a) Minterm 1 wird von P₁ und P₂ abgedeckt; beide fügen genau einen Term hinzu. Die gegebene Lösung nutzt P₁ (x̄₃ x̄₂ x₀). P₁ ist daher eine sinnvolle Wahl.\nb) y = x̄₃ x₁ ∨ x₂ x₁ x₀ ∨ x₃ x̄₂ x̄₁ ∨ x̄₃ x̄₂ x₀.",
+    "difficulty": "hard",
+    "topic": "Quine–McCluskey – vollständige Minimierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Minimierung",
+      "disjunktive Minimalform",
+      "Quine-McCluskey"
+    ],
+    "createdAt": "2025-12-05T16:59:55.726Z",
+    "completed": false
+  },
+  {
+    "id": "1764954023560-g7chfagcf",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951169925-xipqgg3z3",
+    "title": "### 1",
+    "question": "### 1. Wahrheitstabelle lesen\n\n- Gegeben ist die vereinfachte Schaltfunktion für das Segment **ru**:  \n  \\( ru = b \\lor \\lnot c \\lor d \\).\n- a) Bestimme, ob das Segment **ru** leuchtet (1 oder 0) für die Eingabe \\(a b c d = 0 1 0 0\\).  \n- b) Bestimme, ob das Segment **ru** leuchtet für die Eingabe \\(a b c d = 1 0 1 1\\).",
+    "solution": "a) b=1 ⇒ ru=1.  \nb) d=1 (und b=0, c=1) ⇒ ru=1.",
+    "difficulty": "easy",
+    "topic": "Wahrheitsfunktion auswerten",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "siebensegmentanzeige",
+      "boolesche_algebra",
+      "wahrheitstabelle"
+    ],
+    "createdAt": "2025-12-05T17:00:23.560Z",
+    "completed": false
+  },
+  {
+    "id": "1764954023560-6hemk16jd",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951169925-xipqgg3z3",
+    "title": "### 2",
+    "question": "### 2. Don’t-Care-Verständnis\n\n- Bei der Sieben-Segment-Anzeige werden nur Ziffern 0–9 dargestellt, die Eingaben 10–15 sind **Don’t Cares**.\n- a) Erkläre in 1–2 Sätzen, warum Don’t-Care-Zustände bei der Minimierung hilfreich sind.  \n- b) Nenne ein mögliches Risiko, wenn Don’t-Care-Zustände falsch behandelt werden.",
+    "solution": "a) Don’t-Cares dürfen beliebig als 0 oder 1 gesetzt werden und erlauben dadurch größere Gruppen im KV-Diagramm und damit stärker vereinfachte Schaltfunktionen.  \nb) Werden Don’t-Cares falsch als feste 0/1 interpretiert, kann die Schaltung für eigentlich unerlaubte Eingaben unerwartete oder fehlerhafte Ausgänge liefern.",
+    "difficulty": "medium",
+    "topic": "Don’t-Care-Zustände",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "dont_care",
+      "minimierung",
+      "theorie"
+    ],
+    "createdAt": "2025-12-05T17:00:23.560Z",
+    "completed": false
+  },
+  {
+    "id": "1764954023560-8z8zauv4u",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951169925-xipqgg3z3",
+    "title": "### 5",
+    "question": "### 5. Eigene Minimierung mit Don’t-Cares\n\n- Betrachte das Segment **lu** mit \\( lu = \\lnot b \\lnot d \\lor c \\lnot d \\).\n- a) Führe eine Minimierung mit einem KV-Diagramm für Variablen b,c,d durch und nutze, dass für Eingaben 10–15 Don’t-Cares gelten.  \n- b) Gib die minimal gefundene Funktion für **lu** an und vergleiche sie kurz (1 Satz) mit der gegebenen.",
+    "solution": "a) Im 3-Variablen-KV-Diagramm (b,c,d) werden die Einsen bei (b,c,d)=(0,0,0) und (0,1,0) durch Einbeziehung passender Don’t-Cares zu einer Gruppe zusammengefasst.  \nMan erhält als Minimierung: lu = ¬d ∧ ¬b ∨ ¬d ∧ c ⇒ lu = ¬d(¬b ∨ c).  \nb) Die gegebene Funktion ¬b¬d ∨ c¬d ist bereits minimal; die Form ¬d(¬b ∨ c) ist nur eine faktorisierte, aber äquivalente Schreibweise.",
+    "difficulty": "hard",
+    "topic": "KV-Diagramm und Minimierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "kv_diagramm",
+      "minimierung",
+      "dont_care",
+      "siebensegmentanzeige"
+    ],
+    "createdAt": "2025-12-05T17:00:23.560Z",
+    "completed": false
+  },
+  {
+    "id": "1764954023560-n7w18bgju",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951169925-xipqgg3z3",
+    "title": "### 4",
+    "question": "### 4. Segmentfunktion auswerten (Mehrere Segmente)\n\n- Gegeben sind:  \n  - \\( u = a \\lor \\lnot b c \\lor \\lnot b \\lnot d \\lor c \\lnot d \\lor b \\lnot c d \\)  \n  - \\( m = a \\lor \\lnot b c \\lor b \\lnot c \\lor b \\lnot d \\)\n- a) Bestimme für \\(a b c d = 0 1 1 0\\), ob die Segmente **u** und **m** leuchten.  \n- b) Zu welcher Dezimalziffer gehört diese Eingabe?",
+    "solution": "a) Für abcd=0 1 1 0:  \n- u: a=0; ¬b=0; c=1; d=0 ⇒ nur Term c¬d=1 ⇒ u=1.  \n- m: a=0; ¬b=0; c=1; d=0 ⇒ alle Terme 0 ⇒ m=0.  \nb) abcd=0110₂ entspricht Dezimalziffer 6.",
+    "difficulty": "medium",
+    "topic": "Siebensegment-Auswertung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "siebensegmentanzeige",
+      "wahrheitsfunktion",
+      "binär_dezimal"
+    ],
+    "createdAt": "2025-12-05T17:00:23.560Z",
+    "completed": false
+  },
+  {
+    "id": "1764954023560-e4z3fersp",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951169925-xipqgg3z3",
+    "title": "### 3",
+    "question": "### 3. Vereinfachung einer gegebenen Funktion\n\n- Gegeben ist: \\( ro = \\lnot b \\lor c d \\lor \\lnot c \\lnot d \\).\n- a) Fasse die Terme so weit wie möglich mit booleschen Regeln zusammen (ohne KV-Diagramm).  \n- b) Begründe in 1–2 Sätzen, warum deine vereinfachte Form äquivalent zur ursprünglichen ist.",
+    "solution": "a) Es gibt keine weitere wesentliche algebraische Kürzung über Umordnen/Umgruppieren hinaus, daher bleibt z.B. eine kanonische vereinfachte Form: ro = ¬b ∨ cd ∨ ¬c¬d.  \n(Man kann nur umschreiben, z.B. ro = ¬b ∨ (c ⊙ d̄)̄, aber nicht sinnvoll kürzen.)  \nb) Durch Anwendung nur äquivalenter Umformungsregeln (Kommutativität, Assoziativität, De-Morgan etc.) bleibt die Funktion für jede Belegung von a,b,c,d unverändert, daher sind Ausgangstabelle und Verhalten identisch.",
+    "difficulty": "medium",
+    "topic": "Boolesche Vereinfachung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "boolesche_algebra",
+      "vereinfachung",
+      "siebensegmentanzeige"
+    ],
+    "createdAt": "2025-12-05T17:00:23.560Z",
+    "completed": false
+  },
+  {
+    "id": "1764954039553-shi68b4yc",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951167989-um9mfxq0z",
+    "title": "### Absorptionsgesetz anwenden (1)",
+    "question": "### Absorptionsgesetz anwenden (1)\n\n- Vereinfache den Ausdruck: \\((x \\lor \\lnot y) \\land y\\).\n- Begründe in **einem Satz**, welches Gesetz du verwendest.",
+    "solution": "Vereinfachung: (x ∨ ¬y) ∧ y = (x ∧ y) ∨ (¬y ∧ y) = (x ∧ y) ∨ 0 = x ∧ y.\nVerwendete Gesetze: Distributivgesetz, Inversionsgesetz (y ∧ ¬y = 0), Identität (z ∨ 0 = z).",
+    "difficulty": "easy",
+    "topic": "Boole'sche Algebra – Absorptionsgesetze",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Absorption",
+      "algebraische_Umformung",
       "Grundlagen"
     ],
-    "createdAt": "2025-12-05T09:45:31.338Z",
+    "createdAt": "2025-12-05T17:00:39.553Z",
     "completed": false
   },
   {
-    "id": "1764927931338-lai08g2hy",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927714480-yerpmyiut",
-    "title": "### Medium: Folge und Grenzwert",
-    "question": "### Medium: Folge und Grenzwert\n\nBetrachten Sie die Folge \\(a_n = \\frac{2n+1}{n}\\) für \\(n \\in \\mathbb{N}\\).\n- a) Vereinfachen Sie den Term \\(a_n\\).\n- b) Bestimmen Sie \\(\\lim\\limits_{n\\to\\infty} a_n\\).",
-    "solution": "a) \\(a_n = \\frac{2n+1}{n} = 2 + \\frac{1}{n}\\). b) Für \\(n\\to\\infty\\) gilt \\(\\frac{1}{n} \\to 0\\), also \\(\\lim_{n\\to\\infty} a_n = 2\\).",
-    "difficulty": "medium",
-    "topic": "Folgen und Grenzwerte",
-    "module": "Mathematik",
-    "tags": [
-      "Analysis",
-      "Folgen",
-      "Grenzwert"
-    ],
-    "createdAt": "2025-12-05T09:45:31.338Z",
-    "completed": false
-  },
-  {
-    "id": "1764927931338-gn7ljfgl6",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927714480-yerpmyiut",
-    "title": "### Hard: Lineares Gleichungssystem und Matrixdarstellung",
-    "question": "### Hard: Lineares Gleichungssystem und Matrixdarstellung\n\nGegeben sei das Gleichungssystem\n- \\(x_1 + 2x_2 + 3x_3 = 1\\)\n- \\(2x_1 + 5x_2 + 3x_3 = 2\\)\n- \\(3x_1 + 4x_2 + 9x_3 = 3\\)\n\na) Schreiben Sie das System in Matrixform \\(A\\vec{x} = \\vec{c}\\) und geben Sie \\(A\\), \\(\\vec{x}\\), \\(\\vec{c}\\) an.\nb) Lösen Sie das System mit dem Gaußschen Eliminationsverfahren (nur Endlösung angeben).",
-    "solution": "a) \\(A = \\begin{pmatrix}1 & 2 & 3\\\\2 & 5 & 3\\\\3 & 4 & 9\\end{pmatrix}\\), \\(\\vec{x} = \\begin{pmatrix}x_1\\\\x_2\\\\x_3\\end{pmatrix}\\), \\(\\vec{c} = \\begin{pmatrix}1\\\\2\\\\3\\end{pmatrix}\\). b) Erweiterte Matrix: (1 2 3 | 1), (2 5 3 | 2), (3 4 9 | 3). R2:=R2-2R1 → (0 1 -3 | 0). R3:=R3-3R1 → (0 -2 0 | 0). R3:=R3+2R2 → (0 0 -6 | 0). Dann -6x3=0 ⇒ x3=0, aus R2: x2-3·0=0 ⇒ x2=0, aus R1: x1+2·0+3·0=1 ⇒ x1=1. Lösung: \\(x_1=1, x_2=0, x_3=0\\).",
-    "difficulty": "hard",
-    "topic": "Lineare Algebra – Matrizen und Gauß-Verfahren",
-    "module": "Mathematik",
-    "tags": [
-      "Gleichungssystem",
-      "Matrix",
-      "Gauß-Verfahren"
-    ],
-    "createdAt": "2025-12-05T09:45:31.339Z",
-    "completed": false
-  },
-  {
-    "id": "1764927960569-8thz6bwur",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927716911-ikiqmnn9w",
-    "title": "### Definitionsbereich und Nullstellen (einfach)",
-    "question": "### Definitionsbereich und Nullstellen (einfach)\n\nBestimmen Sie für die Funktion \\(f(x) = \\dfrac{x+2}{x-3}\\):\n\na) den größtmöglichen **Definitionsbereich** \\(D\\)\n\nb) die **Nullstelle(n)** von \\(f\\).",
-    "solution": "a) Nenner darf nicht 0 sein: \\(x-3 \\neq 0 \\Rightarrow x \\neq 3\\). Also \\(D = \\mathbb{R} \\setminus \\{3\\}\\).\n\nb) Nullstellen: Zähler = 0: \\(x+2=0 \\Rightarrow x=-2\\). Also eine Nullstelle bei \\(x=-2\\).",
+    "id": "1764954039553-2volsy1yu",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951167989-um9mfxq0z",
+    "title": "### Absorptionsgesetz anwenden (2)",
+    "question": "### Absorptionsgesetz anwenden (2)\n\n- Vereinfache den Ausdruck: \\((x \\land \\lnot y) \\lor y\\).\n- Nenne das zentrale Zwischenergebnis, das du beim Distributivgesetz erhältst.",
+    "solution": "Vereinfachung: (x ∧ ¬y) ∨ y = (x ∨ y) ∧ (¬y ∨ y) = (x ∨ y) ∧ 1 = x ∨ y.\nZentrales Zwischenergebnis: (¬y ∨ y) = 1.",
     "difficulty": "easy",
-    "topic": "Gebrochen-rationale Funktionen",
-    "module": "Mathematik",
+    "topic": "Boole'sche Algebra – Absorptionsgesetze",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Definitionsbereich",
-      "Nullstellen",
-      "Bruchfunktion"
+      "Absorption",
+      "Distributivgesetz",
+      "Identität"
     ],
-    "createdAt": "2025-12-05T09:46:00.569Z",
+    "createdAt": "2025-12-05T17:00:39.553Z",
     "completed": false
   },
   {
-    "id": "1764927960569-i8eb1gyn0",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927716911-ikiqmnn9w",
-    "title": "### Symmetrie und Monotonie einer Polynomfunktion",
-    "question": "### Symmetrie und Monotonie einer Polynomfunktion\n\nGegeben sei \\(f(x) = x^3 - 3x\\).\n\na) Untersuchen Sie, ob \\(f\\) **gerade**, **ungerade** oder keine von beiden ist.\n\nb) Geben Sie die Intervalle an, auf denen \\(f\\) **streng monoton wachsend** bzw. **fallend** ist (Hinweis: Ableitung verwenden).",
-    "solution": "a) \\(f(-x) = (-x)^3 - 3(-x) = -x^3 + 3x = -(x^3 - 3x) = -f(x)\\) ⇒ \\(f\\) ist **ungerade**.\n\nb) \\(f'(x) = 3x^2 - 3 = 3(x^2 - 1)\\). Nullstellen: \\(x = -1, 1\\). Vorzeichen: \\(f'(x) > 0\\) für \\(|x|>1\\), \\(f'(x) < 0\\) für \\(-1 < x < 1\\). Also: streng wachsend auf \\((-\n\\infty,-1)\\) und \\((1,\\infty)\\), streng fallend auf \\((-1,1)\\).",
+    "id": "1764954039553-lz3wmyote",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951167989-um9mfxq0z",
+    "title": "### Allgemeingültigkeit per Wahrheitstabelle prüfen",
+    "question": "### Allgemeingültigkeit per Wahrheitstabelle prüfen\n\na) Erstelle die Wahrheitstabelle für den Ausdruck \\(¬(x \\land y) \\lor x \\lor y\\).\n\nb) Entscheide, ob der Ausdruck allgemeingültig (Tautologie) ist und begründe kurz.",
+    "solution": "a) Wahrheitstabelle:\n- x=0,y=0: x∧y=0, ¬(x∧y)=1, x∨y=0, 1∨0=1\n- x=0,y=1: x∧y=0, ¬(x∧y)=1, x∨y=1, 1∨1=1\n- x=1,y=0: x∧y=0, ¬(x∧y)=1, x∨y=1, 1∨1=1\n- x=1,y=1: x∧y=1, ¬(x∧y)=0, x∨y=1, 0∨1=1\nb) Der Ausdruck ist in allen Fällen 1, also eine Tautologie (allgemeingültig).",
     "difficulty": "medium",
-    "topic": "Eigenschaften von Funktionen",
-    "module": "Mathematik",
+    "topic": "Boole'sche Algebra – Tautologien",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Symmetrie",
-      "Monotonie",
-      "Ableitung",
-      "Polynom"
-    ],
-    "createdAt": "2025-12-05T09:46:00.569Z",
-    "completed": false
-  },
-  {
-    "id": "1764927960569-dmg2vhr6v",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927716911-ikiqmnn9w",
-    "title": "### Lineare Temperaturabhängigkeit eines Widerstands",
-    "question": "### Lineare Temperaturabhängigkeit eines Widerstands\n\nDer Widerstand eines Leiters hängt linear von der Temperatur ab: \\(R(T) = kT + R_0\\).\n\nGegeben sind die Messwerte: \\(R(0^\\circ C) = 50\\,\\Omega\\) und \\(R(80^\\circ C) = 98\\,\\Omega\\).\n\na) Bestimmen Sie die Funktionsgleichung \\(R(T)\\).\n\nb) Berechnen Sie den Widerstand bei \\(T = 25^\\circ C\\).",
-    "solution": "a) Aus \\(R(0)=50\\) folgt \\(R_0 = 50\\). Aus \\(R(80)=98\\): \\(98 = 80k + 50 \\Rightarrow 80k = 48 \\Rightarrow k = 0{,}6\\). Also \\(R(T) = 0{,}6T + 50\\).\n\nb) \\(R(25) = 0{,}6\\cdot 25 + 50 = 15 + 50 = 65\\,\\Omega\\).",
-    "difficulty": "medium",
-    "topic": "Lineare Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Anwendungsaufgabe",
-      "Lineare Funktion",
-      "Funktionsbestimmung"
-    ],
-    "createdAt": "2025-12-05T09:46:00.569Z",
-    "completed": false
-  },
-  {
-    "id": "1764927960569-e8o5adyp3",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927716911-ikiqmnn9w",
-    "title": "### Horner-Schema und Produktdarstellung (Polynom)",
-    "question": "### Horner-Schema und Produktdarstellung (Polynom)\n\nGegeben sei \\(f(x) = 2x^3 - 3x^2 - 8x + 12\\).\n\na) Berechnen Sie \\(f(2)\\) **mit dem Horner-Schema**.\n\nb) Nutzen Sie das Ergebnis, um \\(f(x)\\) vollständig in **Linearfaktoren** zu zerlegen.",
-    "solution": "a) Horner für \\(x=2\\): Koeffizienten: 2 | -3 | -8 | 12. Runter: 2; mal 2 → 4, add: 1; mal 2 → 2, add: -6; mal 2 → -12, add: 0. Also \\(f(2)=0\\).\n\nb) Da \\(x=2\\) Nullstelle ist, Faktor \\((x-2)\\). Aus Horner ergibt sich Quotient \\(2x^2 + x - 6\\). Faktorisieren: \\(2x^2 + x - 6 = (2x-3)(x+2)\\). Also \\(f(x) = (x-2)(2x-3)(x+2)\\).",
-    "difficulty": "hard",
-    "topic": "Polynome und Faktorisierung",
-    "module": "Mathematik",
-    "tags": [
-      "Horner-Schema",
-      "Polynomdivision",
-      "Linearfaktoren",
-      "Nullstellen"
-    ],
-    "createdAt": "2025-12-05T09:46:00.569Z",
-    "completed": false
-  },
-  {
-    "id": "1764927960569-7f70ekjun",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927716911-ikiqmnn9w",
-    "title": "### Analyse einer gebrochen-rationalen Funktion",
-    "question": "### Analyse einer gebrochen-rationalen Funktion\n\nBetrachten Sie \\(f(x) = \\dfrac{x^2 - 1}{x^2 - 4}\\).\n\na) Bestimmen Sie **Definitionsbereich**, **Nullstellen** und **Polstellen**.\n\nb) Untersuchen Sie, ob es **hebbare Definitionslücken** gibt und geben Sie die **Asymptote im Unendlichen** an.",
-    "solution": "a) Nenner 0 bei \\(x^2-4=0 \\Rightarrow x=\\pm 2\\). Also \\(D = \\mathbb{R} \\setminus \\{-2,2\\}\\). Zähler 0 bei \\(x^2-1=0 \\Rightarrow x=\\pm 1\\) ⇒ Nullstellen bei \\(x=\\pm 1\\). Polstellen bei \\(x=\\pm 2\\).\n\nb) Faktorisieren: \\(f(x)=\\dfrac{(x-1)(x+1)}{(x-2)(x+2)}\\); kein gemeinsamer Faktor ⇒ keine hebbare Lücke. Grad(Zähler)=Grad(Nenner)=2 ⇒ horizontale Asymptote \\(y=1\\).",
-    "difficulty": "hard",
-    "topic": "Gebrochen-rationale Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Definitionsbereich",
-      "Nullstellen",
-      "Polstellen",
-      "Asymptoten",
-      "Faktorisierung"
-    ],
-    "createdAt": "2025-12-05T09:46:00.569Z",
-    "completed": false
-  },
-  {
-    "id": "1764927985874-k2rwo3p7y",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927719220-vviqd5wtm",
-    "title": "### Definitionsbereich und Nullstellen (1)",
-    "question": "### Definitionsbereich und Nullstellen (1)\n\nBestimmen Sie für die Funktion \\( f(x) = \\dfrac{2x-4}{x^2-9} \\):\n\na) den größtmöglichen Definitionsbereich \\(D\\)\n\nb) alle Nullstellen.",
-    "solution": "a) Nenner darf nicht 0 werden: \\(x^2-9 \\neq 0 \\Rightarrow x \\neq \\pm 3\\). Also \\(D = \\mathbb{R} \\setminus \\{-3,3\\}\\).\nb) Zähler gleich 0: \\(2x-4=0 \\Rightarrow x=2\\). Prüfen: \\(2 \\in D\\), also Nullstelle: \\(x_0 = 2\\).",
-    "difficulty": "easy",
-    "topic": "Definitionsbereich und Nullstellen",
-    "module": "Mathematik",
-    "tags": [
-      "gebrochen-rationale Funktionen",
-      "Definitionsbereich",
-      "Nullstellen"
-    ],
-    "createdAt": "2025-12-05T09:46:25.874Z",
-    "completed": false
-  },
-  {
-    "id": "1764927985874-slufuhu1d",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927719220-vviqd5wtm",
-    "title": "### Symmetrie einer Polynomfunktion",
-    "question": "### Symmetrie einer Polynomfunktion\n\nUntersuchen Sie die Funktion \\( f(x) = x^4 - 3x^2 \\) auf Symmetrie.\n\na) Prüfen Sie, ob \\(f\\) gerade ist.\n\nb) Begründen Sie kurz, warum \\(f\\) ungerade oder nicht ungerade ist.",
-    "solution": "a) \\(f(-x) = (-x)^4 - 3(-x)^2 = x^4 - 3x^2 = f(x)\\), also ist \\(f\\) gerade.\nb) Für ungerade müsste \\(f(-x) = -f(x)\\) gelten. Da \\(f(-x) = f(x)\\), ist \\(f\\) nicht ungerade.",
-    "difficulty": "medium",
-    "topic": "Symmetrie von Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Polynome",
-      "gerade Funktionen",
-      "ungerade Funktionen"
-    ],
-    "createdAt": "2025-12-05T09:46:25.874Z",
-    "completed": false
-  },
-  {
-    "id": "1764927985874-69wvi7p3x",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927719220-vviqd5wtm",
-    "title": "### Monotonie-Intervalle bestimmen",
-    "question": "### Monotonie-Intervalle bestimmen\n\nGegeben sei \\( f(x) = -2(x-1)^2 + 3 \\).\n\na) Entscheiden Sie, in welchem Intervall \\(f\\) streng monoton fallend ist.\n\nb) Entscheiden Sie, in welchem Intervall \\(f\\) streng monoton steigend ist.",
-    "solution": "Scheitelpunkt bei \\(x=1\\), nach unten geöffnete Parabel.\na) Links vom Scheitel: \\(( -\\infty, 1)\\): hier steigt eine nach unten geöffnete Parabel streng an, also dort streng monoton steigend.\nb) Rechts vom Scheitel: \\([1, \\infty)\\): hier fällt sie streng, also streng monoton fallend.",
-    "difficulty": "medium",
-    "topic": "Monotonie von Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Parabel",
-      "Monotonie",
-      "Scheitelpunktform"
-    ],
-    "createdAt": "2025-12-05T09:46:25.874Z",
-    "completed": false
-  },
-  {
-    "id": "1764927985874-zrb4463xt",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927719220-vviqd5wtm",
-    "title": "### Lineare Temperaturabhängigkeit",
-    "question": "### Lineare Temperaturabhängigkeit\n\nFür einen Leiter gilt \\( R(T) = kT + R_0 \\). Gemessen wurde: \\(R(10^\\circ C)=50\\,\\Omega\\), \\(R(70^\\circ C)=86\\,\\Omega\\).\n\na) Bestimmen Sie \\(k\\) und \\(R_0\\).\n\nb) Berechnen Sie \\(R(100^\\circ C)\\).",
-    "solution": "a) \\(k = \\frac{86-50}{70-10} = \\frac{36}{60} = 0{,}6\\,\\Omega/\\mathrm{K}\\). Dann \\(50 = 0{,}6\\cdot 10 + R_0 \\Rightarrow R_0 = 44\\,\\Omega\\).\nb) \\(R(100) = 0{,}6\\cdot 100 + 44 = 60 + 44 = 104\\,\\Omega\\).",
-    "difficulty": "medium",
-    "topic": "Lineare Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Anwendungsaufgabe",
-      "lineare Funktion",
-      "Funktionsbestimmung"
-    ],
-    "createdAt": "2025-12-05T09:46:25.874Z",
-    "completed": false
-  },
-  {
-    "id": "1764927985874-xpsrw4u47",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927719220-vviqd5wtm",
-    "title": "### Produkt- und Scheitelpunktform (vertieft)",
-    "question": "### Produkt- und Scheitelpunktform (vertieft)\n\nGegeben ist \\( f(x) = x^2 - 6x + 5 \\).\n\na) Bestimmen Sie die Produktform von \\(f\\).\n\nb) Bestimmen Sie die Scheitelpunktform von \\(f\\) und geben Sie den Scheitelpunkt an.",
-    "solution": "a) Nullstellen: \\(x^2 - 6x + 5 = 0\\Rightarrow (x-1)(x-5)=0\\). Produktform: \\(f(x) = (x-1)(x-5)\\).\nb) Quadratische Ergänzung: \\(x^2 - 6x + 5 = (x^2 - 6x + 9) - 4 = (x-3)^2 - 4\\). Scheitelpunktform: \\(f(x) = (x-3)^2 - 4\\), Scheitel: \\(S(3|-4)\\).",
-    "difficulty": "hard",
-    "topic": "Quadratische Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Produktform",
-      "Scheitelpunktform",
-      "Nullstellen"
-    ],
-    "createdAt": "2025-12-05T09:46:25.874Z",
-    "completed": false
-  },
-  {
-    "id": "1764928003296-8jo2zfm1t",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927721590-c40gmsymg",
-    "title": "### Potenz- und Wurzelrechnung kurz",
-    "question": "### Potenz- und Wurzelrechnung kurz\n\nBerechnen und vereinfachen Sie:\n- a) \\(x^3 \\cdot x^{-2}\\) für \\(x = 2\\)\n- b) \\(\\sqrt{x^4}\\) für \\(x = 3\\)",
-    "solution": "- a) \\(x^3 \\cdot x^{-2} = x^{3-2} = x = 2\\)\n- b) \\(\\sqrt{x^4} = x^2 = 9\\)",
-    "difficulty": "easy",
-    "topic": "Potenzfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Potenzen",
-      "Wurzeln",
-      "Rechnen"
-    ],
-    "createdAt": "2025-12-05T09:46:43.296Z",
-    "completed": false
-  },
-  {
-    "id": "1764928003296-h0k9hu3ca",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927721590-c40gmsymg",
-    "title": "### Winkel zwischen Grad und Bogenmaß",
-    "question": "### Winkel zwischen Grad und Bogenmaß\n\nWandeln Sie die folgenden Winkel um:\n- a) \\(120^\\circ\\) in Bogenmaß\n- b) \\(\\frac{5\\pi}{6}\\) rad in Grad",
-    "solution": "- a) \\(120^\\circ = 120 \\cdot \\frac{\\pi}{180} = \\frac{2\\pi}{3}\\)\n- b) \\(\\frac{5\\pi}{6}\\,\\text{rad} = \\frac{5\\pi}{6} \\cdot \\frac{180^\\circ}{\\pi} = 150^\\circ\\)",
-    "difficulty": "easy",
-    "topic": "Trigonometrische Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Bogenmaß",
-      "Gradmaß",
-      "Umrechnung"
-    ],
-    "createdAt": "2025-12-05T09:46:43.296Z",
-    "completed": false
-  },
-  {
-    "id": "1764928003296-hs4fj6ggs",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927721590-c40gmsymg",
-    "title": "### Nullstellen trigonometrischer Funktionen",
-    "question": "### Nullstellen trigonometrischer Funktionen\n\nBestimmen Sie alle Lösungen im Bogenmaß:\n- a) \\(\\sin(3x) = 0\\)\n- b) \\(\\cos\\bigl(2x - \\frac{\\pi}{4}\\bigr) = 1\\)",
-    "solution": "- a) \\(\\sin(3x)=0 \\Rightarrow 3x = k\\pi \\Rightarrow x = \\frac{k\\pi}{3},\\ k \\in \\mathbb{Z}\\)\n- b) \\(\\cos(2x - \\frac{\\pi}{4})=1 \\Rightarrow 2x - \\frac{\\pi}{4} = 2k\\pi \\Rightarrow x = k\\pi + \\frac{\\pi}{8},\\ k \\in \\mathbb{Z}\\)",
-    "difficulty": "medium",
-    "topic": "Trigonometrische Gleichungen",
-    "module": "Mathematik",
-    "tags": [
-      "Sinus",
-      "Cosinus",
-      "Nullstellen",
-      "Gleichungen"
-    ],
-    "createdAt": "2025-12-05T09:46:43.296Z",
-    "completed": false
-  },
-  {
-    "id": "1764928003296-6rbubo1hm",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927721590-c40gmsymg",
-    "title": "### Gebrochen-rationale Funktion analysieren",
-    "question": "### Gebrochen-rationale Funktion analysieren\n\nGegeben sei \\(f(x) = \\dfrac{x^2 - 1}{x^2 - 4}\\).\n- a) Bestimmen Sie den Definitionsbereich und alle Polstellen.\n- b) Untersuchen Sie, ob hebbare Definitionslücken vorliegen, und geben Sie die Asymptote im Unendlichen an.",
-    "solution": "- a) Nenner null: \\(x^2 - 4 = 0 \\Rightarrow x = \\pm 2\\). Definitionsbereich: \\(\\mathbb{R} \\setminus \\{-2,2\\}\\); Polstellen bei \\(x=\\pm 2\\), da kein gemeinsamer Faktor mit Zähler.\n- b) Keine hebbaren Lücken, da kein Kürzen möglich. Für \\(|x| \\to \\infty\\): \\(f(x) \\approx \\dfrac{x^2}{x^2} = 1\\), also horizontale Asymptote \\(y = 1\\).",
-    "difficulty": "medium",
-    "topic": "Gebrochen-rationale Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Definitionsbereich",
-      "Polstellen",
-      "Asymptoten"
-    ],
-    "createdAt": "2025-12-05T09:46:43.296Z",
-    "completed": false
-  },
-  {
-    "id": "1764928003297-i2mee7evq",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927721590-c40gmsymg",
-    "title": "### Kombinierte Potenz- und Wurzelaufgabe",
-    "question": "### Kombinierte Potenz- und Wurzelaufgabe\n\nVereinfachen Sie den Ausdruck vollständig und geben Sie den Definitionsbereich an:\n- \\(A(x) = \\dfrac{\\sqrt[3]{x^4} \\cdot x^{-2}}{\\sqrt{x}}\\)\n- a) Schreiben Sie \\(A(x)\\) als Potenz von \\(x\\) mit rationalem Exponenten.\n- b) Bestimmen Sie den Definitionsbereich von \\(A(x)\\).",
-    "solution": "- a) \\(\\sqrt[3]{x^4} = x^{4/3},\\ \\sqrt{x} = x^{1/2}\\). Also \\(A(x) = \\dfrac{x^{4/3} \\cdot x^{-2}}{x^{1/2}} = x^{4/3 - 2 - 1/2} = x^{4/3 - 3/2} = x^{8/6 - 9/6} = x^{-1/6}\\).\n- b) Wegen \\(\\sqrt{x}\\) im Nenner muss \\(x>0\\) gelten. Definitionsbereich: \\((0,\\infty)\\).",
-    "difficulty": "hard",
-    "topic": "Potenzfunktionen und Wurzeln",
-    "module": "Mathematik",
-    "tags": [
-      "Potenzen",
-      "Wurzeln",
-      "Definitionsbereich",
-      "Umformungen"
-    ],
-    "createdAt": "2025-12-05T09:46:43.297Z",
-    "completed": false
-  },
-  {
-    "id": "1764928024219-cunbmfn3p",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927723727-irc5tsknx",
-    "title": "### Potenzgesetze üben",
-    "question": "### Potenzgesetze üben\n\nVereinfachen Sie ohne Taschenrechner:\n- a) \\(e^{3x} \\cdot e^{-5x} \\cdot e^2\\)\n- b) \\(\\dfrac{e^{4x} \\cdot e^{-3}}{e^{x} \\cdot e^{5}}\\)",
-    "solution": "- a) \\(e^{3x} \\cdot e^{-5x} \\cdot e^2 = e^{3x-5x+2} = e^{-2x+2}\\)\n- b) \\(\\dfrac{e^{4x} \\cdot e^{-3}}{e^{x} \\cdot e^{5}} = e^{4x-3-x-5} = e^{3x-8}\\)",
-    "difficulty": "easy",
-    "topic": "Exponentialfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Exponentialfunktion",
-      "Potenzgesetze",
-      "Rechnen"
-    ],
-    "createdAt": "2025-12-05T09:47:04.219Z",
-    "completed": false
-  },
-  {
-    "id": "1764928024219-nd4qyo7r3",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927723727-irc5tsknx",
-    "title": "### Logarithmusgleichung und Definitionsbereich",
-    "question": "### Logarithmusgleichung und Definitionsbereich\n\nLösen Sie für \\(x>0\\):\n- a) \\(\\ln(x^2) = 3\\), geben Sie die Lösung(en) an.\n- b) Bestimmen Sie zusätzlich den Definitionsbereich der Funktion \\(g(x) = \\ln(5x-2) - \\ln(x+1)\\).",
-    "solution": "- a) \\(\\ln(x^2) = 3 \\Rightarrow x^2 = e^3 \\Rightarrow x = \\pm e^{3/2}\\). Mit \\(x>0\\) bleibt \\(x = e^{3/2}\\).\n- b) Bedingungen: \\(5x-2 > 0 \\Rightarrow x > \\tfrac{2}{5}\\) und \\(x+1 > 0 \\Rightarrow x > -1\\). Insgesamt: \\(D(g) = (\\tfrac{2}{5}, \\infty)\\).",
-    "difficulty": "hard",
-    "topic": "Logarithmusgleichungen und Definitionsbereich",
-    "module": "Mathematik",
-    "tags": [
-      "Logarithmus",
-      "Gleichung",
-      "Definitionsbereich",
-      "Analysis"
-    ],
-    "createdAt": "2025-12-05T09:47:04.219Z",
-    "completed": false
-  },
-  {
-    "id": "1764928024219-1t3okr24o",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927723727-irc5tsknx",
-    "title": "### Logarithmengesetze anwenden",
-    "question": "### Logarithmengesetze anwenden\n\nFassen Sie jeweils zu einem Logarithmus zusammen:\n- a) \\(\\ln(x-2) + \\ln(3x) - \\ln(x)\\)\n- b) \\(\\ln((2x+1)^3) - \\ln(2x+1)\\)",
-    "solution": "- a) \\(\\ln(x-2) + \\ln(3x) - \\ln(x) = \\ln\\left(\\dfrac{(x-2)\\cdot 3x}{x}\\right) = \\ln(3(x-2))\\)\n- b) \\(\\ln((2x+1)^3) - \\ln(2x+1) = \\ln\\left(\\dfrac{(2x+1)^3}{2x+1}\\right) = \\ln((2x+1)^2)\\)",
-    "difficulty": "easy",
-    "topic": "Logarithmusfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Logarithmus",
-      "Logarithmengesetze",
-      "Umformen"
-    ],
-    "createdAt": "2025-12-05T09:47:04.219Z",
-    "completed": false
-  },
-  {
-    "id": "1764928024219-0en7h19cd",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927723727-irc5tsknx",
-    "title": "### Parameter einer Sättigungsfunktion bestimmen",
-    "question": "### Parameter einer Sättigungsfunktion bestimmen\n\nGegeben ist \\(f(t) = a \\cdot (1 - e^{-\\lambda t})\\) mit \\(a = 12\\). Es gilt \\(f(5) = 9\\).\n- a) Bestimmen Sie \\(\\lambda\\) (mit TR).\n- b) Berechnen Sie \\(f(10)\\).",
-    "solution": "- a) \\(9 = 12(1 - e^{-5\\lambda}) \\Rightarrow 1 - e^{-5\\lambda} = 0{,}75 \\Rightarrow e^{-5\\lambda} = 0{,}25\\)\n  \\(\\Rightarrow -5\\lambda = \\ln(0{,}25) = -\\ln 4 \\Rightarrow \\lambda = \\frac{\\ln 4}{5} \\approx 0{,}277\\)\n- b) \\(f(10) = 12(1 - e^{-10\\lambda}) = 12(1 - e^{-2\\ln 4}) = 12(1 - 4^{-2}) = 12(1 - \\tfrac{1}{16}) = 12 \\cdot \\tfrac{15}{16} = 11{,}25\\)",
-    "difficulty": "medium",
-    "topic": "Sättigungsfunktion / Exponentialfunktion",
-    "module": "Mathematik",
-    "tags": [
-      "Modellierung",
-      "Exponentialfunktion",
-      "Anwenden",
-      "Taschenrechner"
-    ],
-    "createdAt": "2025-12-05T09:47:04.219Z",
-    "completed": false
-  },
-  {
-    "id": "1764928024219-x8is5zzb4",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927723727-irc5tsknx",
-    "title": "### Umkehrfunktionen bestimmen",
-    "question": "### Umkehrfunktionen bestimmen\n\nBestimmen Sie jeweils die Umkehrfunktion \\(f^{-1}(x)\\), falls möglich, und geben Sie den Definitionsbereich von \\(f\\) an:\n- a) \\(f(x) = 4\\sqrt{x} - 3\\)\n- b) \\(f(x) = 2e^{3x} - 5\\)",
-    "solution": "- a) D(f): \\(x \\ge 0\\). \\(y = 4\\sqrt{x} - 3 \\Rightarrow y+3 = 4\\sqrt{x} \\Rightarrow \\sqrt{x} = \\frac{y+3}{4} \\Rightarrow x = \\left(\\frac{y+3}{4}\\right)^2\\). Also \\(f^{-1}(x) = \\left(\\frac{x+3}{4}\\right)^2\\).\n- b) D(f): \\(\\mathbb{R}\\). \\(y = 2e^{3x} - 5 \\Rightarrow y+5 = 2e^{3x} \\Rightarrow e^{3x} = \\frac{y+5}{2} \\Rightarrow 3x = \\ln\\left(\\frac{y+5}{2}\\right) \\Rightarrow x = \\frac{1}{3}\\ln\\left(\\frac{y+5}{2}\\right)\\). Also \\(f^{-1}(x) = \\frac{1}{3}\\ln\\left(\\frac{x+5}{2}\\right)\\).",
-    "difficulty": "medium",
-    "topic": "Umkehrfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Umkehrfunktion",
-      "Exponentialfunktion",
-      "Wurzel",
-      "Definitionsbereich"
-    ],
-    "createdAt": "2025-12-05T09:47:04.219Z",
-    "completed": false
-  },
-  {
-    "id": "1764928048872-5u37hhdp9",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927726053-viv4vxbce",
-    "title": "### Potenzen mit e vereinfachen",
-    "question": "### Potenzen mit e vereinfachen\n\nVereinfachen Sie ohne Taschenrechner:\n- a) \\(e^{3x} \\cdot e^{-x} \\cdot e^5\\)\n- b) \\(\\dfrac{e^{8x-2}}{e^{3x+4}}\\)",
-    "solution": "a) \\(e^{3x-x+5} = e^{2x+5}\\)\n\nb) \\(e^{(8x-2)-(3x+4)} = e^{5x-6}\\)",
-    "difficulty": "easy",
-    "topic": "Exponentialfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Exponentialfunktion",
-      "Potenzgesetze",
-      "Rechnen"
-    ],
-    "createdAt": "2025-12-05T09:47:28.872Z",
-    "completed": false
-  },
-  {
-    "id": "1764928048873-fruo0xj57",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927726053-viv4vxbce",
-    "title": "### Umkehrfunktionen bestimmen",
-    "question": "### Umkehrfunktionen bestimmen\n\nBestimmen Sie jeweils die Umkehrfunktion \\(f^{-1}(x)\\) und den Definitionsbereich von \\(f\\):\n- a) \\(f(x) = 4\\sqrt{x-1}\\)\n- b) \\(f(x) = \\ln(3x+2)\\)",
-    "solution": "a) \\(x-1 \\ge 0 \\Rightarrow D_f = [1,\\infty)\\). Setze \\(y = 4\\sqrt{x-1}\\): \\(\\tfrac{y}{4} = \\sqrt{x-1} \\Rightarrow (\\tfrac{y}{4})^2 = x-1 \\Rightarrow x = (\\tfrac{y}{4})^2 + 1\\). Also \\(f^{-1}(x) = (\\tfrac{x}{4})^2 + 1\\).\n\nb) \\(3x+2 > 0 \\Rightarrow x > -\\tfrac{2}{3} \\Rightarrow D_f = (-\\tfrac{2}{3},\\infty)\\). Setze \\(y = \\ln(3x+2)\\): \\(e^y = 3x+2 \\Rightarrow x = \\tfrac{e^y-2}{3}\\). Also \\(f^{-1}(x) = \\tfrac{e^x - 2}{3}\\).",
-    "difficulty": "medium",
-    "topic": "Umkehrfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Umkehrfunktion",
-      "Logarithmus",
-      "Wurzelfunktion",
-      "Definitionsbereich"
-    ],
-    "createdAt": "2025-12-05T09:47:28.873Z",
-    "completed": false
-  },
-  {
-    "id": "1764928048873-cqhtagnmf",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927726053-viv4vxbce",
-    "title": "### Gemischte Aufgabe zu Exponential- und Logarithmusfunk...",
-    "question": "### Gemischte Aufgabe zu Exponential- und Logarithmusfunktionen\n\nGegeben sei die Funktion \\(f(x) = 5\\cdot 2^{3x}\\).\n- a) Stellen Sie \\(x\\) nach \\(f(x)\\) um, d. h. bestimmen Sie \\(f^{-1}(x)\\).\n- b) Lösen Sie \\(5\\cdot 2^{3x} = 80\\) nach \\(x\\) auf.\n- c) Bestimmen Sie \\(x > 0\\) mit \\(x\\ln(x) = 4\\) näherungsweise (Rechenweg angeben, Ergebnis mit TR).",
-    "solution": "a) \\(y = 5\\cdot 2^{3x} \\Rightarrow 2^{3x} = \\tfrac{y}{5}\\Rightarrow 3x = \\log_2(\\tfrac{y}{5}) \\Rightarrow x = \\tfrac{1}{3}\\log_2(\\tfrac{y}{5})\\). Also \\(f^{-1}(x) = \\tfrac{1}{3}\\log_2(\\tfrac{x}{5})\\).\n\nb) \\(5\\cdot 2^{3x} = 80 \\Rightarrow 2^{3x} = 16 = 2^4 \\Rightarrow 3x = 4 \\Rightarrow x = \\tfrac{4}{3}\\).\n\nc) Setze \\(g(x) = x\\ln(x) - 4\\). Probiere z. B. \\(x=2\\): \\(2\\ln 2 \\approx 1{,}386 < 4\\); \\(x=4\\): \\(4\\ln 4 \\approx 5{,}545 > 4\\). Mit TR (z. B. numerische Lösung) erhält man \\(x \\approx 3{,}1\\) (genauer \\(x \\approx 3{,}09\\)).",
-    "difficulty": "hard",
-    "topic": "Exponential- und Logarithmusfunktionen, Umkehrfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Exponentialfunktion",
-      "Logarithmus",
-      "Umkehrfunktion",
-      "Gleichung lösen"
-    ],
-    "createdAt": "2025-12-05T09:47:28.873Z",
-    "completed": false
-  },
-  {
-    "id": "1764928048873-s16jhc6b1",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927726053-viv4vxbce",
-    "title": "### Logarithmengesetze anwenden",
-    "question": "### Logarithmengesetze anwenden\n\nFassen Sie die Ausdrücke jeweils zu einem einzigen Logarithmus zusammen:\n- a) \\(\\ln(x+2) + \\ln(3x) - \\ln(x)\\)\n- b) \\(\\log_2(8) + \\log_2(\\tfrac{1}{4})\\)",
-    "solution": "a) \\(\\ln\\big(\\tfrac{(x+2)\\cdot 3x}{x}\\big) = \\ln(3(x+2))\\)\n\nb) \\(\\log_2(8) + \\log_2(\\tfrac{1}{4}) = 3 + (-2) = 1\\)",
-    "difficulty": "easy",
-    "topic": "Logarithmusfunktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Logarithmusgesetze",
-      "Natürlicher Logarithmus",
-      "Zweierlogarithmus"
-    ],
-    "createdAt": "2025-12-05T09:47:28.873Z",
-    "completed": false
-  },
-  {
-    "id": "1764928048873-b9zref39s",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927726053-viv4vxbce",
-    "title": "### Sättigungsfunktion eines Kondensators interpretieren",
-    "question": "### Sättigungsfunktion eines Kondensators interpretieren\n\nEin Kondensator wird mit \\(U_0 = 12\\,\\text{V}\\) geladen. Die Spannung ist gegeben durch\n\\(U(t) = 12\\,(1 - e^{-0{,}2t})\\).\n- a) Berechnen Sie \\(U(5)\\).\n- b) Ermitteln Sie, nach welcher Zeit \\(U(t) = 9\\,\\text{V}\\) gilt (mit TR).",
-    "solution": "a) \\(U(5) = 12(1 - e^{-0{,}2\\cdot 5}) = 12(1 - e^{-1}) \\approx 12(1 - 0{,}3679) \\approx 7{,}59\\,\\text{V}\\).\n\nb) \\(9 = 12(1 - e^{-0{,}2t}) \\Rightarrow 1 - e^{-0{,}2t} = 0{,}75 \\Rightarrow e^{-0{,}2t} = 0{,}25\\).\n\\(-0{,}2t = \\ln(0{,}25) \\Rightarrow t = \\frac{\\ln(0{,}25)}{-0{,}2} \\approx 6{,}93\\,\\text{s}\\).",
-    "difficulty": "medium",
-    "topic": "Exponentialfunktionen in Anwendungen",
-    "module": "Mathematik",
-    "tags": [
-      "Sättigungsfunktion",
-      "Anwendung",
-      "Interpretation",
-      "Exponentialfunktion"
-    ],
-    "createdAt": "2025-12-05T09:47:28.873Z",
-    "completed": false
-  },
-  {
-    "id": "1764928066764-36zfygw8c",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927728573-39v69sni2",
-    "title": "### Einfache Grenzwert-Bestimmung",
-    "question": "### Einfache Grenzwert-Bestimmung\n\nBestimmen Sie den Grenzwert der Folge\n- \\(a_n = \\dfrac{3n^2 - 5n}{n^2 + 1}\\).\nGeben Sie nur den Grenzwert an und begründen Sie ihn in **einem** kurzen Satz.",
-    "solution": "Der höchste Grad im Zähler und Nenner ist 2. Die führenden Koeffizienten sind 3 (oben) und 1 (unten), daher gilt \\(\\lim_{n\\to\\infty} a_n = \\frac{3}{1} = 3\\).",
-    "difficulty": "easy",
-    "topic": "Grenzwerte gebrochenrationaler Folgen",
-    "module": "Mathematik",
-    "tags": [
-      "Grenzwert",
-      "gebrochenrational",
-      "Folgen"
-    ],
-    "createdAt": "2025-12-05T09:47:46.764Z",
-    "completed": false
-  },
-  {
-    "id": "1764928066764-fsjm35qjr",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927728573-39v69sni2",
-    "title": "### Monotonie und Beschränktheit einer Folge",
-    "question": "### Monotonie und Beschränktheit einer Folge\n\nUntersuchen Sie die Folge\n- \\(a_n = \\dfrac{n}{n+2}\\), \\(n \\in \\mathbb{N}\\)\nauf\n- a) Monotonie (wachsend/fallend?)\n- b) Beschränktheit (nach oben/unten?).",
-    "solution": "a) \\(a_{n+1} - a_n = \\frac{n+1}{n+3} - \\frac{n}{n+2} = \\frac{2}{(n+2)(n+3)} > 0\\), also streng wachsend.\nb) Für alle \\(n\\) gilt \\(0 < \\frac{n}{n+2} < 1\\), also nach unten durch 0 und nach oben durch 1 beschränkt.",
-    "difficulty": "medium",
-    "topic": "Monotonie und Beschränktheit",
-    "module": "Mathematik",
-    "tags": [
-      "Monotonie",
-      "Beschränktheit",
-      "Folgen"
-    ],
-    "createdAt": "2025-12-05T09:47:46.764Z",
-    "completed": false
-  },
-  {
-    "id": "1764928066764-fvoe1ymqv",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927728573-39v69sni2",
-    "title": "### Rekursive Folge und Grenzwert",
-    "question": "### Rekursive Folge und Grenzwert\n\nGegeben ist die rekursiv definierte Folge\n- \\(a_0 = 2\\), \\(a_{n+1} = \\frac{1}{2} a_n\\).\nBestimmen Sie\n- a) die explizite Darstellung von \\(a_n\\)\n- b) den Grenzwert \\(\\lim_{n\\to\\infty} a_n\\).",
-    "solution": "a) Die Folge ist geometrisch mit Quotient \\(q = \\tfrac12\\), also \\(a_n = 2\\left(\\tfrac12\\right)^n\\).\nb) Da \\(|q| = \\tfrac12 < 1\\), gilt \\(\\lim_{n\\to\\infty} a_n = 0\\).",
-    "difficulty": "medium",
-    "topic": "Rekursive/geometrische Folgen",
-    "module": "Mathematik",
-    "tags": [
-      "rekursiv",
-      "geometrische Folge",
-      "Grenzwert"
-    ],
-    "createdAt": "2025-12-05T09:47:46.764Z",
-    "completed": false
-  },
-  {
-    "id": "1764928066764-ikiehh49h",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927728573-39v69sni2",
-    "title": "### Konvergenzverhalten nach Gradvergleich",
-    "question": "### Konvergenzverhalten nach Gradvergleich\n\nBetrachten Sie die gebrochenrationale Folge\n- \\(a_n = \\dfrac{4n^3 - n}{2n^2 + 5}\\).\nEntscheiden Sie ohne vollständige Rechnung:\n- a) Konvergiert die Folge? Wenn ja, gegen welchen Wert?\n- b) Ist die Folge beschränkt?",
-    "solution": "a) Zählergrad 3, Nennergrad 2, also \\(k>l\\). Gebrochenrationale Folge mit höherem Zählergrad divergiert betragsmäßig gegen \\(\\infty\\), also kein endlicher Grenzwert.\nb) Da \\(|a_n|\\to\\infty\\), ist die Folge nicht beschränkt.",
-    "difficulty": "medium",
-    "topic": "Gradvergleich bei gebrochenrationalen Folgen",
-    "module": "Mathematik",
-    "tags": [
-      "Gradvergleich",
-      "Konvergenz",
-      "gebrochenrational"
-    ],
-    "createdAt": "2025-12-05T09:47:46.764Z",
-    "completed": false
-  },
-  {
-    "id": "1764928066764-kesvkjhma",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927728573-39v69sni2",
-    "title": "### Abwechselndes Vorzeichen und Grenzwert",
-    "question": "### Abwechselndes Vorzeichen und Grenzwert\n\nUntersuchen Sie die Folge\n- \\(a_n = (-1)^n \\cdot \\dfrac{2n}{n+1}\\), \\(n \\in \\mathbb{N}\\).\nEntscheiden Sie:\n- a) Existiert ein Grenzwert? Begründen Sie kurz.\n- b) Ist die Folge beschränkt?",
-    "solution": "a) Der Betrag \\(\\frac{2n}{n+1} \\to 2\\), die Vorzeichen wechseln durch \\((-1)^n\\), daher existiert kein Grenzwert (keine Annäherung an einen festen Wert).\nb) Für alle \\(n\\) gilt \\(|a_n| = \\frac{2n}{n+1} < 2\\), also ist die Folge beschränkt.",
-    "difficulty": "hard",
-    "topic": "Konvergenz und Beschränktheit bei alternierenden Folgen",
-    "module": "Mathematik",
-    "tags": [
-      "alternierende Folge",
-      "Grenzwert",
-      "Beschränktheit"
-    ],
-    "createdAt": "2025-12-05T09:47:46.764Z",
-    "completed": false
-  },
-  {
-    "id": "1764928086293-oyeed8w0o",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927731015-pgosgv4v2",
-    "title": "### Grenzwert mit Faktorisierung",
-    "question": "### Grenzwert mit Faktorisierung\n\nBestimmen Sie den Grenzwert:\n- \\(\\displaystyle \\lim_{x \\to 3} \\frac{x^2 - 9}{x - 3}\\)",
-    "solution": "Zähler faktorisieren: \\(x^2 - 9 = (x-3)(x+3)\\). Für \\(x \\neq 3\\): \\(\\frac{x^2 - 9}{x - 3} = x+3\\). Also \\(\\lim_{x \\to 3} \\frac{x^2 - 9}{x - 3} = \\lim_{x \\to 3} (x+3) = 6\\).",
-    "difficulty": "easy",
-    "topic": "Grenzwerte von Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Grenzwert",
-      "Polynom",
-      "Faktorisierung"
-    ],
-    "createdAt": "2025-12-05T09:48:06.293Z",
-    "completed": false
-  },
-  {
-    "id": "1764928086293-6s4ulss8z",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927731015-pgosgv4v2",
-    "title": "### Grenzwert mit Wurzeltermen",
-    "question": "### Grenzwert mit Wurzeltermen\n\nBerechnen Sie den Grenzwert:\n- \\(\\displaystyle \\lim_{x \\to 4} \\frac{\\sqrt{x} - 2}{x - 4}\\)\n(Hinweis: Rationale Konjugation verwenden.)",
-    "solution": "Erweitern: \\(\\frac{\\sqrt{x} - 2}{x - 4} \\cdot \\frac{\\sqrt{x} + 2}{\\sqrt{x} + 2} = \\frac{x - 4}{(x - 4)(\\sqrt{x} + 2)} = \\frac{1}{\\sqrt{x} + 2}\\) für \\(x \\neq 4\\). Also \\(\\lim_{x \\to 4} \\frac{\\sqrt{x} - 2}{x - 4} = \\frac{1}{2+2} = \\frac{1}{4}\\).",
-    "difficulty": "medium",
-    "topic": "Grenzwerte mit Wurzeln",
-    "module": "Mathematik",
-    "tags": [
-      "Grenzwert",
-      "Wurzel",
-      "Umformung"
-    ],
-    "createdAt": "2025-12-05T09:48:06.293Z",
-    "completed": false
-  },
-  {
-    "id": "1764928086293-0amwg6whj",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927731015-pgosgv4v2",
-    "title": "### Stetigkeit einer abschnittsweisen Funktion",
-    "question": "### Stetigkeit einer abschnittsweisen Funktion\n\nGegeben sei\n- \\( f(x) = \\begin{cases} x^2 & x < 1 \\\\ 2x - 1 & x \\ge 1 \\end{cases} \\)\nUntersuchen Sie, ob \\(f\\) in \\(x_0 = 1\\) stetig ist.",
-    "solution": "Funktionswert: \\(f(1) = 2\\cdot1 - 1 = 1\\). Linksseitiger Grenzwert: \\(\\lim_{x \\to 1^-} x^2 = 1\\). Rechtsseitiger Grenzwert: \\(\\lim_{x \\to 1^+} (2x-1) = 1\\). Da beide Grenzwerte gleich sind und \\(= f(1)\\) gilt, ist \\(f\\) in \\(x_0=1\\) stetig.",
-    "difficulty": "medium",
-    "topic": "Stetigkeit",
-    "module": "Mathematik",
-    "tags": [
-      "Stetigkeit",
-      "Grenzwert einseitig",
-      "abschnittsweise Funktion"
-    ],
-    "createdAt": "2025-12-05T09:48:06.293Z",
-    "completed": false
-  },
-  {
-    "id": "1764928086293-ji5ppjkhn",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927731015-pgosgv4v2",
-    "title": "### Stetigkeit der Tangensfunktion",
-    "question": "### Stetigkeit der Tangensfunktion\n\nUntersuchen Sie die Funktion \\(f(x) = \\tan(x)\\):\n- a) Geben Sie den Definitionsbereich an.\n- b) Begründen Sie kurz, auf welchen Intervallen \\(f\\) stetig ist.",
-    "solution": "a) \\(D_f = \\mathbb{R} \\setminus \\{\\tfrac{\\pi}{2} + k\\pi \\mid k \\in \\mathbb{Z}\\}\\), da dort \\(\\cos(x)=0\\) ist. b) Auf jedem Intervall \\(( -\\tfrac{\\pi}{2} + k\\pi,\\; \\tfrac{\\pi}{2} + k\\pi )\\) ist \\(\\tan(x) = \\frac{\\sin x}{\\cos x}\\) als Quotient stetiger Funktionen mit \\(\\cos(x) \\neq 0\\) stetig.",
-    "difficulty": "hard",
-    "topic": "Stetigkeit trigonometrischer Funktionen",
-    "module": "Mathematik",
-    "tags": [
-      "Stetigkeit",
-      "Trigonometrie",
-      "Definitionsbereich"
-    ],
-    "createdAt": "2025-12-05T09:48:06.293Z",
-    "completed": false
-  },
-  {
-    "id": "1764928086293-6cx157hlz",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927731015-pgosgv4v2",
-    "title": "### Trigonometrischer Grenzwert mit Additionstheorem",
-    "question": "### Trigonometrischer Grenzwert mit Additionstheorem\n\nBerechnen Sie den Grenzwert:\n- \\(\\displaystyle \\lim_{x \\to 0} \\frac{\\sin(3x)}{\\sin(x)}\\)\n(Hinweis: Verwenden Sie \\(\\sin(3x) = 3\\sin x - 4\\sin^3 x\\) oder einen geeigneten Trick.)",
-    "solution": "Schreiben: \\(\\frac{\\sin(3x)}{\\sin(x)} = \\frac{\\sin(3x)}{3x} \\cdot \\frac{3x}{x} \\cdot \\frac{x}{\\sin x}\\). Dann \\(\\lim_{x \\to 0} \\frac{\\sin(3x)}{3x} = 1\\), \\(\\lim_{x \\to 0} \\frac{x}{\\sin x} = 1\\), \\(\\frac{3x}{x} = 3\\). Produktregel für Grenzwerte liefert: Grenzwert = \\(1 \\cdot 3 \\cdot 1 = 3\\).",
-    "difficulty": "medium",
-    "topic": "Trigonometrische Grenzwerte",
-    "module": "Mathematik",
-    "tags": [
-      "Grenzwert",
-      "Trigonometrie",
-      "Additionstheorem"
-    ],
-    "createdAt": "2025-12-05T09:48:06.293Z",
-    "completed": false
-  },
-  {
-    "id": "1764928103386-r8seiw0tw",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927733278-l26mwz1lp",
-    "title": "### Ableitung über Differenzenquotient an einer Stelle",
-    "question": "### Ableitung über Differenzenquotient an einer Stelle\n\n- Gegeben ist \\(f(x) = 2x^2 + 3x\\).\n- Berechnen Sie die Ableitung \\(f'(1)\\) **direkt aus dem Differenzenquotienten** \\(\\lim\\limits_{h\\to 0} \\frac{f(1+h)-f(1)}{h}\\).\n- Vereinfachen Sie vollständig.",
-    "solution": "1) \\(f(1+h) = 2(1+h)^2 + 3(1+h) = 5 + 7h + 2h^2\\), \\(f(1)=5\\).\n2) Differenzenquotient: \\(\\frac{f(1+h)-f(1)}{h} = \\frac{7h + 2h^2}{h} = 7 + 2h\\).\n3) Grenzwert: \\(f'(1) = \\lim\\limits_{h\\to 0} (7+2h) = 7\\).",
-    "difficulty": "easy",
-    "topic": "Ableitung über Differenzenquotient",
-    "module": "Mathematik",
-    "tags": [
-      "differenzenquotient",
-      "erste_ableitung",
-      "polynom"
-    ],
-    "createdAt": "2025-12-05T09:48:23.386Z",
-    "completed": false
-  },
-  {
-    "id": "1764928103386-nfewmnu0m",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927733278-l26mwz1lp",
-    "title": "### Potenzregel und Parameter",
-    "question": "### Potenzregel und Parameter\n\n- Gegeben ist \\(f(x) = 2x^{a-1}\\) mit \\(x>0,\\ a\\in\\mathbb{R}\\).\n- a) Bestimmen Sie \\(f'(x)\\) mit der Potenzregel.\n- b) Geben Sie \\(f'(1)\\) in Abhängigkeit von \\(a\\) an.",
-    "solution": "a) \\(f(x) = 2x^{a-1} \\Rightarrow f'(x) = 2(a-1)x^{a-2}\\).\nb) \\(f'(1) = 2(a-1)\\cdot 1^{a-2} = 2(a-1)\\).",
-    "difficulty": "easy",
-    "topic": "Potenzregel mit Parametern",
-    "module": "Mathematik",
-    "tags": [
-      "potenzregel",
-      "parameter",
-      "erste_ableitung"
-    ],
-    "createdAt": "2025-12-05T09:48:23.386Z",
-    "completed": false
-  },
-  {
-    "id": "1764928103386-845lixisl",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927733278-l26mwz1lp",
-    "title": "### Produktregel mit trigonometrischen Funktionen",
-    "question": "### Produktregel mit trigonometrischen Funktionen\n\n- Gegeben ist \\(f(x) = \\pi\\,\\sin(x)\\cos(x)\\).\n- a) Leiten Sie \\(f(x)\\) ab (verwenden Sie die Produktregel).\n- b) Vereinfachen Sie das Ergebnis mit einer geeigneten trigonometrischen Identität.",
-    "solution": "a) \\(f'(x) = \\pi[\\cos(x)\\cos(x) + \\sin(x)(-\\sin(x))] = \\pi(\\cos^2 x - \\sin^2 x)\\).\nb) Mit \\(\\cos(2x)=\\cos^2 x - \\sin^2 x\\) folgt \\(f'(x) = \\pi\\cos(2x)\\).",
-    "difficulty": "medium",
-    "topic": "Produktregel und Trigonometrie",
-    "module": "Mathematik",
-    "tags": [
-      "produktregel",
-      "trigonometrie",
-      "ableitung"
-    ],
-    "createdAt": "2025-12-05T09:48:23.386Z",
-    "completed": false
-  },
-  {
-    "id": "1764928103386-3epl9x0e4",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927733278-l26mwz1lp",
-    "title": "### Quotientenregel und Logarithmus – zweite Ableitung",
-    "question": "### Quotientenregel und Logarithmus – zweite Ableitung\n\n- Gegeben ist \\(f(x) = 4x\\ln(x)\\) mit \\(x>0\\).\n- a) Bestimmen Sie \\(f'(x)\\).\n- b) Bestimmen Sie daraus \\(f''(x)\\) und vereinfachen Sie.",
-    "solution": "a) Produktregel: \\(f'(x) = 4\\ln(x) + 4\\).\nb) \\(f''(x) = 4\\cdot \\frac{1}{x} + 0 = \\frac{4}{x}\\).",
-    "difficulty": "medium",
-    "topic": "Zweite Ableitung, Produktregel, Logarithmus",
-    "module": "Mathematik",
-    "tags": [
-      "zweite_ableitung",
-      "produktregel",
-      "logarithmus"
-    ],
-    "createdAt": "2025-12-05T09:48:23.386Z",
-    "completed": false
-  },
-  {
-    "id": "1764928103386-yblpa6ai7",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927733278-l26mwz1lp",
-    "title": "### Differenzial und lineare Approximation",
-    "question": "### Differenzial und lineare Approximation\n\n- Gegeben ist \\(f(x) = \\sin(x) + e^{-x}\\).\n- a) Bestimmen Sie das Differenzial \\(df\\) an der Stelle \\(x_0 = 0{,}5\\).\n- b) Verwenden Sie \\(df\\), um \\(f(0{,}51)\\) näherungsweise zu berechnen, und geben Sie zusätzlich den exakten Wert von \\(f(0{,}51)\\) als Ausdruck (ohne Ausrechnen mit Taschenrechner) an.",
-    "solution": "a) \\(f'(x) = \\cos(x) - e^{-x}\\), also \\(df = (\\cos(0{,}5) - e^{-0{,}5})\\,dx\\).\nb) Mit \\(dx = 0{,}01\\): \\(f(0{,}51) \\approx f(0{,}5) + f'(0{,}5)\\cdot 0{,}01\\),\nmit \\(f(0{,}5) = \\sin(0{,}5) + e^{-0{,}5}\\) und exakt \\(f(0{,}51) = \\sin(0{,}51) + e^{-0{,}51}\\).",
-    "difficulty": "hard",
-    "topic": "Differenzial und Näherung",
-    "module": "Mathematik",
-    "tags": [
-      "differenzial",
-      "lineare_approximation",
-      "exponentialfunktion",
-      "trigonometrie"
-    ],
-    "createdAt": "2025-12-05T09:48:23.386Z",
-    "completed": false
-  },
-  {
-    "id": "1764928121488-r4jn1ntb5",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927735676-2a2m8qf0k",
-    "title": "### Negation einer Aussage",
-    "question": "### Negation einer Aussage\n\nBestimmen Sie den Wahrheitswert und die Negation der Aussage:\n\n- \"Alle Studierenden im Kurs sind über 18 Jahre alt.\"",
-    "solution": "- Wahrheitswert: Ohne zusätzliche Information **nicht sicher bestimmbar**.\n- Negation: \"Es gibt mindestens eine*n Studierende*n im Kurs, der/die **nicht** über 18 Jahre alt ist.\"",
-    "difficulty": "easy",
-    "topic": "Aussagenlogik",
-    "module": "Mathematik",
-    "tags": [
+      "Wahrheitstafel",
+      "Tautologie",
       "Negation",
-      "Quantoren",
+      "Konjunktion",
+      "Disjunktion"
+    ],
+    "createdAt": "2025-12-05T17:00:39.553Z",
+    "completed": false
+  },
+  {
+    "id": "1764954039553-vunvlddih",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951167989-um9mfxq0z",
+    "title": "### Allgemeingültigkeit per Umformung zeigen",
+    "question": "### Allgemeingültigkeit per Umformung zeigen\n\na) Forme den Ausdruck \\(¬(x \\land y) \\lor x \\lor y\\) nur mit De-Morgan und Distributivgesetzen so um, dass klar wird, dass er immer wahr ist.\n\nb) Gib den vereinfachten Endausdruck an.",
+    "solution": "a) ¬(x ∧ y) ∨ x ∨ y = (¬x ∨ ¬y) ∨ x ∨ y = (¬x ∨ x) ∨ (¬y ∨ y) = 1 ∨ 1 = 1.\nVerwendet: De-Morgan (¬(x∧y) = ¬x ∨ ¬y), Kommutativität, Assoziativität, Inversionsgesetz (x ∨ ¬x = 1).\nb) Endausdruck: 1.",
+    "difficulty": "medium",
+    "topic": "Boole'sche Algebra – algebraische Beweise",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "De_Morgan",
+      "Tautologie",
+      "algebraische_Umformung"
+    ],
+    "createdAt": "2025-12-05T17:00:39.553Z",
+    "completed": false
+  },
+  {
+    "id": "1764954039553-v9qzv6ew4",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951167989-um9mfxq0z",
+    "title": "### Komplexere Vereinfachung mit Absorption",
+    "question": "### Komplexere Vereinfachung mit Absorption\n\na) Vereinfache den Ausdruck \\((x \\land y) \\lor ¬((x \\lor ¬y) \\land y)\\) schrittweise durch algebraische Umformungen.\n\nb) Zeige, dass das Ergebnis eine Konstante (0 oder 1) ist und gib diese Konstante an.",
+    "solution": "a) ¬((x ∨ ¬y) ∧ y) = ¬[(x ∧ y) ∨ (¬y ∧ y)] = ¬[(x ∧ y) ∨ 0] = ¬(x ∧ y).\nDamit: (x ∧ y) ∨ ¬((x ∨ ¬y) ∧ y) = (x ∧ y) ∨ ¬(x ∧ y).\nDas ist eine Form von p ∨ ¬p.\nb) p ∨ ¬p ist immer 1, also ist der gesamte Ausdruck die Konstante 1 (Tautologie).",
+    "difficulty": "hard",
+    "topic": "Boole'sche Algebra – komplexe Tautologie",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Tautologie",
+      "De_Morgan",
+      "Absorption",
+      "Vereinfachung"
+    ],
+    "createdAt": "2025-12-05T17:00:39.553Z",
+    "completed": false
+  },
+  {
+    "id": "1764954054748-d7ppveheq",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951165946-v3ra1bwpx",
+    "title": "### Binär- und Oktalzahl in Dezimal umrechnen",
+    "question": "### Binär- und Oktalzahl in Dezimal umrechnen\n\n- Geben Sie die Summenschreibweise und den Dezimalwert an für:\n  a) \\((11001)_2\\)\n  b) \\((745)_8\\)",
+    "solution": "a) (11001)_2 = 1·2^4 + 1·2^3 + 0·2^2 + 0·2^1 + 1·2^0 = 16 + 8 + 0 + 0 + 1 = (25)_10\nb) (745)_8 = 7·8^2 + 4·8^1 + 5·8^0 = 448 + 32 + 5 = (485)_10",
+    "difficulty": "easy",
+    "topic": "Zahlendarstellung und Basisumrechnung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "binär",
+      "oktal",
+      "summenschreibweise",
+      "dezimal"
+    ],
+    "createdAt": "2025-12-05T17:00:54.748Z",
+    "completed": false
+  },
+  {
+    "id": "1764954054748-gv95hbcl3",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951165946-v3ra1bwpx",
+    "title": "### Horner-Schema zur Umrechnung",
+    "question": "### Horner-Schema zur Umrechnung\n\n- Wandeln Sie mit dem Hornerschema nach Dezimal um:\n  a) \\((532)_7\\)\n  b) \\((1A3)_16\\)",
+    "solution": "a) (532)_7 = (5·7 + 3)·7 + 2 = (35 + 3)·7 + 2 = 38·7 + 2 = 266 + 2 = (268)_10\nb) (1A3)_16 = (1·16 + 10)·16 + 3 = (16 + 10)·16 + 3 = 26·16 + 3 = 416 + 3 = (419)_10",
+    "difficulty": "hard",
+    "topic": "Hornerschema",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "hornerschema",
+      "basisumrechnung",
+      "hexadezimal",
+      "siebener-system"
+    ],
+    "createdAt": "2025-12-05T17:00:54.748Z",
+    "completed": false
+  },
+  {
+    "id": "1764954054748-xlj0f68hu",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951165946-v3ra1bwpx",
+    "title": "### Effiziente Basisumrechnung Hex → Okt",
+    "question": "### Effiziente Basisumrechnung Hex → Okt\n\n- Konvertieren Sie \\((3AC)_16\\) möglichst effizient in das Oktalsystem.\n- Hinweis: Nutzen Sie zuerst die Umrechnung ins Binärsystem.",
+    "solution": "(3AC)_16 = 3 | A | C = 0011 1010 1100_2 = 001 110 101 100_2 = (1 6 5 4)_8 = (1654)_8",
+    "difficulty": "medium",
+    "topic": "Basisumrechnung über das Binärsystem",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "hexadezimal",
+      "oktal",
+      "binär",
+      "effiziente-umrechnung"
+    ],
+    "createdAt": "2025-12-05T17:00:54.748Z",
+    "completed": false
+  },
+  {
+    "id": "1764954054748-4945pvoq3",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951165946-v3ra1bwpx",
+    "title": "### Dezimal in andere Zahlensysteme (ganz + gebrochen)",
+    "question": "### Dezimal in andere Zahlensysteme (ganz + gebrochen)\n\n- Wandeln Sie um:\n  a) \\((345)_10\\) in das Fünfersystem\n  b) \\((0{,}3)_10\\) in das Binärsystem (mind. 4 Nachkommabits angeben)",
+    "solution": "a) 345:5=69 R0; 69:5=13 R4; 13:5=2 R3; 2:5=0 R2 → (2340)_5\nb) 0,3·2=0,6 →0; 0,6·2=1,2 →1; 0,2·2=0,4 →0; 0,4·2=0,8 →0; 0,8·2=1,6 →1 → ca. (0,01001...)_2",
+    "difficulty": "hard",
+    "topic": "Dezimal zu anderen Basen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "dezimal",
+      "fünfersystem",
+      "binär",
+      "nachkommastellen"
+    ],
+    "createdAt": "2025-12-05T17:00:54.748Z",
+    "completed": false
+  },
+  {
+    "id": "1764954074899-qkyh9ba3c",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951150347-ges59ebci",
+    "title": "### Minterme aus Wahrheitstabelle ablesen",
+    "question": "### Minterme aus Wahrheitstabelle ablesen\n\nBestimmen Sie aus der gegebenen Wahrheitstabelle alle Minterme (Zahlen 0–15), für die y = 1 gilt.",
+    "solution": "Minterme mit y=1: 1, 2, 3, 6, 7, 8, 9, 15.",
+    "difficulty": "easy",
+    "topic": "Boolesche Funktionen / Minterme",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Wahrheitstabelle",
+      "Minterme",
+      "Grundverständnis"
+    ],
+    "createdAt": "2025-12-05T17:01:14.899Z",
+    "completed": false
+  },
+  {
+    "id": "1764954074899-wf0j9of8p",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951150347-ges59ebci",
+    "title": "### Disjunktive Minimalform angeben",
+    "question": "### Disjunktive Minimalform angeben\n\na) Leiten Sie aus den essentiellen Primimplikanten die disjunktive Minimalform der Funktion y(x3,x2,x1,x0) her.\nb) Schreiben Sie das Ergebnis sowohl in Bit-Form (mit „–“) als auch als Term in x3,x2,x1,x0.",
+    "solution": "Essentielle Primimplikanten: 011-, 100-, 1111.\nBit-Form: y = 011- + 100- + 1111.\nAls Terme (x3 ist höchstwertig):\n- 011- → ¬x3 ∧ x2 ∧ x1\n- 100- → x3 ∧ ¬x2 ∧ ¬x1\n- 1111 → x3 ∧ x2 ∧ x1 ∧ x0\nDisjunktive Minimalform: y = (¬x3 ∧ x2 ∧ x1) ∨ (x3 ∧ ¬x2 ∧ ¬x1) ∨ (x3 ∧ x2 ∧ x1 ∧ x0).",
+    "difficulty": "hard",
+    "topic": "Disjunktive Minimalform",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Minimalform",
+      "Boolesche Funktionen",
+      "Quine-McCluskey"
+    ],
+    "createdAt": "2025-12-05T17:01:14.899Z",
+    "completed": false
+  },
+  {
+    "id": "1764954074899-25cxmlxqr",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951150347-ges59ebci",
+    "title": "### Primimplikantentafel und essentielle Primimplikanten",
+    "question": "### Primimplikantentafel und essentielle Primimplikanten\n\na) Erstellen Sie eine Primimplikantentafel für die Implikanten 00-1, 001-, 011-, 100- und die Minterme 1,2,3,6,7,8,9,15.\nb) Markieren Sie alle essentiellen Primimplikanten und begründen Sie kurz.",
+    "solution": "Abdeckung (1,2,3,6,7,8,9,15):\n- 00-1 deckt: 1, 3\n- 001- deckt: 2, 3\n- 011- deckt: 6, 7\n- 100- deckt: 8, 9\nMinterm 15 wird durch keinen der obigen Implikanten gedeckt → ein weiterer Primimplikant (1111) ist nötig.\nEssentiell (jeweils mindestens einen Minterm exklusiv abdeckend):\n- 011- (deckt 6,7, die sonst nicht abgedeckt sind)\n- 100- (deckt 8,9, die sonst nicht abgedeckt sind)\n- 1111 (deckt 15 exklusiv).",
+    "difficulty": "hard",
+    "topic": "Primimplikantentafel / essentielle Primimplikanten",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Primimplikantentafel",
+      "essentielle Primimplikanten",
+      "Minimierung"
+    ],
+    "createdAt": "2025-12-05T17:01:14.899Z",
+    "completed": false
+  },
+  {
+    "id": "1764954074899-w83fjzjs9",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951150347-ges59ebci",
+    "title": "### Primimplikanten bestimmen (Teilschritt)",
+    "question": "### Primimplikanten bestimmen (Teilschritt)\n\na) Fassen Sie mit Quine-McCluskey alle Minterme mit y=1 paarweise zusammen, die sich nur in einem Bit unterscheiden.\nb) Geben Sie die resultierenden Implikanten in Bit-Notation mit „–“ für das wegfallende Bit an (z.B. 0-01).",
+    "solution": "Minterme (mit Binärform): 1(0001), 2(0010), 3(0011), 6(0110), 7(0111), 8(1000), 9(1001), 15(1111).\nPaarweise Kombinationen:\n- 1(0001) & 3(0011) → 00-1\n- 2(0010) & 3(0011) → 001-\n- 6(0110) & 7(0111) → 011-\n- 8(1000) & 9(1001) → 100-\nWeitere Kombinationen mit nur einem Bit Unterschied aus dieser Menge sind nicht möglich.",
+    "difficulty": "medium",
+    "topic": "Quine-McCluskey – Implikantenbildung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Primimplikanten",
+      "Boolesche Algebra",
+      "Minimierung"
+    ],
+    "createdAt": "2025-12-05T17:01:14.899Z",
+    "completed": false
+  },
+  {
+    "id": "1764954074899-c2l6v7d63",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951150347-ges59ebci",
+    "title": "### Erste Gruppierung im Quine-McCluskey-Verfahren",
+    "question": "### Erste Gruppierung im Quine-McCluskey-Verfahren\n\na) Gruppieren Sie die Minterme mit y=1 nach der Anzahl der Einsen in (x3,x2,x1,x0).\nb) Geben Sie die Gruppen in der Form „Anzahl Einsen: {Minterme}“ an.",
+    "solution": "Minterme mit y=1: 1(0001), 2(0010), 3(0011), 6(0110), 7(0111), 8(1000), 9(1001), 15(1111).\nGruppen:\n- 1 Eins: {1, 2, 8}\n- 2 Einsen: {3, 6, 9}\n- 3 Einsen: {7}\n- 4 Einsen: {15}",
+    "difficulty": "medium",
+    "topic": "Quine-McCluskey – Gruppierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Quine-McCluskey",
+      "Gruppierung",
+      "Minimierung"
+    ],
+    "createdAt": "2025-12-05T17:01:14.899Z",
+    "completed": false
+  },
+  {
+    "id": "1764954111662-ifufyrssj",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951148313-7m9z2z83m",
+    "title": "### Segmente für eine Dezimalziffer bestimmen",
+    "question": "### Segmente für eine Dezimalziffer bestimmen\n\nGegeben sei eine gemeinsame Kathoden-Sieben-Segment-Anzeige mit den Segmenten a–g.\n- a) Welche Segmente (a–g) müssen für die Dezimalziffer **3** leuchten? (Nur aufzählen)\n- b) Welche Segmente müssen für die Dezimalziffer **0** leuchten?",
+    "solution": "a) Für die 3 leuchten: a, b, c, d, g\nb) Für die 0 leuchten: a, b, c, d, e, f",
+    "difficulty": "easy",
+    "topic": "Sieben-Segment-Anzeige – Grundverständnis",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "sieben-segment",
+      "grundlagen",
+      "anzeige"
+    ],
+    "createdAt": "2025-12-05T17:01:51.662Z",
+    "completed": false
+  },
+  {
+    "id": "1764954111662-zedq0a4ff",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951148313-7m9z2z83m",
+    "title": "### Don't Cares identifizieren",
+    "question": "### Don't Cares identifizieren\n\nFür die Eingänge abcd werden nur Dezimalziffern 0–9 dargestellt.\n- a) Welche dezimalen Eingabewerte (0–15) sind **Don't Cares**?\n- b) Begründe in **einem Satz**, warum diese Werte als Don't Cares behandelt werden dürfen.",
+    "solution": "a) Don't Cares für dezimale Eingaben: 10, 11, 12, 13, 14, 15\nb) Diese Eingaben kommen im vorgesehenen Anwendungsfall (Anzeige nur 0–9) nie vor, daher spielt ihr Ausgangswert keine Rolle und kann zur Vereinfachung der Logik beliebig gewählt werden.",
+    "difficulty": "medium",
+    "topic": "Don't Care Bedingungen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "dont-care",
+      "vereinfachung",
+      "logikfunktionen"
+    ],
+    "createdAt": "2025-12-05T17:01:51.662Z",
+    "completed": false
+  },
+  {
+    "id": "1764954111662-g911yus90",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951148313-7m9z2z83m",
+    "title": "### Binärcode einer Dezimalziffer",
+    "question": "### Binärcode einer Dezimalziffer\n\nEs wird ein 4-Bit-Eingang abcd (a = MSB, d = LSB) verwendet.\n- a) Gib das Binärwort **abcd** für die Dezimalziffer **7** an.\n- b) Gib das Binärwort **abcd** für die Dezimalziffer **9** an.",
+    "solution": "a) 7 dezimal = 0111₂ → a b c d = 0 1 1 1\nb) 9 dezimal = 1001₂ → a b c d = 1 0 0 1",
+    "difficulty": "easy",
+    "topic": "Binärcodierung von Dezimalziffern",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "binärzahlen",
+      "kodierung",
+      "grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:01:51.662Z",
+    "completed": false
+  },
+  {
+    "id": "1764954111662-o4ccicarx",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951148313-7m9z2z83m",
+    "title": "### Minimierung einer Segmentfunktion mit Don't Cares",
+    "question": "### Minimierung einer Segmentfunktion mit Don't Cares\n\nBetrachte das Segment **a** der Sieben-Segment-Anzeige für die Ziffern 0–9; für 10–15 gelten Don't Cares. Angenommen, Segment a sei genau für die Dezimalziffern **0, 2, 3, 5, 6, 7, 8, 9** aktiv.\n- a) Schreibe die zugehörigen Min-Terme in Dezimalform (z. B. m(…)).\n- b) Erkläre in **1–2 Sätzen**, wie die Don't Cares (10–15) bei einer Karnaugh-Minimierung helfen können.",
+    "solution": "a) Aktive Ziffern: 0, 2, 3, 5, 6, 7, 8, 9 → Funktion: f_a = Σm(0,2,3,5,6,7,8,9)\nDie Don't-Care-Min-Terme sind: d(10,11,12,13,14,15)\n\nb) In der Karnaugh-Tafel dürfen die Don't-Care-Zellen wahlweise als 0 oder 1 genutzt werden, um größere Gruppen (4er, 8er-Blöcke) zu bilden. Dadurch entstehen kürzere, stärker vereinfachte Schaltfunktionen (weniger Terme bzw. Literale).",
+    "difficulty": "hard",
+    "topic": "Minimierung von Schaltfunktionen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "karnaugh",
+      "minimierung",
+      "dont-care",
+      "sieben-segment"
+    ],
+    "createdAt": "2025-12-05T17:01:51.662Z",
+    "completed": false
+  },
+  {
+    "id": "1764954111662-abyxqmgl2",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951148313-7m9z2z83m",
+    "title": "### Funktionsbeschreibung eines Segments",
+    "question": "### Funktionsbeschreibung eines Segments\n\nEine der sieben Schaltfunktionen steuert Segment **g** (das mittlere Segment).\n- a) Beschreibe in **max. 2 Sätzen**, für welche Dezimalziffern Segment g typischerweise leuchtet.\n- b) Erkläre in **1 Satz**, warum es sinnvoll ist, für jedes Segment eine eigene Boolesche Funktion zu definieren.",
+    "solution": "a) Segment g leuchtet typischerweise bei Ziffern wie 2, 3, 4, 5, 6, 8, 9 (nicht aber bei 0 und 1), also immer dann, wenn ein „Mittelbalken“ in der Darstellung benötigt wird. Die genaue Belegung hängt vom gewählten Ziffern-Layout ab, folgt aber diesem Prinzip.\nb) Jedes Segment muss abhängig von der eingegebenen Ziffer unabhängig ein- oder ausgeschaltet werden können, daher wird für jedes Segment eine eigene Boolesche Schaltfunktion aus den Eingangsbits abcd abgeleitet.",
+    "difficulty": "medium",
+    "topic": "Funktionale Beschreibung der Segmente",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "sieben-segment",
+      "boolesche-funktionen",
+      "funktionsbeschreibung"
+    ],
+    "createdAt": "2025-12-05T17:01:51.662Z",
+    "completed": false
+  },
+  {
+    "id": "1764954133262-0460gygy0",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951146375-bwfubqw1b",
+    "title": "### Absorptionsgesetz per Wahrheitstafel prüfen",
+    "question": "### Absorptionsgesetz per Wahrheitstafel prüfen\n\nErgänzen Sie die Wahrheitstafel für den Ausdruck \\((x \\lor \\lnot y) \\land y\\) und \\(x \\land y\\).\n\n- a) Füllen Sie alle fehlenden Werte für \\(x, y, \\lnot y, (x \\lor \\lnot y) \\land y, x \\land y\\).\n- b) Entscheiden Sie: Sind \\((x \\lor \\lnot y) \\land y\\) und \\(x \\land y\\) äquivalent?",
+    "solution": "- a) Vollständige Tabelle (x,y in {0,1}):\n  - (0,0): ¬y=1, (0∨1)∧0 =1∧0=0, x∧y=0\n  - (0,1): ¬y=0, (0∨0)∧1 =0∧1=0, x∧y=0\n  - (1,0): ¬y=1, (1∨1)∧0 =1∧0=0, x∧y=0\n  - (1,1): ¬y=0, (1∨0)∧1 =1∧1=1, x∧y=1\n- b) Spalten identisch ⇒ Ausdrücke sind äquivalent (Absorption).",
+    "difficulty": "easy",
+    "topic": "Wahrheitstafeln und Absorptionsgesetz",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "boolesche_algebra",
+      "wahrheitstafel",
+      "absorption"
+    ],
+    "createdAt": "2025-12-05T17:02:13.262Z",
+    "completed": false
+  },
+  {
+    "id": "1764954133262-179rm0ijl",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951146375-bwfubqw1b",
+    "title": "### Allgemeingültigkeit per Wahrheitstafel",
+    "question": "### Allgemeingültigkeit per Wahrheitstafel\n\nUntersuchen Sie den Ausdruck \\(¬(x \\land y) \\lor x \\lor y\\).\n\n- a) Erstellen Sie die Wahrheitstafel für alle Kombinationen von \\(x, y\\).\n- b) Entscheiden Sie, ob der Ausdruck eine Tautologie ist.",
+    "solution": "- a) Tabelle:\n  - (0,0): x∧y=0, ¬(x∧y)=1, 1∨0∨0=1\n  - (0,1): x∧y=0, ¬(x∧y)=1, 1∨0∨1=1\n  - (1,0): x∧y=0, ¬(x∧y)=1, 1∨1∨0=1\n  - (1,1): x∧y=1, ¬(x∧y)=0, 0∨1∨1=1\n- b) Der Ausdruck ist in allen Fällen 1 ⇒ Tautologie.",
+    "difficulty": "medium",
+    "topic": "Tautologien und Wahrheitstafeln",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "boolesche_algebra",
+      "tautologie",
+      "wahrheitstafel"
+    ],
+    "createdAt": "2025-12-05T17:02:13.262Z",
+    "completed": false
+  },
+  {
+    "id": "1764954133262-rtbygp8rt",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951146375-bwfubqw1b",
+    "title": "### Absorptionsgesetz algebraisch zeigen",
+    "question": "### Absorptionsgesetz algebraisch zeigen\n\nZeigen Sie durch Umformung: \\((x \\land \\lnot y) \\lor y = x \\lor y\\).\n\n- a) Formen Sie \\((x \\land \\lnot y) \\lor y\\) mit Distributiv- und Komplementgesetzen um.\n- b) Nennen Sie das verwendete Gesetz im letzten Schritt.",
+    "solution": "- a) (x∧¬y)∨y = (y∨(x∧¬y)) = (y∨x)∧(y∨¬y) (Distributivgesetz)\n  = (x∨y)∧1 (Komplementgesetz) = x∨y (Neutralität von 1).\n- b) Im letzten Schritt wurde das Neutrale-Element-Gesetz (a∧1=a) verwendet.",
+    "difficulty": "easy",
+    "topic": "Algebraische Umformung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "boolesche_algebra",
+      "umformung",
+      "absorption"
+    ],
+    "createdAt": "2025-12-05T17:02:13.262Z",
+    "completed": false
+  },
+  {
+    "id": "1764954133262-wvqgbsac5",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951146375-bwfubqw1b",
+    "title": "### Ausdruck vereinfachen mit Gesetzen",
+    "question": "### Ausdruck vereinfachen mit Gesetzen\n\nVereinfachen Sie den booleschen Ausdruck vollständig:\n\n- a) \\((x \\lor y) \\land (x \\lor \\lnot y)\\)\n- b) Geben Sie zu jedem Umformungsschritt das verwendete Gesetz an (max. 3 Schritte).",
+    "solution": "- a) (x∨y)∧(x∨¬y) = x∨(y∧¬y) (Distributivgesetz rückwärts)\n  = x∨0 (Komplementgesetz) = x (Neutralität von 0 beim ∨).\n- b) Verwendete Gesetze: Distributivgesetz, Komplementgesetz, Neutrales-Element-Gesetz.",
+    "difficulty": "medium",
+    "topic": "Vereinfachung boolescher Ausdrücke",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "boolesche_algebra",
+      "vereinfachung",
+      "distributivgesetz"
+    ],
+    "createdAt": "2025-12-05T17:02:13.262Z",
+    "completed": false
+  },
+  {
+    "id": "1764954133262-oli7txqyt",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951146375-bwfubqw1b",
+    "title": "### Komplexere Äquivalenz- und Vereinfachungsaufgabe",
+    "question": "### Komplexere Äquivalenz- und Vereinfachungsaufgabe\n\nGegeben sei der Ausdruck \\(F = (x \\land y) \\lor \\lnot((x \\lor \\lnot y) \\land y)\\).\n\n- a) Zeigen Sie durch algebraische Umformung, dass \\(F\\) allgemeingültig (immer 1) ist.\n- b) Vereinfachen Sie dazu zunächst den inneren Ausdruck \\((x \\lor \\lnot y) \\land y\\) so weit wie möglich.",
+    "solution": "- b) (x∨¬y)∧y = (x∧y)∨(¬y∧y) (Distributivgesetz) = (x∧y)∨0 = x∧y.\n- a) F = (x∧y) ∨ ¬(x∧y). Mit a = x∧y gilt: a∨¬a = 1 (Komplementgesetz) ⇒ F ≡ 1 (Tautologie).",
+    "difficulty": "hard",
+    "topic": "Tautologien und Vereinfachung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "boolesche_algebra",
+      "tautologie",
+      "vereinfachung",
+      "absorption"
+    ],
+    "createdAt": "2025-12-05T17:02:13.262Z",
+    "completed": false
+  },
+  {
+    "id": "1764954150376-pxmkzyghh",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951144352-g50i3zo49",
+    "title": "### Summenschreibweise & Dezimalwert (einfach)",
+    "question": "### Summenschreibweise & Dezimalwert (einfach)\n\n- Geben Sie für die Zahl \\((705)_8\\) die Summenschreibweise an.\n- Berechnen Sie anschließend den Dezimalwert.",
+    "solution": "- Summenschreibweise: \n  - (705)_8 = 7·8² + 0·8¹ + 5·8⁰\n- Dezimalwert:\n  - 7·64 + 0·8 + 5·1 = 448 + 0 + 5 = (453)_10",
+    "difficulty": "easy",
+    "topic": "Zahlensysteme – Basisdarstellung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Oktalsystem",
+      "Dezimalsystem",
+      "Summenschreibweise",
+      "Grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:02:30.377Z",
+    "completed": false
+  },
+  {
+    "id": "1764954150377-hebuusfph",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951144352-g50i3zo49",
+    "title": "### Effiziente Basisumwandlung Hex → Oktal",
+    "question": "### Effiziente Basisumwandlung Hex → Oktal\n\n- Konvertieren Sie \\((ABBA)_{16}\\) **ohne** Umweg über das Dezimalsystem direkt in das Oktalsystem.\n- Skizzieren Sie dabei kurz den verwendeten Zwischenschritt.",
+    "solution": "- Schritt 1: Hex → Binär (je 4 Bit):\n  - A = 1010, B = 1011 ⇒ (ABBA)_16 = 1010 1011 1011 1010\n- Schritt 2: Binär in 3er-Gruppen von rechts: 1 010 101 110 110 10 → 001 010 101 110 110 010\n  - 001=1, 010=2, 101=5, 110=6, 110=6, 010=2 ⇒ (125662)_8\n- Ergebnis: (ABBA)_16 = (125662)_8",
+    "difficulty": "medium",
+    "topic": "Zahlensysteme – Basisumwandlung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Hexadezimalsystem",
+      "Oktalsystem",
+      "Binärsystem",
+      "Konvertierung"
+    ],
+    "createdAt": "2025-12-05T17:02:30.377Z",
+    "completed": false
+  },
+  {
+    "id": "1764954150377-f239tilfq",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951144352-g50i3zo49",
+    "title": "### Binärzahl mit Nachkommastellen interpretieren",
+    "question": "### Binärzahl mit Nachkommastellen interpretieren\n\n- Geben Sie für \\((1011.1101)_2\\) die Summenschreibweise an.\n- Bestimmen Sie daraus den Dezimalwert.",
+    "solution": "- Summenschreibweise:\n  - (1011.1101)_2 = 1·2³ + 0·2² + 1·2¹ + 1·2⁰ + 1·2⁻¹ + 1·2⁻² + 0·2⁻³ + 1·2⁻⁴\n- Dezimalwert:\n  - = 8 + 0 + 2 + 1 + 0.5 + 0.25 + 0 + 0.0625 = (11.8125)_10",
+    "difficulty": "medium",
+    "topic": "Zahlensysteme – Binär mit Nachkommastellen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Binärsystem",
+      "Dezimalsystem",
+      "Summenschreibweise",
+      "Nachkommastellen"
+    ],
+    "createdAt": "2025-12-05T17:02:30.377Z",
+    "completed": false
+  },
+  {
+    "id": "1764954150377-lzgqihre7",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951144352-g50i3zo49",
+    "title": "### IEEE 754 Single Precision – strukturierte Darstellung",
+    "question": "### IEEE 754 Single Precision – strukturierte Darstellung\n\na) Zerlegen Sie die Dezimalzahl \\(125{,}875\\) in Vorzeichen, Normalform \\(m·2^e\\) und Binärdarstellung.\n\nb) Geben Sie daraus die IEEE‑754‑Single-Precision-Darstellung (1 Bit Vorzeichen, 8 Bit Exponent, 23 Bit Mantisse) in Binärform an.",
+    "solution": "- a) 125,875_10 = 1111101,111_2\n  - Normalform: 1,111101111·2^6\n  - Vorzeichen s = 0, Exponent e = 6, Bias = 127 ⇒ gespeicherter Exponent = 6 + 127 = 133 = 10000101_2\n  - Mantisse (ohne führende 1): 11110111100000000000000\n- b) IEEE 754 Single:\n  - s | exponent | mantisse\n  - 0 | 10000101 | 11110111100000000000000",
+    "difficulty": "hard",
+    "topic": "Gleitkommazahlen – IEEE 754",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "IEEE754",
+      "Gleitkommazahlen",
+      "Binärdarstellung",
+      "SinglePrecision"
+    ],
+    "createdAt": "2025-12-05T17:02:30.377Z",
+    "completed": false
+  },
+  {
+    "id": "1764954150377-xmjohnbat",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951144352-g50i3zo49",
+    "title": "### Zweierkomplement-Subtraktion mit Vorzeichenbewertung",
+    "question": "### Zweierkomplement-Subtraktion mit Vorzeichenbewertung\n\na) Stellen Sie \\((57)_{10}\\) und \\((122)_{10}\\) als 8-Bit-Zahlen im Zweierkomplement dar.\n\nb) Berechnen Sie \\((57)_{10} - (122)_{10}\\) im 8-Bit-Zweierkomplement und geben Sie das Ergebnis dezimal an.\n\nc) Beurteilen Sie, ob ein Überlauf auftritt.",
+    "solution": "- a) 57_10 = 00111001_2, 122_10 = 01111010_2\n- b) -122 im 8-Bit-Zweierkomplement: 01111010 → invertiert 10000101 → +1 = 10000110\n  - 00111001 + 10000110 = 110000111 → mit 8 Bit: 10000111\n  - 10000111 ist negativ: invertiert 01111000, +1 = 01111001 = 121_10 ⇒ Ergebnis = -121_10\n- c) Kein Überlauf, da Operanden unterschiedliches Vorzeichen im Ergebnisbereich haben und das Vorzeichen konsistent ist.",
+    "difficulty": "hard",
+    "topic": "Zweierkomplement & Binärarithmetik",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Zweierkomplement",
+      "Binärarithmetik",
+      "Vorzeichen",
+      "Überlauf"
+    ],
+    "createdAt": "2025-12-05T17:02:30.377Z",
+    "completed": false
+  },
+  {
+    "id": "1764954168017-p6k2ce6hl",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951119718-s070vuskv",
+    "title": "### Komponenten eines Computersystems",
+    "question": "### Komponenten eines Computersystems\n\nNennen Sie **zwei** Bestandteile eines Computersystems **zusätzlich** zur CPU und ordnen Sie jeden Bestandteil kurz als Eingabe-, Ausgabe- oder Speichereinheit ein.",
+    "solution": "- Mögliche Bestandteile: Tastatur (Eingabegerät), Maus (Eingabegerät), Monitor (Ausgabegerät), Drucker (Ausgabegerät), Festplatte (Sekundärspeicher), USB-Stick (Sekundärspeicher).\n- Jeweils passende Zuordnung: z.B. Tastatur → Eingabegerät, Monitor → Ausgabegerät.",
+    "difficulty": "easy",
+    "topic": "Computersysteme und Peripherie",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Definition",
+      "Peripherie",
+      "Grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:02:48.017Z",
+    "completed": false
+  },
+  {
+    "id": "1764954168017-lv08uw471",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951119718-s070vuskv",
+    "title": "### Externe vs",
+    "question": "### Externe vs. interne Rechnerarchitektur\n\na) Nennen Sie **zwei Eigenschaften**, die zur **externen Architektur** gehören.\n\nb) Nennen Sie **zwei Aspekte**, die zur **internen Architektur** gehören.",
+    "solution": "a) Externe Architektur: z.B. Befehlssatz, Adressierungsarten, Datenbreite, Ein-/Ausgabemechanismen.\nb) Interne Architektur: z.B. Kontrollsignale, Schnittstellen, Speicherorganisation.",
+    "difficulty": "easy",
+    "topic": "Rechnerarchitektur",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Begriffe",
+      "Architektur",
+      "Verständnisfrage"
+    ],
+    "createdAt": "2025-12-05T17:02:48.017Z",
+    "completed": false
+  },
+  {
+    "id": "1764954168017-2cm1ivuf6",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951119718-s070vuskv",
+    "title": "### Von-Neumann-Komponenten zuordnen",
+    "question": "### Von-Neumann-Komponenten zuordnen\n\na) Ordnen Sie den Begriffen **Steuerwerk**, **Rechenwerk (ALU)**, **Hauptspeicher** und **Ein-/Ausgabewerk** jeweils **eine typische Aufgabe** in einem Satz zu.\n\nb) Erklären Sie in **einem Satz**, warum das Bussystem im Von-Neumann-Rechner wichtig ist.",
+    "solution": "a) Steuerwerk: Lädt und decodiert Befehle und erzeugt Steuersignale. Rechenwerk (ALU): Führt arithmetische und logische Operationen auf Daten aus. Hauptspeicher: Speichert Daten und Programme mit wahlfreiem Zugriff. Ein-/Ausgabewerk: Verbindet den Rechner mit Peripheriegeräten (z.B. Tastatur, Monitor).\nb) Das Bussystem verbindet alle Komponenten (CPU, Speicher, Ein-/Ausgabe) und ermöglicht den Datenaustausch zwischen ihnen.",
+    "difficulty": "medium",
+    "topic": "Von-Neumann-Konzept",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Von-Neumann",
+      "Komponenten",
       "Verständnis"
     ],
-    "createdAt": "2025-12-05T09:48:41.488Z",
+    "createdAt": "2025-12-05T17:02:48.017Z",
     "completed": false
   },
   {
-    "id": "1764928121488-y5uiduw18",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927735676-2a2m8qf0k",
-    "title": "### Kurze Wahrheitstabelle",
-    "question": "### Kurze Wahrheitstabelle\n\nGegeben seien Aussagen A und B.\n\n- Erstellen Sie die Wahrheitstabelle für den Ausdruck:  \n  (A ∨ B) ⇒ A",
-    "solution": "- Mögliche Wertekombinationen (A,B): (w,w), (w,f), (f,w), (f,f)\n- Auswertung (A ∨ B) ⇒ A:  \n  (w,w) → w; (w,f) → w; (f,w) → f; (f,f) → w\n- Wahrheitstabelle:\n  - A B | (A ∨ B) ⇒ A  \n    w w | w  \n    w f | w  \n    f w | f  \n    f f | w",
-    "difficulty": "easy",
-    "topic": "Aussagenlogik",
-    "module": "Mathematik",
-    "tags": [
-      "Wahrheitstabelle",
-      "Implikation",
-      "Rechnen"
-    ],
-    "createdAt": "2025-12-05T09:48:41.488Z",
-    "completed": false
-  },
-  {
-    "id": "1764928121488-swbpo7tfo",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927735676-2a2m8qf0k",
-    "title": "### Mengen aus Intervall-Definitionen",
-    "question": "### Mengen aus Intervall-Definitionen\n\nGegeben seien die Mengen:\n\n- A = { n ∈ ℕ : 1 ≤ n ≤ 6 }  \n- B = { n ∈ ℕ : 4 ≤ n ≤ 9 }\n\na) Geben Sie A und B explizit an.  \nb) Bestimmen Sie A ∩ B und A ∪ B.",
-    "solution": "- a) A = {1,2,3,4,5,6}, B = {4,5,6,7,8,9}\n- b) A ∩ B = {4,5,6}; A ∪ B = {1,2,3,4,5,6,7,8,9}",
-    "difficulty": "medium",
-    "topic": "Mengenlehre",
-    "module": "Mathematik",
-    "tags": [
-      "Schnitt",
-      "Vereinigung",
-      "Intervallmengen"
-    ],
-    "createdAt": "2025-12-05T09:48:41.488Z",
-    "completed": false
-  },
-  {
-    "id": "1764928121488-6h24a64bp",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927735676-2a2m8qf0k",
-    "title": "### De Morgan für Aussagen prüfen",
-    "question": "### De Morgan für Aussagen prüfen\n\nSeien A und B Aussagen. Untersuchen Sie mithilfe einer Wahrheitstabelle, ob folgende Äquivalenz gilt:\n\n- ¬(A ∨ B) ⟺ (¬A ∧ ¬B)\n\nNotieren Sie nur die vier Zeilen der Tabelle und vergleichen Sie die Ergebnis-Spalten.",
-    "solution": "- Zeilen (A,B): (w,w), (w,f), (f,w), (f,f)\n- ¬(A ∨ B): f, f, f, w\n- (¬A ∧ ¬B): f, f, f, w\n- Beide Spalten stimmen in allen 4 Fällen überein ⇒ Äquivalenz gilt.",
-    "difficulty": "medium",
-    "topic": "Aussagenlogik",
-    "module": "Mathematik",
-    "tags": [
-      "DeMorgan",
-      "Wahrheitstabelle",
-      "Äquivalenz"
-    ],
-    "createdAt": "2025-12-05T09:48:41.488Z",
-    "completed": false
-  },
-  {
-    "id": "1764928121488-ssy4kn9qn",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927735676-2a2m8qf0k",
-    "title": "### Kombinierte Mengenoperationen (mit Fallunterscheidung)",
-    "question": "### Kombinierte Mengenoperationen (mit Fallunterscheidung)\n\nGegeben seien die Mengen:\n\n- C = {2n : n ∈ ℕ, 1 ≤ n ≤ 6}  \n- D = {2n − 1 : n ∈ ℕ, 1 ≤ n ≤ 6}\n\na) Geben Sie C und D explizit an.  \nb) Bestimmen Sie (C ∩ {2,3,4,5}) ∪ (D ∩ {1,4,5,7}).",
-    "solution": "- a) C = {2,4,6,8,10,12}, D = {1,3,5,7,9,11}\n- C ∩ {2,3,4,5} = {2,4}; D ∩ {1,4,5,7} = {1,5,7}\n- b) (C ∩ {2,3,4,5}) ∪ (D ∩ {1,4,5,7}) = {1,2,4,5,7}",
+    "id": "1764954168017-8g9aykjl4",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951119718-s070vuskv",
+    "title": "### CPU, Speicher und Ein-/Ausgabe im Zusammenspiel",
+    "question": "### CPU, Speicher und Ein-/Ausgabe im Zusammenspiel\n\na) Beschreiben Sie in **3–4 kurzen Sätzen** den Ablauf, wie ein Von-Neumann-Rechner eine einfache Rechenaufgabe (z.B. 2 + 3) ausführt: Start bei der Tastatureingabe, Ende bei der Anzeige auf dem Monitor.\n\nb) Markieren Sie dabei explizit, wann **Steuerwerk**, **Rechenwerk**, **Hauptspeicher** und **Ein-/Ausgabewerk** beteiligt sind.",
+    "solution": "a) Über das Ein-/Ausgabewerk nimmt der Rechner über die Tastatur die Eingabe \"2 + 3\" entgegen und legt sie im Hauptspeicher ab. Das Steuerwerk lädt die entsprechenden Befehle und Operanden aus dem Hauptspeicher und decodiert sie. Das Rechenwerk (ALU) führt die Addition 2 + 3 aus und schreibt das Ergebnis zurück in den Hauptspeicher. Anschließend liest das Ein-/Ausgabewerk das Ergebnis aus dem Speicher und gibt es über den Monitor aus.\nb) Beteiligung: Eingabe/Ausgabe → Ein-/Ausgabewerk; Laden/Decodieren → Steuerwerk + Hauptspeicher; Rechnen → Rechenwerk + Hauptspeicher; Anzeige → Ein-/Ausgabewerk + Hauptspeicher.",
     "difficulty": "hard",
-    "topic": "Mengenlehre",
-    "module": "Mathematik",
+    "topic": "Ablauf im Von-Neumann-Rechner",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Schnitt",
-      "Vereinigung",
-      "geradeZahlen",
-      "ungeradeZahlen"
+      "Von-Neumann",
+      "CPU",
+      "Speicher",
+      "Ein-Ausgabe",
+      "Ablaufbeschreibung"
     ],
-    "createdAt": "2025-12-05T09:48:41.488Z",
+    "createdAt": "2025-12-05T17:02:48.017Z",
     "completed": false
   },
   {
-    "id": "1764928144804-hrayomhou",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927738100-32m5iy1i1",
-    "title": "### Negation und De Morgan (kurz)",
-    "question": "### Negation und De Morgan (kurz)\n\nGeben Sie die Negation der Aussage an und vereinfachen Sie sie mit De Morgan:\n\n- Aussage: \"Es ist Vorlesungszeit **und** alle Seminarräume sind belegt.\"",
-    "solution": "- Formale Schreibweise: A ∧ B\n- Negation: ¬(A ∧ B)\n- Mit De Morgan: ¬A ∨ ¬B\n- In Worten: \"Es ist **nicht** Vorlesungszeit **oder** es sind **nicht** alle Seminarräume belegt.\"",
-    "difficulty": "easy",
-    "topic": "Aussagenlogik – Negation & De Morgan",
-    "module": "Mathematik",
+    "id": "1764954168017-82wp62fxe",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951119718-s070vuskv",
+    "title": "### Programmgesteuerter Von-Neumann-Rechner",
+    "question": "### Programmgesteuerter Von-Neumann-Rechner\n\na) Erklären Sie kurz, was \"programmgesteuert\" im Kontext des Von-Neumann-Konzepts bedeutet.\n\nb) Nennen Sie **einen Vorteil** und **einen Nachteil** der fehlenden Trennung von Daten und Programm.",
+    "solution": "a) Programmgesteuert bedeutet, dass die CPU Datenwörter im Speicher gemäß einem festgelegten Befehlssatz als Anweisungen interpretiert und nacheinander ausführt.\nb) Vorteil: Hohe Flexibilität, da Programme im Speicher geändert und nachgeladen werden können. Nachteil: Potenzial für Fehler und Angriffe (z.B. Code-Injection), da Daten versehentlich oder absichtlich als Programm interpretiert werden können.",
+    "difficulty": "medium",
+    "topic": "Von-Neumann-Eigenschaften",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Aussagenlogik",
-      "Negation",
-      "DeMorgan"
+      "Befehlssatz",
+      "Programmsteuerung",
+      "Sicherheit"
     ],
-    "createdAt": "2025-12-05T09:49:04.804Z",
+    "createdAt": "2025-12-05T17:02:48.017Z",
     "completed": false
   },
   {
-    "id": "1764928144804-7eqsux447",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927738100-32m5iy1i1",
-    "title": "### Wahrheitstabelle für Implikation",
-    "question": "### Wahrheitstabelle für Implikation\n\nErstellen Sie die Wahrheitstabelle für die Aussage\n\n- \\( A \\Rightarrow B \\)\n\nund geben Sie an, in welchen Zeilen der Ausdruck **falsch** ist.",
-    "solution": "- Tabelle:\n  - A=1, B=1 → A⇒B = 1\n  - A=1, B=0 → A⇒B = 0\n  - A=0, B=1 → A⇒B = 1\n  - A=0, B=0 → A⇒B = 1\n- Falsch ist A⇒B **nur**, wenn A=1 und B=0.",
+    "id": "1764954190673-gv1u3xpay",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951117646-ngxjbmsrn",
+    "title": "### Schaltnetz vs",
+    "question": "### Schaltnetz vs. Schaltwerk erkennen\n\n- Erklären Sie in 1–2 Sätzen, wodurch sich ein **Schaltnetz** von einem **Schaltwerk** unterscheidet.\n- Nennen Sie **einen** Grund, warum mit einem reinen Schaltnetz keine Werte gespeichert werden können.",
+    "solution": "- Schaltnetz: Ausgänge hängen nur von aktuellen Eingängen ab, es gibt keine Rückkopplung, die Schaltung ist zustandslos.\n- Schaltwerk: Ausgänge hängen von aktuellen Eingängen **und** früheren Ausgangswerten (Zustand) ab, durch Rückkopplung wird ein Zustand gespeichert.\n- Mit einem Schaltnetz können keine Werte gespeichert werden, weil ohne Rückkopplung keine Information über vergangene Eingaben im System verbleibt.",
     "difficulty": "easy",
-    "topic": "Aussagenlogik – Implikation",
-    "module": "Mathematik",
+    "topic": "Schaltnetz vs. Schaltwerk",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Aussagenlogik",
-      "Implikation",
+      "Grundlagen",
+      "sequentielle Schaltungen",
+      "Verständnisfrage"
+    ],
+    "createdAt": "2025-12-05T17:03:10.673Z",
+    "completed": false
+  },
+  {
+    "id": "1764954190673-9haurt949",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951117646-ngxjbmsrn",
+    "title": "### Zustandsbegriff bei Schaltwerken",
+    "question": "### Zustandsbegriff bei Schaltwerken\n\n- Erklären Sie kurz, was mit dem **Zustand** eines Schaltwerks gemeint ist.\n- Nennen Sie **ein** Beispiel, welche physikalische Größe in einer digitalen Schaltung typischerweise diesen Zustand repräsentiert.",
+    "solution": "- Der Zustand eines Schaltwerks ist die gespeicherte Information über frühere Eingaben, die das aktuelle Verhalten der Schaltung beeinflusst.\n- Typischerweise wird der Zustand durch logische Pegel (0/1) an Knoten wie den Ausgängen von Flip-Flops oder rückgekoppelten Gattern repräsentiert (z. B. Spannung an einem Knoten).",
+    "difficulty": "easy",
+    "topic": "Zustandsspeicher",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Zustand",
+      "Speicher",
+      "Verständnisfrage"
+    ],
+    "createdAt": "2025-12-05T17:03:10.673Z",
+    "completed": false
+  },
+  {
+    "id": "1764954190673-xwnaepm3s",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951117646-ngxjbmsrn",
+    "title": "### RS-Speicher mit NOR-Gattern – Funktion interpretieren",
+    "question": "### RS-Speicher mit NOR-Gattern – Funktion interpretieren\n\na) Beschreiben Sie in **einem Satz**, was passiert, wenn beim rückgekoppelten NOR-RS-Speicher r = 0 und s = 0 anliegen.\n\nb) Was passiert, wenn r = 1 und s = 0 anliegen? Geben Sie q an.\n\nc) Warum ist die Eingangskombination r = 1 und s = 1 **nicht erlaubt**?",
+    "solution": "a) Bei r = 0 und s = 0 bleibt der aktuelle Wert von q gespeichert (Speicherzustand).\n\nb) Bei r = 1 und s = 0 wird q auf 0 gesetzt (Reset).\n\nc) Bei r = 1 und s = 1 würden beide Ausgänge q und ¬q gleichzeitig 0 werden, was der Forderung ¬q = NICHT(q) widerspricht und zu einem undefinierten/instabilen Zustand führt.",
+    "difficulty": "medium",
+    "topic": "RS-Speicher mit NOR-Gattern",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "RS-Flipflop",
+      "NOR",
+      "Wahrheitstabelle",
+      "Interpretation"
+    ],
+    "createdAt": "2025-12-05T17:03:10.673Z",
+    "completed": false
+  },
+  {
+    "id": "1764954190673-tbr63qqus",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951117646-ngxjbmsrn",
+    "title": "### Vergleich NOR- und NAND-RS-Speicher",
+    "question": "### Vergleich NOR- und NAND-RS-Speicher\n\na) Nennen Sie für den **NOR-RS-Speicher** die Eingangsbelegung, bei der der aktuelle Wert gespeichert bleibt.\n\nb) Nennen Sie für den **NAND-RS-Speicher** die Eingangsbelegung, bei der der aktuelle Wert gespeichert bleibt.\n\nc) Begründen Sie in 1–2 Sätzen, warum man beim NAND-RS-Speicher oft von **aktiv-low** Eingängen spricht.",
+    "solution": "a) NOR-RS-Speicher: r = 0 und s = 0 → aktueller Wert bleibt gespeichert.\n\nb) NAND-RS-Speicher: ¬r = 1 und ¬s = 1 → aktueller Wert bleibt gespeichert.\n\nc) Beim NAND-RS-Speicher werden Reset und Set durch ein **Low-Signal** (0) ausgelöst (¬r = 0 setzt q = 0, ¬s = 0 setzt q = 1), daher bezeichnet man diese Eingänge als aktiv-low.",
+    "difficulty": "medium",
+    "topic": "NOR vs. NAND RS-Speicher",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "RS-Flipflop",
+      "NAND",
+      "NOR",
+      "Signalpegel"
+    ],
+    "createdAt": "2025-12-05T17:03:10.673Z",
+    "completed": false
+  },
+  {
+    "id": "1764954190673-3k0fyox2f",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951117646-ngxjbmsrn",
+    "title": "### Asynchrones RS-Flip-Flop und kritische Eingänge",
+    "question": "### Asynchrones RS-Flip-Flop und kritische Eingänge\n\na) Erläutern Sie kurz, warum die Kombination r = 1 und s = 1 beim **asynchronen RS-Flip-Flop** vermieden werden soll.\n\nb) Beschreiben Sie in 1–2 Sätzen, was passieren kann, wenn beide Eingänge gleichzeitig von r = 1, s = 1 auf r = 0, s = 0 wechseln.\n\nc) Nennen Sie **eine** praktische Konsequenz für das Design digitaler Schaltungen im Umgang mit RS-Flip-Flops.",
+    "solution": "a) Die Kombination r = 1 und s = 1 führt zu einem undefinierten Zustand, da q und ¬q gleichzeitig den gleichen Wert annehmen können.\n\nb) Beim gleichzeitigen Rückgang auf 0 kann das Flip-Flop aufgrund unterschiedlicher Signallaufzeiten zu Schwingungen oder einem zufälligen Endzustand führen (metastabiles Verhalten).\n\nc) In der Praxis werden solche unerlaubten Kombinationen durch geeignete Logik vermieden oder man verwendet Flip-Flops mit eindeutig definiertem Verhalten (z. B. D-Flip-Flops) anstelle eines nackten RS-Flip-Flops.",
+    "difficulty": "hard",
+    "topic": "Asynchrones RS-Flip-Flop und Zeitverhalten",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "RS-Flipflop",
+      "asynchron",
+      "Zeitverhalten",
+      "Entwurfsregeln"
+    ],
+    "createdAt": "2025-12-05T17:03:10.673Z",
+    "completed": false
+  },
+  {
+    "id": "1764954209983-3gqquqe7x",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951115310-v9s82wjqj",
+    "title": "### 1",
+    "question": "### 1. Wahrheitstabelle eines 2:1-Multiplexers\n\nGegeben ist ein 2:1-Mux mit Eingängen a, b, Steuersignal s und Ausgang y.\n- a) Ergänze die Funktionsgleichung von y in Abhängigkeit von a, b und s.\n- b) Bestimme y für a=1, b=0 und s=0 sowie s=1.",
+    "solution": "a) y = (¬s ∧ a) ∨ (s ∧ b)\nb) Für a=1, b=0: s=0 → y=1; s=1 → y=0",
+    "difficulty": "easy",
+    "topic": "Multiplexer-Grundlagen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Multiplexer",
+      "Wahrheitstabelle",
+      "Boolesche Algebra"
+    ],
+    "createdAt": "2025-12-05T17:03:29.983Z",
+    "completed": false
+  },
+  {
+    "id": "1764954209983-xak4syw0n",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951115310-v9s82wjqj",
+    "title": "### 2",
+    "question": "### 2. Auswahl beim 4:1-Multiplexer\n\nEin 4:1-Mux hat Dateneingänge i0, i1, i2, i3 und Steuersignale s1, s0 (Binärcodierung: s1s0).\n- a) Welcher Eingang (i0–i3) wird bei s1s0 = 10 ausgewählt?\n- b) Angenommen i0=0, i1=1, i2=1, i3=0: Welchen Wert hat y bei s1s0 = 10 und 01?",
+    "solution": "a) s1s0 = 10 (binär 2) → Eingang i2.\nb) Für s1s0=10 → y=i2=1; für s1s0=01 → y=i1=1.",
+    "difficulty": "easy",
+    "topic": "Multiplexer-Steuerung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Multiplexer",
+      "Steuersignale",
+      "Binärcodierung"
+    ],
+    "createdAt": "2025-12-05T17:03:29.983Z",
+    "completed": false
+  },
+  {
+    "id": "1764954209983-jk71s7id6",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951115310-v9s82wjqj",
+    "title": "### 4",
+    "question": "### 4. Mux als universeller Logikbaustein\n\nEin 4:1-Multiplexer soll eine Funktion f(x1,x0) realisieren; x1 und x0 dienen als Steuersignale.\n- a) Wie viele Variablen kann ein 4:1-Mux maximal direkt implementieren?\n- b) Lege die Dateneingänge i0–i3 so fest, dass f(x1,x0) = x1 ∨ x0 realisiert wird (gib i0–i3 als 0 oder 1 an).",
+    "solution": "a) Ein 4:1-Mux kann Funktionen mit log2(4)=2 Variablen implementieren.\nb) Tabelle für x1∨x0: 00→0, 01→1, 10→1, 11→1. Also i0=0, i1=1, i2=1, i3=1.",
+    "difficulty": "medium",
+    "topic": "Multiplexer als Funktionsgenerator",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Multiplexer",
+      "Logische Funktionen",
+      "Funktionsrealisierung"
+    ],
+    "createdAt": "2025-12-05T17:03:29.983Z",
+    "completed": false
+  },
+  {
+    "id": "1764954209983-bui45nn4g",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951115310-v9s82wjqj",
+    "title": "### 3",
+    "question": "### 3. 8:1-Multiplexer – Zweistufig vs. Kaskadiert\n\nEin 8:1-Mux kann als zweistufige Logik oder kaskadiert aufgebaut werden.\n- a) Begründe in 1–2 Sätzen, warum die kaskadierte Lösung weniger Chipfläche benötigt.\n- b) Welche Lösung hat in der Regel die kleinere Gatterlaufzeit und warum?",
+    "solution": "a) Kaskadierte Lösung verwendet mehr Gatter, aber jedes Gatter hat weniger Eingänge; der Flächenaufwand ist proportional zur Gesamtzahl der Eingänge, die bei der kaskadierten Lösung geringer ist.\nb) Die zweistufige Logik hat meist kleinere Gatterlaufzeiten, da nur zwei Logikstufen durchlaufen werden müssen, während bei Kaskadierung mehr Stufen in Serie liegen.",
+    "difficulty": "medium",
+    "topic": "Multiplexer-Implementierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Multiplexer",
+      "Kaskadierung",
+      "Schaltungsoptimierung"
+    ],
+    "createdAt": "2025-12-05T17:03:29.983Z",
+    "completed": false
+  },
+  {
+    "id": "1764954209983-mbqu3xb3d",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951115310-v9s82wjqj",
+    "title": "### 5",
+    "question": "### 5. Entwurf eines 4:1-Multiplexers aus 2:1-Muxen\n\nEin 4:1-Mux mit Dateneingängen i0–i3 und Steuersignalen s1, s0 soll aus 2:1-Muxen aufgebaut werden.\n- a) Skizziere verbal den Aufbau: Wie viele 2:1-Mux werden benötigt und wie werden sie grob verschaltet (Ebenen, Zuordnung der Steuersignale)?\n- b) Gib an, welches Steuersignal (s1 oder s0) in der unteren Ebene und welches in der oberen Ebene sinnvoll ist und begründe kurz.",
+    "solution": "a) Man benötigt 3 Stück 2:1-Mux: Zwei Mux in der ersten Ebene wählen aus (i0,i1) bzw. (i2,i3); ein dritter Mux in der zweiten Ebene wählt zwischen den Ausgängen der ersten beiden.\nb) In der unteren Ebene verwendet man s0 zur Auswahl innerhalb jedes Paars (i0/i1 und i2/i3). In der oberen Ebene verwendet man s1, um zwischen den beiden Paaren zu wählen; so entspricht s1s0 direkt der binären Nummer des ausgewählten Eingangs.",
+    "difficulty": "hard",
+    "topic": "Multiplexer-Strukturentwurf",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Multiplexer",
+      "Schaltungsentwurf",
+      "Hierarchische Struktur"
+    ],
+    "createdAt": "2025-12-05T17:03:29.983Z",
+    "completed": false
+  },
+  {
+    "id": "1764954226022-j9scclvg2",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951112861-j56fii26f",
+    "title": "### 2",
+    "question": "### 2. Logische Funktion mit 2:1-Mux ausdrücken\n\nEin 2:1-Mux hat Eingänge a, b, Steuersignal s und Ausgang y.\n- a) Gib eine logische Gleichung für y in Abhängigkeit von a, b und s an.\n- b) Interpretiere die Gleichung als if-then-else-Anweisung in einem Satz.",
+    "solution": "a) y = (¬s ∧ a) ∨ (s ∧ b)\nb) Wenn s=1, dann wird b durchgeschaltet, sonst wird a durchgeschaltet.",
+    "difficulty": "medium",
+    "topic": "2:1-Multiplexer, boolesche Gleichung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "multiplexer",
+      "boolesche-algebra",
+      "if-then-else"
+    ],
+    "createdAt": "2025-12-05T17:03:46.022Z",
+    "completed": false
+  },
+  {
+    "id": "1764954226022-rra5s9d6y",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951112861-j56fii26f",
+    "title": "### 1",
+    "question": "### 1. Wahrheitstabelle eines 2:1-Mux\n\nGegeben ist ein 2:1-Multiplexer mit Eingängen a, b, Steuersignal s und Ausgang y.\n- a) Bestimme y für a=1, b=0 und s=0.\n- b) Bestimme y für a=1, b=0 und s=1.",
+    "solution": "a) s=0 ⇒ y=a=1\nb) s=1 ⇒ y=b=0",
+    "difficulty": "easy",
+    "topic": "2:1-Multiplexer, Wahrheitstabelle",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "multiplexer",
+      "wahrheitstabelle",
+      "grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:03:46.022Z",
+    "completed": false
+  },
+  {
+    "id": "1764954226022-sihhzthl5",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951112861-j56fii26f",
+    "title": "### 5",
+    "question": "### 5. Multiplexer als universeller Logikbaustein\n\nEin n:1-Multiplexer kann jede Funktion mit log₂(n) Variablen implementieren.\n- a) Wie viele Steuersignale werden bei einem 8:1-Multiplexer benötigt?\n- b) Wie viele unterschiedliche boolesche Variablen kann man damit direkt als Steuersignale verwenden?\n- c) Begründe in einem Satz, wie über die Dateneingänge die Funktion festgelegt wird.",
+    "solution": "a) Ein 8:1-Mux benötigt log₂(8) = 3 Steuersignale.\nb) Es können 3 Variablen als Steuersignale verwendet werden.\nc) Die Dateneingänge werden fest auf 0 oder 1 gelegt, sodass für jede mögliche Belegung der Steuersignale der gewünschte Funktionswert am entsprechenden Dateneingang anliegt.",
+    "difficulty": "medium",
+    "topic": "Multiplexer als Funktionsgenerator",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "multiplexer",
+      "universelle-logik",
+      "funktionsrealisierung"
+    ],
+    "createdAt": "2025-12-05T17:03:46.022Z",
+    "completed": false
+  },
+  {
+    "id": "1764954226022-p7t1o36sd",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951112861-j56fii26f",
+    "title": "### 4",
+    "question": "### 4. Flächenaufwand 8:1-Mux – Vergleich zweistufig vs. kaskadiert\n\nEin 8:1-Multiplexer kann zweistufig oder kaskadiert aufgebaut werden (Angaben aus dem Skript).\n- a) Wie viele Gattereingänge werden bei der zweistufigen Realisierung benötigt?\n- b) Wie viele Gattereingänge werden bei der kaskadierten Realisierung benötigt?\n- c) Welche Variante ist flächensparender und warum?",
+    "solution": "a) Zweistufig: 8 UND-Gatter mit je 4 Eingängen ⇒ 8·4 = 32 Eingänge.\nb) Kaskadiert: 2·4 UND-Gatter mit je 3 Eingängen + 2 UND-Gatter mit 2 Eingängen ⇒ 8·3 + 2·2 = 24 + 4 = 28 Eingänge.\nc) Die kaskadierte Lösung ist flächensparender, weil der Flächenaufwand proportional zur Anzahl der Gattereingänge ist und 28 < 32.",
+    "difficulty": "hard",
+    "topic": "Multiplexer, Flächenaufwand, Implementierungsvarianten",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "multiplexer",
+      "kaskadierung",
+      "zweistufige-logik",
+      "hardwareaufwand"
+    ],
+    "createdAt": "2025-12-05T17:03:46.022Z",
+    "completed": false
+  },
+  {
+    "id": "1764954226022-q09uyw4j0",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951112861-j56fii26f",
+    "title": "### 3",
+    "question": "### 3. 4:1-Multiplexer – Anzahl Steuersignale\n\nEin 4:1-Multiplexer hat 4 Dateneingänge.\n- a) Wie viele Steuersignale werden mindestens benötigt?\n- b) Begründe kurz mit einem Satz, warum genau so viele Steuersignale nötig sind.",
+    "solution": "a) Es werden 2 Steuersignale benötigt.\nb) Mit 2 Bits (s1, s0) kann man genau 4 Zustände (00, 01, 10, 11) adressieren und damit 4 Eingänge eindeutig auswählen.",
+    "difficulty": "easy",
+    "topic": "Multiplexer, Adressierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "multiplexer",
+      "steuerleitungen",
+      "binärcodierung"
+    ],
+    "createdAt": "2025-12-05T17:03:46.022Z",
+    "completed": false
+  },
+  {
+    "id": "1764954246635-tb1ejxlhk",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951110310-ivro48b6m",
+    "title": "### Signalzeiten bestimmen",
+    "question": "### Signalzeiten bestimmen\n\nGegeben ist ein Logiksignal, das von LOW nach HIGH in 3 ns ansteigt und von HIGH nach LOW in 5 ns abfällt.\n\na) Benenne die Zeiten mit den korrekten Fachbegriffen (t_R, t_F).\n\nb) Das Signal bleibt 20 ns auf HIGH. Wie heißt diese Zeitspanne?",
+    "solution": "a) 3 ns = Anstiegszeit t_R, 5 ns = Abfallzeit t_F.\n\nb) 20 ns = Pulsbreite t_PULS (HIGH-Dauer).",
+    "difficulty": "easy",
+    "topic": "Logiksignale und Zeitparameter",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Logiksignale",
+      "rise_time",
+      "fall_time",
+      "pulsbreite",
+      "Begriffe"
+    ],
+    "createdAt": "2025-12-05T17:04:06.635Z",
+    "completed": false
+  },
+  {
+    "id": "1764954246635-0ajcrz680",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951110310-ivro48b6m",
+    "title": "### Einfache Gatterverzögerung berechnen",
+    "question": "### Einfache Gatterverzögerung berechnen\n\nEin Eingangssignal wechselt von LOW nach HIGH und durchläuft nacheinander zwei Gatter.\n\n- Gatter 1: t_PLH = 4 ns\n- Gatter 2: t_PLH = 6 ns\n\na) Nach wie vielen ns ändert sich der Ausgang von Gatter 1?\n\nb) Nach wie vielen ns (ab Eingangswechsel) liegt das neue HIGH-Signal am Ausgang von Gatter 2 an (vereinfachend: nur steigende Flanke betrachten)?",
+    "solution": "a) Ausgang von Gatter 1: nach 4 ns HIGH.\n\nb) Gatter 2 folgt 6 ns später → insgesamt 4 ns + 6 ns = 10 ns bis HIGH am Ausgang von Gatter 2.",
+    "difficulty": "easy",
+    "topic": "Gatterverzögerung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Gatterverzögerung",
+      "propagation_delay",
+      "Berechnung"
+    ],
+    "createdAt": "2025-12-05T17:04:06.635Z",
+    "completed": false
+  },
+  {
+    "id": "1764954246635-zal1oiyu2",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951110310-ivro48b6m",
+    "title": "### Begriffsklärung Hazard vs",
+    "question": "### Begriffsklärung Hazard vs. Glitch\n\na) Erkläre kurz den Unterschied zwischen *Hazard* und *Glitch* (max. 2 Sätze).\n\nb) Nenne ein konkretes technisches Problem, das durch einen Glitch in einer Folgeschaltung entstehen kann (1 Satz).",
+    "solution": "a) Ein Hazard ist eine Schaltungskonfiguration, bei der aufgrund unterschiedlicher Laufzeiten ein Glitch auftreten kann. Ein Glitch ist die tatsächlich auftretende, kurzzeitige ungewollte Signaländerung am Ausgang.\n\nb) Ein Glitch kann z.B. dazu führen, dass ein nachfolgendes Flipflop einen falschen Wert übernimmt oder ein Zähler ungewollt weiterzählt.",
+    "difficulty": "medium",
+    "topic": "Hazards und Glitches",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Hazard",
+      "Glitch",
+      "Begriffe",
+      "Verständnis"
+    ],
+    "createdAt": "2025-12-05T17:04:06.635Z",
+    "completed": false
+  },
+  {
+    "id": "1764954246635-9dya51ai3",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951110310-ivro48b6m",
+    "title": "### Statischer 0- und 1-Hazard unterscheiden",
+    "question": "### Statischer 0- und 1-Hazard unterscheiden\n\nBetrachte eine Schaltung mit Ausgang y, der ideal (ohne Verzögerungen) beim Eingangssignalwechsel konstant bleiben sollte.\n\na) Was ist ein *statischer 1-Hazard*? Formuliere die Definition in 1–2 Sätzen.\n\nb) Was ist ein *statischer 0-Hazard*? Formuliere die Definition in 1–2 Sätzen.\n\nc) Gib je ein Beispiel, wann ein solcher Hazard kritisch wäre (z.B. in welcher Art von Folgeschaltung).",
+    "solution": "a) Ein statischer 1-Hazard liegt vor, wenn der Ausgang ideal konstant 1 bleiben sollte, aber durch unterschiedliche Laufzeiten kurzzeitig auf 0 wechselt. \n\nb) Ein statischer 0-Hazard liegt vor, wenn der Ausgang ideal konstant 0 bleiben sollte, aber kurzzeitig auf 1 wechselt.\n\nc) Kritisch sind beide z.B. bei Takt- oder Enable-Signalen von Flipflops, bei asynchronen Reset-/Set-Leitungen oder bei Steuersignalen von Multiplexern.",
+    "difficulty": "medium",
+    "topic": "statische Hazards",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "statischer_Hazard",
+      "0-Hazard",
+      "1-Hazard",
+      "Verständnis"
+    ],
+    "createdAt": "2025-12-05T17:04:06.635Z",
+    "completed": false
+  },
+  {
+    "id": "1764954246635-ez6mazasi",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951110310-ivro48b6m",
+    "title": "### Analyse eines statischen Hazards (mit boolescher Vere...",
+    "question": "### Analyse eines statischen Hazards (mit boolescher Vereinfachung)\n\nGegeben ist die Funktion:  \n\\( y = (a \\lor b) \\land (\\lnot b \\lor c) \\)\n\na) Vereinfache y mit boolescher Algebra (max. bis zur in der Vorlesung gezeigten Form).\n\nb) Setze a = 0 und c = 0 ein und bestimme den idealen (statischen) Wert von y.\n\nc) Erläutere in 2–3 Sätzen, warum trotz des idealen konstanten Ausgangswerts bei einer Änderung von b ein statischer Hazard auftreten kann (Hinweis: unterschiedliche Pfade und Gatterverzögerungen).",
+    "solution": "a) \\( y = (a \\lor b) \\land (\\lnot b \\lor c) = a\\lnot b \\lor ac \\lor b\\lnot b \\lor bc = a\\lnot b \\lor ac \\lor bc \\) (da \\(b\\lnot b = 0\\)).\n\nb) Für a = 0, c = 0: \\( y = (0 \\land \\lnot b) \\lor (0 \\land 0) \\lor (b \\land 0) = 0 \\lor 0 \\lor 0 = 0 \\). Der ideale Ausgang ist also immer 0.\n\nc) In der realen Schaltung existieren mehrere Pfade von b zum Ausgang mit unterschiedlichen Gatterverzögerungen; beim Umschalten von b können die Signale auf diesen Pfaden kurzzeitig widersprüchliche Werte annehmen, sodass y für einen Moment ungewollt 1 wird – dies ist ein statischer 0-Hazard.",
+    "difficulty": "hard",
+    "topic": "statischer Hazard – Analyse",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "statischer_Hazard",
+      "boolesche_Algebra",
+      "Zeitverhalten",
+      "Analyse"
+    ],
+    "createdAt": "2025-12-05T17:04:06.635Z",
+    "completed": false
+  },
+  {
+    "id": "1764954263653-v9wsycf2w",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951108709-rm5qa958c",
+    "title": "### Minterm aus Belegung bestimmen",
+    "question": "### Minterm aus Belegung bestimmen\n\nGegeben sind die Variablen x, y, z und die Belegung x=1, y=0, z=1.\n- a) Gib den zu dieser Belegung gehörenden Minterm als Monom an.\n- b) Prüfe knapp: Für welcher anderen Belegung wird dieser Minterm noch 1?",
+    "solution": "a) Minterm: x · ¬y · z.\n\nb) Für alle Minterme gilt: Sie werden genau für eine einzige Belegung 1. Also nur für x=1, y=0, z=1, sonst immer 0.",
+    "difficulty": "easy",
+    "topic": "Minterme",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Minterm",
+      "Monom",
+      "Boolesche_Funktion"
+    ],
+    "createdAt": "2025-12-05T17:04:23.653Z",
+    "completed": false
+  },
+  {
+    "id": "1764954263653-gu6n5uhsz",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951108709-rm5qa958c",
+    "title": "### Maxterm zu gegebener Belegung",
+    "question": "### Maxterm zu gegebener Belegung\n\nGegeben sind die Variablen a, b, c und die Belegung a=0, b=1, c=0.\n- a) Bestimme den Maxterm, der genau für diese Belegung den Wert 0 annimmt.\n- b) Schreibe ihn in Form einer ODER-Verknüpfung von Literalen.",
+    "solution": "a) Regel: Maxterm ist 0, wenn nicht negierte Variable 0 und negierte Variable 1 ist. Also: a=0 → Literal a, b=1 → Literal ¬b, c=0 → Literal c.\n\nb) Maxterm: (a ∨ ¬b ∨ c).",
+    "difficulty": "medium",
+    "topic": "Maxterme",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Maxterm",
+      "Normalformen",
+      "Boolesche_Algebra"
+    ],
+    "createdAt": "2025-12-05T17:04:23.653Z",
+    "completed": false
+  },
+  {
+    "id": "1764954263653-6lu8yol3f",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951108709-rm5qa958c",
+    "title": "### DNF aus Wahrheitstabelle ableiten",
+    "question": "### DNF aus Wahrheitstabelle ableiten\n\nGegeben sei die Funktion y(x₁,x₀) mit folgender Wahrheitstabelle:\n- x₁x₀: 00→0, 01→1, 10→1, 11→0\n- a) Bestimme alle Belegungen, für die y=1 gilt.\n- b) Gib die disjunktive Normalform (DNF) von y an.",
+    "solution": "a) y=1 für x₁x₀ = 01 und 10.\n\nb) Minterme:\n- Für 01: ¬x₁ · x₀\n- Für 10: x₁ · ¬x₀\nDNF: y = (¬x₁ · x₀) ∨ (x₁ · ¬x₀).",
+    "difficulty": "medium",
+    "topic": "Disjunktive_Normalform",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "DNF",
+      "Minterm",
       "Wahrheitstabelle"
     ],
-    "createdAt": "2025-12-05T09:49:04.804Z",
+    "createdAt": "2025-12-05T17:04:23.653Z",
     "completed": false
   },
   {
-    "id": "1764928144804-kv1czjfad",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927738100-32m5iy1i1",
-    "title": "### Logische Äquivalenz prüfen",
-    "question": "### Logische Äquivalenz prüfen\n\nGegeben seien Aussagen A, B, C.\n\na) Erstellen Sie die Wahrheitstabelle für \\((A \\lor B) \\land C\\).\n\nb) Erstellen Sie die Wahrheitstabelle für \\((A \\land C) \\lor (B \\land C)\\).\n\nc) Entscheiden Sie, ob beide Ausdrücke logisch äquivalent sind.",
-    "solution": "- a) und b) liefern für alle 8 Kombinationen von A,B,C dieselben Wahrheitswerte in der letzten Spalte.\n- Beispiel: A=1,B=0,C=1 → (A∨B)∧C = (1∨0)∧1 = 1; (A∧C)∨(B∧C) = (1∧1)∨(0∧1) = 1.\n- c) Da alle Ergebnis-Spalten übereinstimmen, sind die beiden Ausdrücke logisch äquivalent (Distributivgesetz).",
+    "id": "1764954263653-1yjxe9k6t",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951108709-rm5qa958c",
+    "title": "### Zusammenhang Minterm / Maxterm verstehen",
+    "question": "### Zusammenhang Minterm / Maxterm verstehen\n\nBetrachte eine Boolesche Funktion f(x,y) mit der Wahrheitstafel: 00→0, 01→1, 10→1, 11→0.\n- a) Nenne einen Minterm dieser Funktion.\n- b) Nenne einen Maxterm dieser Funktion.\n- c) Erkläre in 1–2 Sätzen den Unterschied zwischen Minterm und Maxterm.",
+    "solution": "a) z.B. für Belegung 01 (f=1): Minterm ¬x · y.\n\nb) z.B. für Belegung 00 (f=0): Maxterm (x ∨ y).\n\nc) Ein Minterm wird genau für eine Belegung 1 (sonst 0). Ein Maxterm wird genau für eine Belegung 0 (sonst 1).",
     "difficulty": "medium",
-    "topic": "Aussagenlogik – Äquivalenz & Distributivgesetz",
-    "module": "Mathematik",
+    "topic": "Minterme_und_Maxterme",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Aussagenlogik",
-      "Äquivalenz",
-      "Wahrheitstabelle",
-      "Distributivgesetz"
+      "Minterm",
+      "Maxterm",
+      "Normalformen"
     ],
-    "createdAt": "2025-12-05T09:49:04.804Z",
+    "createdAt": "2025-12-05T17:04:23.653Z",
     "completed": false
   },
   {
-    "id": "1764928144804-6lnowhsml",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927738100-32m5iy1i1",
-    "title": "### Natürliche Zahlen und logische Verknüpfungen",
-    "question": "### Natürliche Zahlen und logische Verknüpfungen\n\nSei \\( n \\in \\mathbb{N} = \\{1,2,3,\\dots\\} \\) und\n\n- \\( A(n): n^2 < 40 \\)\n- \\( B(n): n^2 - 3n + 2 > 0 \\)\n\na) Bestimmen Sie alle \\( n \\) mit \\( A(n) \\land B(n) \\).\n\nb) Geben Sie in Intervallschreibweise alle \\( n \\) an, für die \\( B(n) \\) gilt.",
-    "solution": "- A(n): n²<40 → n∈{1,2,3,4,5,6}\n- B(n): n²−3n+2>0 → (n−1)(n−2)>0 → n<1 oder n>2 → in ℕ: n∈{3,4,5,6,7,...}\n- a) Schnitt: {1,…,6} ∩ {3,4,5,6,7,…} = {3,4,5,6}\n- b) In ℕ: B(n) gilt für n ∈ {3,4,5,6,…} = {3,4,5,…} = {n∈ℕ | n≥3}.",
-    "difficulty": "medium",
-    "topic": "Aussagenlogik mit Zahlen",
-    "module": "Mathematik",
-    "tags": [
-      "Aussagenlogik",
-      "Ungleichungen",
-      "NatürlicheZahlen"
-    ],
-    "createdAt": "2025-12-05T09:49:04.804Z",
-    "completed": false
-  },
-  {
-    "id": "1764928144804-pgos5tm7l",
-    "moduleId": "1764927666650-krns65t1k",
-    "scriptId": "1764927738100-32m5iy1i1",
-    "title": "### Komplexe Aussage mit Quantoren und De Morgan",
-    "question": "### Komplexe Aussage mit Quantoren und De Morgan\n\nBetrachten Sie Studierende einer Vorlesung. Sei\n\n- A(x): \"x ist in der Mathematik-Vorlesung eingeschrieben\"\n- W(x): \"x ist weiblich\"\n\na) Formulieren Sie in Symbolschreibweise: \"Nicht alle Studierenden in der Mathematik-Vorlesung sind weiblich.\" \n\nb) Bilden Sie die Negation dieser Aussage und vereinfachen Sie sie (De Morgan für Quantoren). \n\nc) Deuten Sie das Ergebnis aus b) in einem klaren deutschen Satz.",
-    "solution": "- a) ¬(∀x (A(x) → W(x))) oder äquivalent: ¬∀x (A(x) → W(x))\n- b) Negation: ∀x (A(x) → W(x)); mit Quantoren-De-Morgan: ¬∀x P(x) ≡ ∃x ¬P(x) → ∃x (A(x) ∧ ¬W(x))\n- c) \"Es gibt mindestens eine Person in der Mathematik-Vorlesung, die nicht weiblich ist.\"",
+    "id": "1764954263653-iiufgzypp",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951108709-rm5qa958c",
+    "title": "### Von Wahrheitstabelle zur DNF und Gatter-Realisierung",
+    "question": "### Von Wahrheitstabelle zur DNF und Gatter-Realisierung\n\nGegeben sei die Funktion y(a,b,c) mit\n- y=1 für a b c = 001, 011, 100, 111; sonst 0.\n- a) Bestimme die vollständige disjunktive Normalform von y.\n- b) Skizziere verbal eine mögliche Realisierung mit UND- und ODER-Gattern (welche Monome an welchen Gattern?).",
+    "solution": "a) Minterme:\n- 001 → ¬a · ¬b · c\n- 011 → ¬a · b · c\n- 100 → a · ¬b · ¬c\n- 111 → a · b · c\nDNF: y = (¬a·¬b·c) ∨ (¬a·b·c) ∨ (a·¬b·¬c) ∨ (a·b·c).\n\nb) Vier 3-Eingangs-UND-Gatter für die vier Minterme, deren Ausgänge auf ein 4-Eingangs-ODER-Gatter führen, dessen Ausgang ist y.",
     "difficulty": "hard",
-    "topic": "Aussagenlogik – Quantoren & De Morgan",
-    "module": "Mathematik",
+    "topic": "Normalformen_und_Gatter",
+    "module": "Technische Grundlagen Informatik",
     "tags": [
-      "Aussagenlogik",
-      "Quantoren",
-      "DeMorgan",
-      "Negation"
+      "DNF",
+      "Minterm",
+      "Logikgatter",
+      "Realisierung"
     ],
-    "createdAt": "2025-12-05T09:49:04.804Z",
+    "createdAt": "2025-12-05T17:04:23.653Z",
+    "completed": false
+  },
+  {
+    "id": "1764954288348-tbh76j8lt",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951106552-vqgbxcvya",
+    "title": "### Arten von Minimierungsverfahren",
+    "question": "### Arten von Minimierungsverfahren\n\n- a) Nenne die drei im Skript genannten Arten von Minimierungsverfahren.\n- b) Ordne jeweils ein typisches Beispielverfahren zu (z.B. KV-Diagramm, Quine-McCluskey, …).\n- c) Für welche Variablenanzahl sind graphische Verfahren typischerweise noch gut geeignet?",
+    "solution": "- a) Algebraische, graphische, tabellarische Verfahren.\n- b) Algebraisch: Vereinfachung mit Booleschen Gesetzen; graphisch: KV-Diagramm; tabellarisch: Quine-McCluskey.\n- c) Für Funktionen mit bis zu 5 oder 6 Variablen.",
+    "difficulty": "easy",
+    "topic": "Minimierungsverfahren Überblick",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Verständnis",
+      "Klassifikation",
+      "Minimierung"
+    ],
+    "createdAt": "2025-12-05T17:04:48.348Z",
+    "completed": false
+  },
+  {
+    "id": "1764954288348-fshrp0h1j",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951106552-vqgbxcvya",
+    "title": "### Minterme und Disjunktive Normalform (DNF)",
+    "question": "### Minterme und Disjunktive Normalform (DNF)\n\nGegeben sei die Boolesche Funktion mit den Mintermen: 𝑓(𝑎,𝑏,𝑐) = Σm(1,3,5).\n- a) Schreibe 𝑓 in disjunktiver Normalform (Summe von Produkten).\n- b) Wie viele Variablen hat die Funktion und wie viele mögliche Minterme gäbe es insgesamt?",
+    "solution": "- a) Minterme (in Binärdarstellung mit a=MSB):\n  - m1 = 001 → ¬a ∧ ¬b ∧ c\n  - m3 = 011 → ¬a ∧ b ∧ c\n  - m5 = 101 → a ∧ ¬b ∧ c\n  ⇒ f = (¬a ∧ ¬b ∧ c) ∨ (¬a ∧ b ∧ c) ∨ (a ∧ ¬b ∧ c)\n- b) 3 Variablen → insgesamt 2³ = 8 mögliche Minterme.",
+    "difficulty": "easy",
+    "topic": "Minterme und DNF",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Minterme",
+      "DNF",
+      "Grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:04:48.348Z",
+    "completed": false
+  },
+  {
+    "id": "1764954288348-t5en8gcsg",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951106552-vqgbxcvya",
+    "title": "### Primimplikanten – Verständnis",
+    "question": "### Primimplikanten – Verständnis\n\nBetrachte das Quine-McCluskey-Verfahren.\n- a) Was ist ein Primimplikant (kurze Definition)?\n- b) Erkläre in 1–2 Sätzen, wie man in Phase 1 des Verfahrens Primimplikanten findet.\n- c) Warum werden die Minterme in der 1. Quineschen Tabelle nach der Anzahl der 1en sortiert?",
+    "solution": "- a) Ein Primimplikant ist ein Implikant, der nicht weiter mit einem anderen Implikanten zu einem größeren (allgemeineren) Implikanten zusammengefasst werden kann.\n- b) Man fasst in aufeinanderfolgenden Tabellen jeweils diejenigen Terme zusammen, die sich genau in einer Variablen unterscheiden; Terme, die nicht mehr zusammengefasst werden können, sind Primimplikanten.\n- c) Die Sortierung nach der Anzahl der 1en erleichtert das systematische Finden von Paaren, die sich nur in genau einer Variable unterscheiden (nur benachbarte Gruppen müssen verglichen werden).",
+    "difficulty": "medium",
+    "topic": "Quine-McCluskey Phase 1",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Primimplikanten",
+      "Quine-McCluskey",
+      "Verständnis"
+    ],
+    "createdAt": "2025-12-05T17:04:48.348Z",
+    "completed": false
+  },
+  {
+    "id": "1764954288348-d7trdqhtb",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951106552-vqgbxcvya",
+    "title": "### Kleine Quine-McCluskey-Tabelle (Phase 1)",
+    "question": "### Kleine Quine-McCluskey-Tabelle (Phase 1)\n\nGegeben sei 𝑓(𝑎,𝑏,𝑐) = Σm(1,3,5,7) mit a=MSB.\n- a) Schreibe die Minterme in Binärform und bilde die 1. Quinesche Tabelle (Ordnung 0), gruppiert nach Anzahl der 1en.\n- b) Fasse in einer 2. Tabelle alle Paare zusammen, die sich in genau einer Variable unterscheiden, und markiere die Primimplikanten.\n- c) Gib die gefundenen Primimplikanten als Produktterme an.",
+    "solution": "- a) Binär (abc): m1=001 (1×1), m3=011 (2×1), m5=101 (2×1), m7=111 (3×1).\n  Gruppen: 1 Eins: {001}; 2 Einsen: {011,101}; 3 Einsen: {111}.\n- b) Paare mit Δ=1 Bit:\n  - 001 & 011 → 0-1 (¬a ∧ c)\n  - 001 & 101 → -01 (¬b ∧ c)\n  - 011 & 111 → 1-1 (b ∧ c mit a=0/1) → -11 (b ∧ c)\n  - 101 & 111 → 10- vs 11- → 1-1 (a ∧ c) → -11 (b ∧ c) (identisch)\n  Nicht weiter kombinierbare Ergebnisse: 0-1, -01, -11 sind Primimplikanten.\n- c) Primimplikanten: 0-1 → ¬a ∧ c; -01 → ¬b ∧ c; -11 → b ∧ c.",
+    "difficulty": "hard",
+    "topic": "Quine-McCluskey Anwendung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Quine-McCluskey",
+      "Primimplikanten",
+      "Tabellenverfahren"
+    ],
+    "createdAt": "2025-12-05T17:04:48.348Z",
+    "completed": false
+  },
+  {
+    "id": "1764954288348-0lzl24itl",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951106552-vqgbxcvya",
+    "title": "### Vergleich KV-Diagramm vs",
+    "question": "### Vergleich KV-Diagramm vs. Quine-McCluskey\n\nAngenommen, eine Funktion hat 7 Variablen.\n- a) Begründe in 1–2 Sätzen, warum ein KV-Diagramm hier unpraktisch ist.\n- b) Nenne zwei Vorteile des Quine-McCluskey-Verfahrens in diesem Fall.\n- c) Welches gemeinsame Grundprinzip teilen KV-Diagramm und Quine-McCluskey bei der Minimierung?",
+    "solution": "- a) Ein KV-Diagramm mit 7 Variablen wäre extrem groß und unübersichtlich, sodass eine manuelle Gruppierung der Minterme praktisch nicht mehr durchführbar ist.\n- b) Quine-McCluskey ist tabellarisch, systematisch und gut für große Variablenzahlen sowie für eine Computerimplementierung geeignet.\n- c) Beide fassen Terme zusammen, die sich nur in genau einer Variablen unterscheiden (Anwendung des Vereinigungstheorems), um größere Implikanten zu bilden.",
+    "difficulty": "medium",
+    "topic": "Vergleich Minimierungsverfahren",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "KV-Diagramm",
+      "Quine-McCluskey",
+      "Konzeptvergleich"
+    ],
+    "createdAt": "2025-12-05T17:04:48.348Z",
+    "completed": false
+  },
+  {
+    "id": "1764954312197-8yvcgh82r",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951104590-7uug6rajw",
+    "title": "### Nutzung des Konsens-Theorems",
+    "question": "### Nutzung des Konsens-Theorems\n\nGegeben ist der Ausdruck:\n- \\( (a \\lor b) \\land (b \\lor c) \\land (\\lnot a \\lor c) \\)\n\na) Erkläre in 1–2 Sätzen, welches Theorem hier direkt angewendet werden kann.\n\nb) Vereinfache den Ausdruck mit diesem Theorem.",
+    "solution": "a) Es kann direkt das Konsens-Theorem verwendet werden:\n\\((a \\lor b) \\land (b \\lor c) \\land (\\lnot a \\lor c) = (a \\lor b) \\land (\\lnot a \\lor c)\\).\n\nb) Vereinfachter Ausdruck: \\((a \\lor b) \\land (\\lnot a \\lor c)\\).",
+    "difficulty": "medium",
+    "topic": "Konsens-Theorem",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Konsens",
+      "Theoreme",
+      "Vereinfachung"
+    ],
+    "createdAt": "2025-12-05T17:05:12.197Z",
+    "completed": false
+  },
+  {
+    "id": "1764954312197-x4lgdnwok",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951104590-7uug6rajw",
+    "title": "### Anwendung von Distributivität und Absorption",
+    "question": "### Anwendung von Distributivität und Absorption\n\nVereinfache den Ausdruck möglichst weit:\n- \\( a \\land (b \\lor c) \\lor (a \\land b) \\)\n\na) Wende zuerst ein Distributivgesetz an.\n\nb) Nutze anschließend ein Absorptionsgesetz zur Vereinfachung.",
+    "solution": "a) Distributivität: \\( a \\land (b \\lor c) = (a \\land b) \\lor (a \\land c) \\).\nDann: \\((a \\land b) \\lor (a \\land c) \\lor (a \\land b)\\).\n\nb) Idempotenz: doppelte Terme entfernen → \\((a \\land b) \\lor (a \\land c)\\).\nAbsorption: \\(a \\land (b \\lor c)\\) ist schon die kompakte Form; Endergebnis: \\(a \\land (b \\lor c)\\).",
+    "difficulty": "medium",
+    "topic": "Distributivität und Absorption",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Distributivität",
+      "Absorption",
+      "Vereinfachung"
+    ],
+    "createdAt": "2025-12-05T17:05:12.197Z",
+    "completed": false
+  },
+  {
+    "id": "1764954312197-db18fh19o",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951104590-7uug6rajw",
+    "title": "### De-Morgan-Umformung",
+    "question": "### De-Morgan-Umformung\n\nForme den Ausdruck mit einem De-Morgan-Theorem um:\n- \\( \\lnot(a \\lor b \\lor c) \\)\n\na) Schreibe einen äquivalenten Ausdruck nur mit \\(\\land\\) und Negationen der Variablen.\n\nb) Nenne das verwendete Theorem mit Namen.",
+    "solution": "a) Nach De Morgan: \\( \\lnot(a \\lor b \\lor c) = \\lnot a \\land \\lnot b \\land \\lnot c \\).\n\nb) Verwendet wird das De-Morgan-Theorem: \\( \\lnot(a \\lor b \\lor ...) = \\lnot a \\land \\lnot b \\land ... \\).",
+    "difficulty": "easy",
+    "topic": "De-Morgan-Regeln",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "De Morgan",
+      "Negation",
+      "Theoreme"
+    ],
+    "createdAt": "2025-12-05T17:05:12.197Z",
+    "completed": false
+  },
+  {
+    "id": "1764954312196-2e2pt343c",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951104590-7uug6rajw",
+    "title": "### Einfache Vereinfachung",
+    "question": "### Einfache Vereinfachung\n\nVereinfache den folgenden Ausdruck Schritt für Schritt:\n- \\( a \\land 1 \\land (a \\lor 0) \\)\n\nNutze dabei passende Axiome aus der Tabelle (z. B. Identität, Elimination, Idempotenz).",
+    "solution": "Lösungsschritte:\n1. Identität: \\(a \\land 1 = a\\) → Ausdruck wird zu \\(a \\land (a \\lor 0)\\)\n2. Elimination: \\(a \\lor 0 = a\\) → Ausdruck wird zu \\(a \\land a\\)\n3. Idempotenz: \\(a \\land a = a\\)\nEndergebnis: \\(a\\).",
+    "difficulty": "easy",
+    "topic": "Vereinfachung mit Axiomen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Identität",
+      "Elimination",
+      "Idempotenz",
+      "Grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:05:12.196Z",
+    "completed": false
+  },
+  {
+    "id": "1764954312197-ee48opv5y",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951104590-7uug6rajw",
+    "title": "### Komplexere Umformung mit mehreren Theoremen",
+    "question": "### Komplexere Umformung mit mehreren Theoremen\n\nVereinfache den Ausdruck so weit wie möglich:\n- \\( (a \\land b) \\lor (\\lnot a \\land c) \\lor (a \\land b \\land c) \\)\n\na) Nutze ein geeignetes Absorptions- oder Faktorisierungsgesetz, um einen Term zu entfernen.\n\nb) Überführe den vereinfachten Ausdruck in eine Form mit möglichst wenigen Operatoren.",
+    "solution": "a) Zuerst Absorption: \\((a \\land b)\\) absorbiert \\((a \\land b \\land c)\\), da \\(a \\land b \\lor a \\land b \\land c = a \\land b\\).\nDamit wird der Ausdruck zu: \\((a \\land b) \\lor (\\lnot a \\land c)\\).\n\nb) Diese Form entspricht bereits der in der Tabelle angegebenen Faktorisierungsstruktur und lässt sich nicht weiter mit Standardaxiomen vereinfachen.\nEndergebnis: \\((a \\land b) \\lor (\\lnot a \\land c)\\).",
+    "difficulty": "hard",
+    "topic": "Absorption und Faktorisierung",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Absorption",
+      "Faktorisierung",
+      "Vereinfachung",
+      "Theoreme"
+    ],
+    "createdAt": "2025-12-05T17:05:12.197Z",
+    "completed": false
+  },
+  {
+    "id": "1764954327021-fx61l0ezu",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951102727-lcmjkix0u",
+    "title": "### Anzahl möglicher Boolescher Funktionen",
+    "question": "### Anzahl möglicher Boolescher Funktionen\n\n- Eine Boole’sche Funktion mit n Eingangsvariablen ordnet jeder möglichen Belegung einen Ausgangswert 0 oder 1 zu.\n\na) Wie viele verschiedene Belegungen gibt es bei n Eingangsvariablen? (Formel angeben)\nb) Wie viele verschiedene Boolesche Funktionen gibt es damit insgesamt? (Formel angeben)\nc) Berechne das Ergebnis von b) konkret für n = 2.",
+    "solution": "a) Anzahl Belegungen: 2^n\nb) Anzahl Funktionen: 2^(2^n)\nc) Für n = 2: 2^(2^2) = 2^4 = 16 Funktionen",
+    "difficulty": "hard",
+    "topic": "Boole’sche Funktionen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Kombinatorik",
+      "Funktionenanzahl",
+      "Grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:05:27.021Z",
+    "completed": false
+  },
+  {
+    "id": "1764954327021-t06uxtx8c",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951102727-lcmjkix0u",
+    "title": "### Boole’sche Funktion aus Wahrheitstafel ablesen",
+    "question": "### Boole’sche Funktion aus Wahrheitstafel ablesen\n\n- Gegeben ist die Wahrheitstafel:\n- s1 s2 | l\n- 0  0  | 0\n- 0  1  | 1\n- 1  0  | 1\n- 1  1  | 0\n\na) Gib eine Boole’sche Funktion l(s1,s2) in AND/OR/NOT-Form an, die diese Tabelle beschreibt.\nb) Benenne den bekannten logischen Operator, der so definiert ist.",
+    "solution": "a) l = (¬s1 ∧ s2) ∨ (s1 ∧ ¬s2)\nb) Das ist die XOR-Funktion (exklusives ODER).",
+    "difficulty": "medium",
+    "topic": "Boole’sche Funktionen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "XOR",
+      "Boole-Funktion",
+      "Wahrheitstafel",
+      "AND",
+      "OR",
+      "NOT"
+    ],
+    "createdAt": "2025-12-05T17:05:27.021Z",
+    "completed": false
+  },
+  {
+    "id": "1764954327021-eui9zu6o1",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951102727-lcmjkix0u",
+    "title": "### UND- und ODER-Schaltung interpretieren",
+    "question": "### UND- und ODER-Schaltung interpretieren\n\na) Ergänze die Wahrheitstafel für zwei Schalter in Reihe (UND):\n- s1, s2 ∈ {0,1}, Lampe l leuchtet nur, wenn beide Schalter geschlossen sind.\n\nb) Ergänze die Wahrheitstafel für zwei Schalter parallel (ODER):\n- Lampe l leuchtet, wenn mindestens einer der beiden Schalter geschlossen ist.",
+    "solution": "a) UND-Schaltung:\ns1 s2 | l\n0  0  | 0\n0  1  | 0\n1  0  | 0\n1  1  | 1\n\nb) ODER-Schaltung:\ns1 s2 | l\n0  0  | 0\n0  1  | 1\n1  0  | 1\n1  1  | 1",
+    "difficulty": "medium",
+    "topic": "Schaltkreise und Wahrheitstafeln",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "UND",
+      "ODER",
+      "Interpretation",
+      "Wahrheitstafel"
+    ],
+    "createdAt": "2025-12-05T17:05:27.021Z",
+    "completed": false
+  },
+  {
+    "id": "1764954327021-p4gpczeiv",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951102727-lcmjkix0u",
+    "title": "### Wahrheitstafel für einfachen Schalter",
+    "question": "### Wahrheitstafel für einfachen Schalter\n\n- Gegeben ist ein Stromkreis mit einem Schalter s und einer Lampe l.\n- Erstelle die Wahrheitstafel mit allen möglichen Belegungen von s und den zugehörigen Werten von l, wenn die Lampe genau dann leuchtet, wenn der Schalter geschlossen ist.",
+    "solution": "s | l\n0 | 0\n1 | 1",
+    "difficulty": "easy",
+    "topic": "Schaltkreise und Wahrheitstafeln",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Wahrheitstafel",
+      "Grundlagen",
+      "Schalter"
+    ],
+    "createdAt": "2025-12-05T17:05:27.021Z",
+    "completed": false
+  },
+  {
+    "id": "1764954327021-c49qw3kjl",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951102727-lcmjkix0u",
+    "title": "### Interpretation der Abstraktionsebenen",
+    "question": "### Interpretation der Abstraktionsebenen\n\n- Betrachte die genannten Abstraktionsebenen: Logikebene, Register-Transfer-Ebene, Systemebene.\n\na) Ordne jeder dieser Ebenen ein typisches Objekt zu (z.B. Logikgatter, Register, CPU).\n\nb) Begründe in 1–2 Sätzen, warum die Boolesche Algebra speziell der Logikebene zugeordnet wird.",
+    "solution": "a) Logikebene → Logikgatter/Flip-Flops; Register-Transfer-Ebene → Register, ALUs; Systemebene → CPU, Speicher.\nb) Auf der Logikebene werden Schaltungen durch Boolesche Gleichungen mit nur zwei Wahrheitswerten (0/1) beschrieben; genau dafür liefert die Boolesche Algebra die formalen Regeln und Operationen.",
+    "difficulty": "medium",
+    "topic": "Abstraktionsebenen",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "Abstraktion",
+      "Architektur",
+      "Verständnisfrage"
+    ],
+    "createdAt": "2025-12-05T17:05:27.021Z",
+    "completed": false
+  },
+  {
+    "id": "1764954341757-wj15bdcwk",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951100473-0ckey5ykb",
+    "title": "### Römische Zahl bilden",
+    "question": "### Römische Zahl bilden\n\nWandeln Sie die Dezimalzahl **47** in die römische Darstellung um.",
+    "solution": "47 = 40 + 7 → 40 = XL, 7 = VII → Ergebnis: XLVII",
+    "difficulty": "easy",
+    "topic": "Römisches Zahlensystem",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "römische_zahlen",
+      "darstellung",
+      "übung"
+    ],
+    "createdAt": "2025-12-05T17:05:41.757Z",
+    "completed": false
+  },
+  {
+    "id": "1764954341757-3uhj72o1z",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951100473-0ckey5ykb",
+    "title": "### Römische Zahl schnell berechnen",
+    "question": "### Römische Zahl schnell berechnen\n\nWandeln Sie die römische Zahl **LXVIII** in das Dezimalsystem um.",
+    "solution": "L = 50, X = 10, V = 5, III = 3 → 50 + 10 + 5 + 3 = 68",
+    "difficulty": "easy",
+    "topic": "Römisches Zahlensystem",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "römische_zahlen",
+      "umwandlung",
+      "grundlagen"
+    ],
+    "createdAt": "2025-12-05T17:05:41.757Z",
+    "completed": false
+  },
+  {
+    "id": "1764954341757-w16ya2sgc",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951100473-0ckey5ykb",
+    "title": "### Dezimalzahl als Stellenwertsumme",
+    "question": "### Dezimalzahl als Stellenwertsumme\n\na) Schreiben Sie die Zahl **4072** als Summe von Zehnerpotenzen (z.B. 4·10³ + ...).\nb) Markieren Sie dabei explizit den Stellenwert der Ziffer **7**.",
+    "solution": "a) 4072 = 4·10³ + 0·10² + 7·10¹ + 2·10⁰\nb) Die 7 steht an der Zehnerstelle → 7·10¹ = 70",
+    "difficulty": "medium",
+    "topic": "Stellenwertsystem Dezimal",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "stellenwertsystem",
+      "dezimal",
+      "zehnerpotenzen"
+    ],
+    "createdAt": "2025-12-05T17:05:41.757Z",
+    "completed": false
+  },
+  {
+    "id": "1764954341757-q9h0fyw9v",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951100473-0ckey5ykb",
+    "title": "### Vergleich von Zahlendarstellungen",
+    "question": "### Vergleich von Zahlendarstellungen\n\na) Nennen Sie einen wesentlichen Unterschied zwischen einem Strichsystem (z.B. |||||) und dem Dezimalsystem.\nb) Erklären Sie kurz, warum Strichsysteme für große Zahlen unpraktisch sind.\nc) Nennen Sie einen Vorteil von Stellenwertsystemen für das Rechnen.",
+    "solution": "a) Im Strichsystem hat die Position keine Bedeutung, im Dezimalsystem bestimmt die Position den Stellenwert.\nb) Für große Zahlen werden sehr viele Zeichen benötigt und das Zählen/Lesen wird fehleranfällig.\nc) Stellenwertsysteme ermöglichen systematische Rechenverfahren (z.B. schriftliche Addition/Multiplikation).",
+    "difficulty": "hard",
+    "topic": "Zahlendarstellungen und Stellenwertsysteme",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "stellenwertsystem",
+      "strichsystem",
+      "konzeptuelles_verständnis"
+    ],
+    "createdAt": "2025-12-05T17:05:41.757Z",
+    "completed": false,
+    "viewedSolution": true
+  },
+  {
+    "id": "1764954341757-9a2frqked",
+    "moduleId": "1764928329062-tl6e8rrrf",
+    "scriptId": "1764951100473-0ckey5ykb",
+    "title": "### Gültigkeit römischer Zahlen prüfen",
+    "question": "### Gültigkeit römischer Zahlen prüfen\n\na) Ist **IIX** eine gültige römische Zahl? Begründen Sie kurz.\nb) Geben Sie stattdessen die korrekte römische Darstellung für **8** an.",
+    "solution": "a) IIX ist ungültig, da I nur vor V oder X zur Subtraktion stehen darf und 8 nicht als 10−2 geschrieben wird.\nb) Korrekt ist VIII (5 + 3).",
+    "difficulty": "medium",
+    "topic": "Römisches Zahlensystem",
+    "module": "Technische Grundlagen Informatik",
+    "tags": [
+      "römische_zahlen",
+      "regeln",
+      "verständnis"
+    ],
+    "createdAt": "2025-12-05T17:05:41.757Z",
     "completed": false
   }
 ]

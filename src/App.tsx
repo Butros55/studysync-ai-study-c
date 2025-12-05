@@ -13,8 +13,9 @@ import { NotificationCenter, PipelineTask } from './components/NotificationCente
 import { StatisticsDashboard } from './components/StatisticsDashboard'
 import { CostTrackingDashboard } from './components/CostTrackingDashboard'
 import { DebugModeToggle } from './components/DebugModeToggle'
-import { LocalStorageIndicator, LocalStorageBanner } from './components/LocalStorageIndicator'
+import { LocalStorageIndicator } from './components/LocalStorageIndicator'
 import { TutorDashboard } from './components/TutorDashboard'
+import { ExamMode } from './components/ExamMode'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
@@ -120,6 +121,7 @@ function App() {
   const [showStatistics, setShowStatistics] = useState(false)
   const [showCostTracking, setShowCostTracking] = useState(false)
   const [showQuizMode, setShowQuizMode] = useState(false)
+  const [showExamMode, setShowExamMode] = useState(false)
   const [taskFeedback, setTaskFeedback] = useState<{
     isCorrect: boolean
     hints?: string[]
@@ -229,7 +231,7 @@ function App() {
         
         await new Promise(resolve => setTimeout(resolve, 200))
 
-        const newScript: Script & { category?: string } = {
+        const newScript: Script = {
           id: generateId(),
           moduleId: moduleId,
           name,
@@ -237,7 +239,7 @@ function App() {
           uploadedAt: new Date().toISOString(),
           fileType: fileType || 'text',
           fileData,
-          category: category || 'script', // Kategorie speichern
+          category: (category as Script['category']) || 'script', // Kategorie speichern
         }
         
         await createScript(newScript)
@@ -1274,6 +1276,23 @@ Gib deine Antwort als JSON zurück:
     )
   }
 
+  if (showExamMode && selectedModule) {
+    return (
+      <>
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <ExamMode
+          module={selectedModule}
+          scripts={moduleScripts}
+          onBack={() => setShowExamMode(false)}
+        />
+      </>
+    )
+  }
+
   if (activeTask) {
     return (
       <>
@@ -1375,6 +1394,7 @@ Gib deine Antwort als JSON zurück:
           onGenerateAllFlashcards={handleGenerateAllFlashcards}
           onStartFlashcardStudy={handleStartFlashcardStudy}
           onEditModule={handleEditModule}
+          onStartExamMode={() => setShowExamMode(true)}
         />
 
         {/* EditModuleDialog auch in ModuleView verfügbar */}
@@ -1415,9 +1435,6 @@ Gib deine Antwort als JSON zurück:
                     <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                       Dein KI-gestützter Lernbegleiter für die Uni
                     </p>
-                  </div>
-                  <div className="hidden lg:block">
-                    <LocalStorageIndicator />
                   </div>
                 </div>
               </div>
@@ -1463,9 +1480,6 @@ Gib deine Antwort als JSON zurück:
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
             {!modules || modules.length === 0 ? (
               <>
-                <div className="mb-6">
-                  <LocalStorageBanner />
-                </div>
                 <EmptyState
                   title="Noch keine Module"
                   description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
@@ -1475,9 +1489,6 @@ Gib deine Antwort als JSON zurück:
               </>
             ) : (
               <>
-                <div className="mb-6">
-                  <LocalStorageBanner />
-                </div>
                 {/* Tutor-Dashboard mit Empfehlungen und Modulen */}
                 <TutorDashboard
                   modules={modules}
