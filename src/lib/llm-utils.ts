@@ -131,10 +131,28 @@ export async function llmWithRetry(
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ 
+        let errorData: { error?: string; details?: string } = { 
           error: 'Unbekannter Fehler', 
           details: response.statusText 
-        }))
+        }
+        
+        try {
+          const text = await response.text()
+          if (text) {
+            try {
+              errorData = JSON.parse(text)
+            } catch {
+              errorData.details = text
+            }
+          }
+        } catch {
+          // Ignoriere Fehler beim Lesen der Antwort
+        }
+        
+        // CORS-Fehler oder keine Verbindung
+        if (response.status === 0) {
+          throw new Error(`CORS-Fehler oder keine Verbindung zum Backend (${API_BASE_URL}). Überprüfe die Server-Konfiguration.`)
+        }
         
         if (response.status === 429) {
           throw new Error(`Rate Limit erreicht: ${errorData.details || 'Zu viele Anfragen'}`)
@@ -144,7 +162,11 @@ export async function llmWithRetry(
           throw new Error(`Token-Limit überschritten: ${errorData.details || 'Text ist zu lang'}`)
         }
         
-        throw new Error(errorData.details || errorData.error || 'API-Fehler')
+        if (response.status === 500) {
+          throw new Error(`Server-Fehler (500): ${errorData.details || errorData.error || 'Interner Serverfehler'}`)
+        }
+        
+        throw new Error(errorData.details || errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()

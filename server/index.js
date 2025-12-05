@@ -28,7 +28,12 @@ app.use(
       // Erlaube Requests ohne Origin (z.B. Server-zu-Server, Postman)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      // Prüfe ob Origin in der Liste oder mit GitHub Pages Subdomain beginnt
+      if (
+        allowedOrigins.some(
+          (allowed) => origin === allowed || origin.startsWith(allowed)
+        )
+      ) {
         return callback(null, true);
       }
 
@@ -40,6 +45,19 @@ app.use(
 );
 
 app.use(express.json({ limit: "10mb" }));
+
+// Root-Route
+app.get("/", (req, res) => {
+  res.json({
+    name: "StudySync Backend",
+    version: "1.0.0",
+    status: "running",
+    endpoints: {
+      health: "/api/health",
+      llm: "/api/llm (POST)",
+    },
+  });
+});
 
 // Healthcheck-Route für Render
 app.get("/api/health", (req, res) => {

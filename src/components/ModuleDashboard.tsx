@@ -20,6 +20,7 @@ import {
   Sparkle,
   Fire,
   ChartBar,
+  ArrowsClockwise,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { formatExamDate, getDaysUntilExam } from '@/lib/recommendations'
@@ -33,6 +34,8 @@ interface ModuleDashboardProps {
   onSolveTask: (task: Task) => void
   onStartFlashcardStudy: () => void
   onBlockComplete?: (blockId: string) => void
+  onGenerateAllTasks?: () => void
+  isGenerating?: boolean
 }
 
 // Hilfsfunktion: Generiere Lernblöcke aus Aufgaben
@@ -127,6 +130,8 @@ export function ModuleDashboard({
   onSolveTask,
   onStartFlashcardStudy,
   onBlockComplete,
+  onGenerateAllTasks,
+  isGenerating = false,
 }: ModuleDashboardProps) {
   const [showBlockCompleteOverlay, setShowBlockCompleteOverlay] = useState<string | null>(null)
   
@@ -324,10 +329,29 @@ export function ModuleDashboard({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8">
               <Trophy className="w-12 h-12 mx-auto mb-3 text-yellow-500" weight="duotone" />
               <p className="font-medium">Großartig! Alle Aufgaben erledigt!</p>
-              <p className="text-sm">Du hast alle verfügbaren Aufgaben abgeschlossen.</p>
+              <p className="text-sm text-muted-foreground mb-4">Du hast alle verfügbaren Aufgaben abgeschlossen.</p>
+              {scripts.length > 0 && onGenerateAllTasks && (
+                <Button
+                  onClick={onGenerateAllTasks}
+                  disabled={isGenerating}
+                  className="gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <ArrowsClockwise size={16} className="animate-spin" />
+                      Generiere neue Aufgaben...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkle size={16} weight="fill" />
+                      Neue Aufgaben generieren
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

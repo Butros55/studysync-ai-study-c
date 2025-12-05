@@ -174,6 +174,7 @@ export function ModuleView({
               flashcards={flashcards}
               onSolveTask={onSolveTask}
               onStartFlashcardStudy={onStartFlashcardStudy}
+              onGenerateAllTasks={onGenerateAllTasks}
             />
           </TabsContent>
 
