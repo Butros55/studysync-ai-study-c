@@ -17,6 +17,7 @@ export default defineConfig({
     createIconImportProxy() as PluginOption,
     sparkPlugin() as PluginOption,
   ],
+  base: "/studysync-ai-study-c/",
   resolve: {
     alias: {
       '@': resolve(projectRoot, 'src')
