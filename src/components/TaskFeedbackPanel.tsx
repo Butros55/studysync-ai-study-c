@@ -59,8 +59,8 @@ export function TaskFeedbackPanel({
                 <span className="font-medium">KI-Transkription:</span>
                 <Badge variant="secondary" className="text-[10px]">Debug</Badge>
               </div>
-              <div className="bg-muted/50 p-2 sm:p-3 rounded-md text-xs sm:text-sm font-mono overflow-x-auto whitespace-pre-wrap">
-                {feedback.transcription}
+              <div className="bg-muted/50 p-2 sm:p-3 rounded-md overflow-x-auto">
+                <MarkdownRenderer content={feedback.transcription} compact />
               </div>
             </div>
           </AlertDescription>

@@ -15,6 +15,7 @@ import { CostTrackingDashboard } from './components/CostTrackingDashboard'
 import { DebugModeToggle } from './components/DebugModeToggle'
 import { LocalStorageIndicator, LocalStorageBanner } from './components/LocalStorageIndicator'
 import { TutorDashboard } from './components/TutorDashboard'
+import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
@@ -26,17 +27,46 @@ import { useLLMModel } from './hooks/use-llm-model'
 import { extractTagsFromQuestion, generateTaskTitle } from './lib/task-tags'
 import { updateTopicStats } from './lib/recommendations'
 
-const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen.
+const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und die Erkennung mathematischer Notationen.
 
-Analysiere das unten angehängte Bild der handschriftlichen Lösung und transkribiere GENAU, was du siehst.
+Analysiere das Bild und transkribiere EXAKT was du siehst.
 
-Fragestellung war: ${question}
+WICHTIGE REGELN FÜR MATHEMATISCHE SYMBOLE:
+1. Wurzelzeichen (√) IMMER als LaTeX: \\sqrt{...} 
+   - Beispiel: √a → \\sqrt{a}
+   - Beispiel: √(a²+b) → \\sqrt{a^2 + b}
+   - Das Wurzelzeichen sieht aus wie ein Häkchen mit horizontaler Linie darüber
 
-Extrahiere den gesamten Text, mathematische Formeln, Gleichungen, Tabellen und Zwischenschritte. Bewahre die mathematische Notation und Struktur.
+2. Brüche IMMER als LaTeX: \\frac{Zähler}{Nenner}
+   - Beispiel: a/b → \\frac{a}{b}
+   - Horizontale Linien mit Zahlen darüber und darunter sind Brüche
 
-Stelle Tabellen strukturiert als Markdown-Tabelle oder in LaTeX-ähnlicher Notation dar.
+3. Potenzen/Hochzahlen: a^{n} oder a^n
+   - Kleine Zahlen rechts oben sind Exponenten
+   - Beispiel: a² → a^2, x³ → x^3
 
-WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzlichen Kommentare. Nutze für Formeln LaTeX-ähnliche Schreibweise (z.B. a^2 + b^2 = c^2).`
+4. Indizes (tiefgestellt): a_{n}
+   - Kleine Zahlen rechts unten sind Indizes
+
+5. Griechische Buchstaben als LaTeX:
+   - α → \\alpha, β → \\beta, γ → \\gamma, π → \\pi, Σ → \\sum, etc.
+
+6. Weitere Symbole:
+   - × oder · (Multiplikation) → \\cdot oder \\times
+   - ÷ → \\div
+   - ≠ → \\neq
+   - ≤ → \\leq, ≥ → \\geq
+   - ∞ → \\infty
+   - ∫ → \\int
+
+KONTEXT - Die Fragestellung war: ${question}
+
+AUSGABEFORMAT:
+- Gib mathematische Ausdrücke in LaTeX-Notation zurück
+- Für komplexe Formeln nutze Display-Math: $$...$$
+- Für inline Formeln nutze: $...$
+- Tabellen als Markdown-Tabellen
+- NUR die Transkription, keine Kommentare oder Bewertung`
 
 function App() {
   // Datenbank-Hooks mit SQLite-Backend
@@ -270,19 +300,89 @@ function App() {
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        // @ts-ignore - spark.llmPrompt template literal typing
-        const prompt = `Du bist ein Experten-Studienassistent. Analysiere das folgende Kursmaterial und erstelle umfassende Lernnotizen.
+        // Wissenschaftlicher LaTeX-Notizen-Prompt
+        const prompt = `Du bist ein Experte für die Erstellung wissenschaftlicher Lernnotizen im LaTeX-Stil.
 
-Kursmaterial:
+KURSMATERIAL ZUM ZUSAMMENFASSEN:
 ${script.content}
 
-Erstelle gut strukturierte Lernnotizen mit:
-1. Schlüsselkonzepten und Definitionen
-2. Wichtigen Formeln oder Prinzipien
-3. Zusammenfassungspunkte
-4. Dinge, die man sich merken sollte
+ERSTELLE STRUKTURIERTE LERNNOTIZEN MIT FOLGENDEN VORGABEN:
 
-Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
+## FORMATIERUNG (WICHTIG!)
+
+1. **Überschriften** mit Markdown:
+   - # Hauptthema
+   - ## Abschnitt
+   - ### Unterabschnitt
+
+2. **Mathematische Formeln** IMMER in LaTeX:
+   - Inline: $a^2 + b^2 = c^2$
+   - Block (für wichtige Formeln):
+     $$f(x) = \\frac{a}{b} + \\sqrt{x}$$
+
+3. **Tabellen** als Markdown:
+   | Spalte 1 | Spalte 2 |
+   |----------|----------|
+   | Wert 1   | Wert 2   |
+
+4. **Listen** für Aufzählungen:
+   - Stichpunkt 1
+   - Stichpunkt 2
+
+5. **Hervorhebungen**:
+   - **Fett** für wichtige Begriffe
+   - *Kursiv* für Definitionen
+
+## INHALTLICHE STRUKTUR
+
+1. **Titel & Überblick**
+   - Thema klar benennen
+   - Kurze Einleitung (1-2 Sätze)
+
+2. **Kernkonzepte**
+   - Definitionen präzise formulieren
+   - Wichtige Eigenschaften auflisten
+
+3. **Formeln & Gesetze**
+   - Alle relevanten Formeln in LaTeX
+   - Kurze Erklärung jeder Formel
+   - Beispiel: $E = mc^2$ (Energie-Masse-Äquivalenz)
+
+4. **Zusammenhänge & Regeln**
+   - Logische Verknüpfungen darstellen
+   - Bei Bedarf Wahrheitstabellen
+
+5. **Beispiele**
+   - Mindestens ein durchgerechnetes Beispiel
+   - Schritt-für-Schritt-Lösung
+
+6. **Merksätze**
+   - Wichtigste Punkte zum Einprägen
+   - Kurz und prägnant
+
+## VERBOTEN:
+- Kein Inhaltsverzeichnis
+- Keine Referenzen/Quellenangaben
+- Kein Fließtext ohne Struktur
+- Keine Wiederholungen
+
+## BEISPIEL FÜR GUTE NOTATION:
+
+### Quadratische Gleichung
+Die allgemeine Form lautet:
+$$ax^2 + bx + c = 0$$
+
+**Lösungsformel (Mitternachtsformel):**
+$$x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
+
+**Diskriminante:** $D = b^2 - 4ac$
+- $D > 0$: Zwei reelle Lösungen
+- $D = 0$: Eine reelle Lösung
+- $D < 0$: Keine reelle Lösung
+
+---
+
+Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mathematischen Ausdrücke!`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -509,7 +609,7 @@ Regeln:
             activeTask.moduleId,
             canvasDataUrl
           )
-          transcription = visionResponse.trim()
+          transcription = normalizeHandwritingOutput(visionResponse.trim())
           userAnswer = transcription
           
           console.log('=== HANDSCHRIFT TRANSKRIPTION ===')
@@ -1006,7 +1106,7 @@ Beispielformat:
             task.moduleId,
             canvasDataUrl  // Das Canvas-Bild wird nun mitgesendet!
           )
-          transcription = visionResponse.trim()
+          transcription = normalizeHandwritingOutput(visionResponse.trim())
           userAnswer = transcription
         } catch (transcriptionError) {
           console.error('Fehler bei Handschrift-Transkription:', transcriptionError)

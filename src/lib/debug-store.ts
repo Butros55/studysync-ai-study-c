@@ -6,6 +6,8 @@ export interface DebugLogEntry {
     prompt?: string
     model?: string
     jsonMode?: boolean
+    hasImage?: boolean
+    imageSize?: string
     response?: string
     error?: string
     errorStack?: string

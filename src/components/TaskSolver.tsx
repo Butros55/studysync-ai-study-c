@@ -120,8 +120,8 @@ export function TaskSolver({
                       <AlertDescription>
                         <div className="space-y-2">
                           <p className="font-medium">KI-Transkription deiner Handschrift:</p>
-                          <div className="bg-muted/50 p-2 sm:p-3 rounded-md text-xs sm:text-sm font-mono overflow-x-auto">
-                            {feedback.transcription}
+                          <div className="bg-muted/50 p-2 sm:p-3 rounded-md overflow-x-auto">
+                            <MarkdownRenderer content={feedback.transcription} compact />
                           </div>
                         </div>
                       </AlertDescription>

@@ -232,9 +232,9 @@ export function FullscreenBottomPanel({
                           <TextT size={16} weight="bold" className="text-muted-foreground" />
                           <span className="text-sm font-medium">KI-erkannte Handschrift:</span>
                         </div>
-                        <pre className="text-sm font-mono bg-background/50 p-3 rounded-md whitespace-pre-wrap overflow-x-auto">
-                          {feedback?.transcription}
-                        </pre>
+                        <div className="bg-background/50 p-3 rounded-md overflow-x-auto">
+                          <MarkdownRenderer content={feedback?.transcription || ''} compact />
+                        </div>
                       </Card>
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-4">
