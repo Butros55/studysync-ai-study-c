@@ -24,6 +24,12 @@ export interface StudyNote {
   generatedAt: string
 }
 
+export interface TaskSubtask {
+  title: string
+  points: number
+  prompt: string
+}
+
 export interface Task {
   id: string
   moduleId: string
@@ -32,9 +38,22 @@ export interface Task {
   question: string
   solution: string
   difficulty: 'easy' | 'medium' | 'hard'
+  topic?: string
+  module?: string
   tags?: string[]
+  subtasks?: TaskSubtask[]
   createdAt: string
   completed: boolean
+}
+
+export interface GeneratedTaskResponse {
+  question: string
+  solution: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  topic: string
+  module: string
+  tags: string[]
+  subtasks?: TaskSubtask[]
 }
 
 export interface TaskAttempt {

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sheet'
 import { RateLimitIndicator } from './RateLimitIndicator'
 import { DebugModeToggle } from './DebugModeToggle'
+import { TaskQuestionPanel } from './TaskQuestionPanel'
 import {
   X,
   CheckCircle,
@@ -81,48 +82,24 @@ export function TaskSolver({
 
   const canSubmit = inputMode === 'type' ? textAnswer.trim().length > 0 : hasCanvasContent
 
-  const getDifficultyColor = (difficulty: Task['difficulty']) => {
-    switch (difficulty) {
-      case 'easy':
-        return 'bg-accent/10 text-accent border-accent/20'
-      case 'medium':
-        return 'bg-warning/10 text-warning-foreground border-warning/20'
-      case 'hard':
-        return 'bg-destructive/10 text-destructive border-destructive/20'
-    }
-  }
-
-  const getDifficultyLabel = (difficulty: Task['difficulty']) => {
-    switch (difficulty) {
-      case 'easy':
-        return 'Einfach'
-      case 'medium':
-        return 'Mittel'
-      case 'hard':
-        return 'Schwer'
-    }
-  }
-
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden">
+      {/* Compact Header */}
       <div className="border-b bg-card shrink-0">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={onClose} 
-              className="h-8 w-8 sm:h-10 sm:w-10 shrink-0"
+              className="h-8 w-8 shrink-0"
             >
-              <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
+              <ArrowLeft size={18} />
             </Button>
-            <Badge variant="outline" className={`${getDifficultyColor(task.difficulty)} text-xs shrink-0`}>
-              {getDifficultyLabel(task.difficulty)}
-            </Badge>
             <h2 className="font-semibold text-sm sm:text-base truncate">Aufgabe lösen</h2>
           </div>
-          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-            <div className="hidden sm:flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-2">
               <DebugModeToggle />
               <RateLimitIndicator />
             </div>
@@ -152,110 +129,104 @@ export function TaskSolver({
         </div>
       </div>
 
+      {/* Collapsible Question Panel */}
+      <TaskQuestionPanel task={task} isFullscreen={true} defaultExpanded={!feedback} />
+
       <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
-          <div className="flex flex-col gap-4 sm:gap-6">
-            <div>
-              <h3 className="font-medium mb-3 sm:mb-4 text-sm sm:text-base">Fragestellung</h3>
-              <Card className="p-4 sm:p-6">
-                <p className="leading-relaxed whitespace-pre-wrap text-sm sm:text-base">{task.question}</p>
-              </Card>
-
-              <AnimatePresence mode="wait">
-                {feedback && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="mt-4 sm:mt-6 space-y-3 sm:space-y-4"
-                  >
-                    {feedback.transcription && (
-                      <Alert className="text-sm">
-                        <Info size={16} className="sm:w-[18px] sm:h-[18px]" />
-                        <AlertDescription>
-                          <div className="space-y-2">
-                            <p className="font-medium">KI-Transkription deiner Handschrift:</p>
-                            <div className="bg-muted/50 p-2 sm:p-3 rounded-md text-xs sm:text-sm font-mono overflow-x-auto">
-                              {feedback.transcription}
-                            </div>
-                          </div>
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {feedback.isCorrect ? (
-                      <Card className="p-4 sm:p-6 bg-accent/10 border-accent/20">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          <CheckCircle size={20} className="text-accent mt-0.5 shrink-0 sm:w-6 sm:h-6" weight="fill" />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-accent mb-2 text-sm sm:text-base">Richtig!</h4>
-                            <p className="text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">
-                              Sehr gut! Deine Lösung ist korrekt.
-                            </p>
-                            {onNextTask && (
-                              <Button onClick={onNextTask} className="bg-accent hover:bg-accent/90 w-full sm:w-auto text-sm">
-                                <ArrowRight size={16} className="mr-2 sm:w-[18px] sm:h-[18px]" />
-                                Nächste Aufgabe
-                              </Button>
-                            )}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-6 pb-safe">
+          <div className="flex flex-col gap-4 sm:gap-5">
+            {/* Feedback Section */}
+            <AnimatePresence mode="wait">
+              {feedback && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-3"
+                >
+                  {feedback.transcription && (
+                    <Alert className="text-sm">
+                      <Info size={16} />
+                      <AlertDescription>
+                        <div className="space-y-2">
+                          <p className="font-medium">KI-Transkription deiner Handschrift:</p>
+                          <div className="bg-muted/50 p-2 sm:p-3 rounded-md text-xs sm:text-sm font-mono overflow-x-auto">
+                            {feedback.transcription}
                           </div>
                         </div>
-                      </Card>
-                    ) : (
-                      <Card className="p-4 sm:p-6 bg-warning/10 border-warning/20">
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          <Lightbulb
-                            size={20}
-                            className="text-warning-foreground mt-0.5 shrink-0 sm:w-6 sm:h-6"
-                            weight="fill"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold mb-2 text-sm sm:text-base">Noch nicht ganz richtig</h4>
-                            {feedback.hints && feedback.hints.length > 0 && (
-                              <div className="space-y-2">
-                                <p className="text-xs sm:text-sm font-medium">Hinweise:</p>
-                                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                                  {feedback.hints.map((hint, idx) => (
-                                    <li key={idx}>{hint}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            <Button
-                              onClick={handleClear}
-                              variant="outline"
-                              size="sm"
-                              className="mt-3 sm:mt-4 w-full sm:w-auto text-xs sm:text-sm"
-                            >
-                              Nochmal versuchen
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {feedback.isCorrect ? (
+                    <Card className="p-3 sm:p-4 bg-green-500/10 border-green-500/20">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <CheckCircle size={20} className="text-green-600 mt-0.5 shrink-0" weight="fill" />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-green-600 mb-1 text-sm sm:text-base">Richtig!</h4>
+                          <p className="text-xs sm:text-sm leading-relaxed mb-3">
+                            Sehr gut! Deine Lösung ist korrekt.
+                          </p>
+                          {onNextTask && (
+                            <Button onClick={onNextTask} size="sm" className="bg-green-600 hover:bg-green-700">
+                              <ArrowRight size={16} className="mr-1.5" />
+                              Nächste Aufgabe
                             </Button>
-                          </div>
+                          )}
                         </div>
-                      </Card>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                      </div>
+                    </Card>
+                  ) : (
+                    <Card className="p-3 sm:p-4 bg-yellow-500/10 border-yellow-500/20">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <Lightbulb size={20} className="text-yellow-600 mt-0.5 shrink-0" weight="fill" />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-yellow-700 dark:text-yellow-500 mb-1 text-sm sm:text-base">Noch nicht ganz richtig</h4>
+                          {feedback.hints && feedback.hints.length > 0 && (
+                            <div className="space-y-1.5">
+                              <p className="text-xs sm:text-sm font-medium">Hinweise:</p>
+                              <ul className="list-disc list-inside space-y-0.5 text-xs sm:text-sm">
+                                {feedback.hints.map((hint, idx) => (
+                                  <li key={idx}>{hint}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <Button
+                            onClick={handleClear}
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                          >
+                            Nochmal versuchen
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
+            {/* Solution Input */}
             <div className="flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 sm:mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                 <h3 className="font-medium text-sm sm:text-base">Deine Lösung</h3>
                 <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')} className="w-full sm:w-auto">
-                  <TabsList className="w-full sm:w-auto grid grid-cols-2">
-                    <TabsTrigger value="draw" className="text-xs sm:text-sm">
-                      <PencilLine size={14} className="mr-1.5 sm:mr-2 sm:w-4 sm:h-4" />
+                  <TabsList className="w-full sm:w-auto grid grid-cols-2 h-8">
+                    <TabsTrigger value="draw" className="text-xs h-7">
+                      <PencilLine size={14} className="mr-1.5" />
                       Zeichnen
                     </TabsTrigger>
-                    <TabsTrigger value="type" className="text-xs sm:text-sm">
-                      <Keyboard size={14} className="mr-1.5 sm:mr-2 sm:w-4 sm:h-4" />
+                    <TabsTrigger value="type" className="text-xs h-7">
+                      <Keyboard size={14} className="mr-1.5" />
                       Tippen
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
 
-              <div className="flex-1 mb-4 relative">
+              <div className="flex-1 mb-3 relative">
                 {inputMode === 'draw' ? (
                   <div className="relative">
                     <AdvancedDrawingCanvas
@@ -277,27 +248,26 @@ export function TaskSolver({
                     value={textAnswer}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Schreibe deine Lösung hier..."
-                    className="min-h-[300px] sm:min-h-[400px] font-mono resize-none text-sm sm:text-base"
+                    className="min-h-[250px] sm:min-h-[350px] font-mono resize-none text-sm"
                     disabled={isSubmitting}
                   />
                 )}
               </div>
 
-              <div className="flex gap-2 sm:gap-3 pb-4 sm:pb-0">
+              <div className="flex gap-2 pb-3">
                 <Button
                   variant="outline"
                   onClick={handleClear}
-                  className="flex-1 text-xs sm:text-sm h-10 sm:h-auto"
+                  className="flex-1 h-9 text-xs"
                   disabled={!canSubmit || isSubmitting}
                 >
-                  <Eraser size={16} className="mr-1.5 sm:mr-2 sm:w-[18px] sm:h-[18px]" />
-                  <span className="hidden sm:inline">Löschen</span>
-                  <span className="sm:hidden">Löschen</span>
+                  <Eraser size={14} className="mr-1.5" />
+                  Löschen
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit || feedback?.isCorrect || isSubmitting}
-                  className="flex-1 text-xs sm:text-sm h-10 sm:h-auto"
+                  className="flex-1 h-9 text-xs"
                 >
                   {isSubmitting ? 'Prüfe...' : 'Einreichen'}
                 </Button>

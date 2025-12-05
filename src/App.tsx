@@ -30,6 +30,7 @@ import { toast } from 'sonner'
 import { taskQueue } from './lib/task-queue'
 import { llmWithRetry } from './lib/llm-utils'
 import { useLLMModel } from './hooks/use-llm-model'
+import { extractTagsFromQuestion, generateTaskTitle } from './lib/task-tags'
 
 const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen.
 
@@ -309,28 +310,36 @@ Formatiere die Notizen übersichtlich und lernfreundlich AUF DEUTSCH.`
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        const prompt = `Du bist ein Experten-Dozent. Basierend auf dem folgenden Kursmaterial, erstelle 3-5 Übungsaufgaben mit unterschiedlichen Schwierigkeitsgraden.
+        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Übungsaufgaben basierend auf diesem Material.
+
+WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
+- easy = 1-2 Minuten Lösungszeit, sehr kurze Rechenaufgaben
+- medium = 3-5 Minuten, mittlere Interpretationsaufgaben  
+- hard = 5-10 Minuten, maximal 2-3 Teilaufgaben
+
+Variation: Mische kurze Berechnungen, Verständnisfragen und ab und zu komplexere Aufgaben.
 
 Kursmaterial:
-${script.content}
+${script.content.substring(0, 4000)}
 
-Erstelle Aufgaben als JSON-Objekt mit einer einzelnen Eigenschaft "tasks", die ein Array von Aufgabenobjekten enthält. Jede Aufgabe muss diese exakten Felder haben:
-- question: Eine klare Aufgabenstellung AUF DEUTSCH (string)
-- solution: Die vollständige Lösung mit Erklärung AUF DEUTSCH (string)
-- difficulty: Muss genau einer dieser Werte sein: "easy", "medium", oder "hard"
-
-Erstelle praxisnahe Aufgaben, die das Verständnis der Schlüsselkonzepte testen.
-
-Beispielformat:
+ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 {
   "tasks": [
     {
-      "question": "Was ist 2+2?",
-      "solution": "Die Antwort ist 4, weil...",
-      "difficulty": "easy"
+      "question": "### Kurzer Titel\n\nKlare, präzise Aufgabenstellung auf Deutsch.",
+      "solution": "Kurze, strukturierte Lösung",
+      "difficulty": "easy" | "medium" | "hard",
+      "topic": "Hauptthema der Aufgabe",
+      "tags": ["tag1", "tag2"]
     }
   ]
-}`
+}
+
+Regeln:
+- Fragen in Markdown formatieren (### für Titel, - für Listen)
+- Keine Textwüsten - maximal 3-4 Sätze pro Aufgabe
+- Teilaufgaben als a), b), c) formatieren
+- Alles auf DEUTSCH`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -357,16 +366,28 @@ Beispielformat:
           current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
         )
 
-        const newTasks: Task[] = parsed.tasks.map((t: any) => ({
-          id: generateId(),
-          moduleId: script.moduleId,
-          scriptId: script.id,
-          question: t.question,
-          solution: t.solution,
-          difficulty: t.difficulty || 'medium',
-          createdAt: new Date().toISOString(),
-          completed: false,
-        }))
+        // Modul-Informationen für Tags holen
+        const moduleInfo = modules?.find(m => m.id === script.moduleId)
+
+        const newTasks: Task[] = parsed.tasks.map((t: any) => {
+          // Extrahiere zusätzliche Tags wenn nicht vom LLM geliefert
+          const extracted = extractTagsFromQuestion(t.question)
+          
+          return {
+            id: generateId(),
+            moduleId: script.moduleId,
+            scriptId: script.id,
+            title: generateTaskTitle(t.question),
+            question: t.question,
+            solution: t.solution,
+            difficulty: t.difficulty || extracted.estimatedDifficulty || 'medium',
+            topic: t.topic || extracted.topic,
+            module: t.module || moduleInfo?.name || extracted.module,
+            tags: t.tags || extracted.tags,
+            createdAt: new Date().toISOString(),
+            completed: false,
+          }
+        })
 
         // Alle Tasks in die Datenbank speichern
         await Promise.all(newTasks.map(task => createTask(task)))
