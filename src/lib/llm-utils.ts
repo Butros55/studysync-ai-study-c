@@ -68,7 +68,8 @@ export async function llmWithRetry(
   jsonMode: boolean = false,
   maxRetries: number = 1,
   operation: string = 'unknown',
-  moduleId?: string
+  moduleId?: string,
+  imageBase64?: string  // Neuer Parameter für Vision-API
 ): Promise<string> {
   if (await isInCooldown()) {
     const remainingMs = await getRemainingCooldown()
@@ -106,6 +107,8 @@ export async function llmWithRetry(
           jsonMode,
           attempt: attempt + 1,
           maxRetries,
+          hasImage: !!imageBase64,
+          imageSize: imageBase64 ? `${Math.round(imageBase64.length / 1024)}KB` : 'none',
         },
       })
       
@@ -122,6 +125,7 @@ export async function llmWithRetry(
           jsonMode,
           operation,
           moduleId,
+          imageBase64, // Bild für Vision-API mitsenden
         }),
       })
 

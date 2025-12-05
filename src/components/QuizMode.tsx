@@ -280,6 +280,10 @@ export function QuizMode({
                       onContentChange={setHasDrawing}
                       clearTrigger={clearTrigger}
                       onCanvasDataUrl={setCanvasDataUrl}
+                      questionText={currentTask?.question}
+                      onSubmit={handleSubmit}
+                      submitDisabled={!hasDrawing || (showFeedback && feedback?.isCorrect)}
+                      isSubmitting={isSubmitting}
                     />
                   </div>
                 )}

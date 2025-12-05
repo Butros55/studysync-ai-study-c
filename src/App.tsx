@@ -921,7 +921,16 @@ WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzli
 
 Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
 
-          const visionResponse = await llmWithRetry(visionPrompt, visionModel, false, 1, 'handwriting-analysis', task.moduleId)
+          // Sende das Bild an die Vision-API für echte Handschrift-Erkennung
+          const visionResponse = await llmWithRetry(
+            visionPrompt, 
+            visionModel, 
+            false, 
+            1, 
+            'handwriting-analysis', 
+            task.moduleId,
+            canvasDataUrl  // Das Canvas-Bild wird nun mitgesendet!
+          )
           transcription = visionResponse.trim()
           userAnswer = transcription
         } catch (transcriptionError) {

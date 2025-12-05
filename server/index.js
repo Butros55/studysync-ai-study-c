@@ -43,20 +43,38 @@ const MODEL_PRICING = {
   "gpt-4.1-mini": { input: 0.4 / 1_000_000, output: 1.6 / 1_000_000 },
   "gpt-4.1-nano": { input: 0.1 / 1_000_000, output: 0.4 / 1_000_000 },
   "gpt-4.1-2025-04-14": { input: 3.0 / 1_000_000, output: 12.0 / 1_000_000 },
-  "gpt-4.1-mini-2025-04-14": { input: 0.8 / 1_000_000, output: 3.2 / 1_000_000 },
-  "gpt-4.1-nano-2025-04-14": { input: 0.2 / 1_000_000, output: 0.8 / 1_000_000 },
+  "gpt-4.1-mini-2025-04-14": {
+    input: 0.8 / 1_000_000,
+    output: 3.2 / 1_000_000,
+  },
+  "gpt-4.1-nano-2025-04-14": {
+    input: 0.2 / 1_000_000,
+    output: 0.8 / 1_000_000,
+  },
 
   // GPT-4o Familie
   "gpt-4o": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
   "gpt-4o-2024-05-13": { input: 5.0 / 1_000_000, output: 15.0 / 1_000_000 },
   "gpt-4o-mini": { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
   "gpt-4o-2024-11-20": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-4o-realtime-preview": { input: 5.0 / 1_000_000, output: 20.0 / 1_000_000 },
-  "gpt-4o-mini-realtime-preview": { input: 0.6 / 1_000_000, output: 2.4 / 1_000_000 },
-  "gpt-4o-mini-search-preview": { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
+  "gpt-4o-realtime-preview": {
+    input: 5.0 / 1_000_000,
+    output: 20.0 / 1_000_000,
+  },
+  "gpt-4o-mini-realtime-preview": {
+    input: 0.6 / 1_000_000,
+    output: 2.4 / 1_000_000,
+  },
+  "gpt-4o-mini-search-preview": {
+    input: 0.15 / 1_000_000,
+    output: 0.6 / 1_000_000,
+  },
   "gpt-4o-search-preview": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
   "gpt-4o-audio-preview": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-4o-mini-audio-preview": { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
+  "gpt-4o-mini-audio-preview": {
+    input: 0.15 / 1_000_000,
+    output: 0.6 / 1_000_000,
+  },
 
   // Realtime
   "gpt-realtime": { input: 4.0 / 1_000_000, output: 16.0 / 1_000_000 },
@@ -67,12 +85,12 @@ const MODEL_PRICING = {
   "gpt-audio-mini": { input: 0.6 / 1_000_000, output: 2.4 / 1_000_000 },
 
   // Reasoning / O-Serie
-  "o1": { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
+  o1: { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
   "o1-pro": { input: 150.0 / 1_000_000, output: 600.0 / 1_000_000 },
   "o1-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
   "o1-2024-12-17": { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
   "o3-pro": { input: 20.0 / 1_000_000, output: 80.0 / 1_000_000 },
-  "o3": { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
+  o3: { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
   "o3-deep-research": { input: 10.0 / 1_000_000, output: 40.0 / 1_000_000 },
   "o3-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
   "o4-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
@@ -84,7 +102,10 @@ const MODEL_PRICING = {
   // GPT-4 Turbo
   "gpt-4-turbo": { input: 10.0 / 1_000_000, output: 30.0 / 1_000_000 },
   "gpt-4-turbo-preview": { input: 10.0 / 1_000_000, output: 30.0 / 1_000_000 },
-  "gpt-4-turbo-2024-04-09": { input: 10.0 / 1_000_000, output: 30.0 / 1_000_000 },
+  "gpt-4-turbo-2024-04-09": {
+    input: 10.0 / 1_000_000,
+    output: 30.0 / 1_000_000,
+  },
 
   // GPT-4 Classic
   "gpt-4": { input: 30.0 / 1_000_000, output: 60.0 / 1_000_000 },
@@ -96,7 +117,10 @@ const MODEL_PRICING = {
   "gpt-3.5-turbo-16k": { input: 3.0 / 1_000_000, output: 4.0 / 1_000_000 },
   "gpt-3.5-turbo-1106": { input: 1.0 / 1_000_000, output: 2.0 / 1_000_000 },
   "gpt-3.5-turbo-instruct": { input: 1.5 / 1_000_000, output: 2.0 / 1_000_000 },
-  "gpt-3.5-turbo-instruct-0914": { input: 1.5 / 1_000_000, output: 2.0 / 1_000_000 },
+  "gpt-3.5-turbo-instruct-0914": {
+    input: 1.5 / 1_000_000,
+    output: 2.0 / 1_000_000,
+  },
 
   // Codex Mini
   "codex-mini-latest": { input: 1.5 / 1_000_000, output: 6.0 / 1_000_000 },
@@ -128,6 +152,7 @@ app.post("/api/llm", async (req, res) => {
       jsonMode = false,
       operation = "unknown",
       moduleId,
+      imageBase64, // Neuer Parameter für Vision-API
     } = req.body;
 
     if (!prompt) {
@@ -144,16 +169,49 @@ app.post("/api/llm", async (req, res) => {
       });
     }
 
+    // Prüfe ob Vision-Modus mit Bild
+    const isVisionRequest = !!imageBase64;
+    const effectiveModel = isVisionRequest
+      ? model.includes("gpt-4") || model.includes("gpt-5")
+        ? model
+        : "gpt-4o-mini"
+      : model;
+
     console.log(
-      `[LLM] Request - Model: ${model}, JSON Mode: ${jsonMode}, Operation: ${operation}, Prompt length: ${prompt.length}`
+      `[LLM] Request - Model: ${effectiveModel}, JSON Mode: ${jsonMode}, Operation: ${operation}, Vision: ${isVisionRequest}, Prompt length: ${
+        prompt.length
+      }${isVisionRequest ? ", Image included" : ""}`
     );
 
+    // Baue die Nachricht basierend auf Vision-Modus
+    let messageContent;
+    if (isVisionRequest) {
+      // Vision-API mit Bild
+      messageContent = [
+        {
+          type: "text",
+          text: prompt,
+        },
+        {
+          type: "image_url",
+          image_url: {
+            url: imageBase64.startsWith("data:")
+              ? imageBase64
+              : `data:image/png;base64,${imageBase64}`,
+            detail: "high", // Hohe Auflösung für Handschrift-Erkennung
+          },
+        },
+      ];
+    } else {
+      messageContent = prompt;
+    }
+
     const requestOptions = {
-      model: model,
+      model: effectiveModel,
       messages: [
         {
           role: "user",
-          content: prompt,
+          content: messageContent,
         },
       ],
       temperature: 0.7,

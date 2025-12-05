@@ -263,6 +263,10 @@ export function TaskSolver({
                       clearTrigger={clearCanvasTrigger}
                       onCanvasDataUrl={setCanvasDataUrl}
                       isMobile={true}
+                      questionText={task.question}
+                      onSubmit={handleSubmit}
+                      submitDisabled={!hasCanvasContent || feedback?.isCorrect}
+                      isSubmitting={isSubmitting}
                     />
                     {isSubmitting && (
                       <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none z-10" />
