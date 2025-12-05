@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Brain, CheckCircle, Pencil, Trash } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 
 interface TasksTabProps {
   tasks: Task[]
@@ -133,7 +134,7 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask, onBulkDeleteTasks }
                             {getDifficultyLabel(task.difficulty)}
                           </Badge>
                         </div>
-                        <p className="text-sm leading-relaxed mb-4 whitespace-pre-wrap">{task.question}</p>
+                        <MarkdownRenderer content={task.question} compact className="mb-4" />
                         <Button onClick={() => onSolveTask(task)}>
                           <Pencil size={16} className="mr-2" />
                           Aufgabe loesen
@@ -181,7 +182,7 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask, onBulkDeleteTasks }
                           </Badge>
                           <CheckCircle size={18} className="text-accent" weight="fill" />
                         </div>
-                        <p className="text-sm leading-relaxed opacity-75 whitespace-pre-wrap">{task.question}</p>
+                        <MarkdownRenderer content={task.question} compact className="opacity-75" />
                       </div>
                       <Button
                         size="icon"

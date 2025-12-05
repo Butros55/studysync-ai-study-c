@@ -71,6 +71,7 @@ export interface Task {
   title?: string
   question: string
   solution: string
+  solutionMarkdown?: string  // Musterlösung als Markdown (alternativ zu solution)
   difficulty: 'easy' | 'medium' | 'hard'
   topic?: string
   module?: string
@@ -79,6 +80,15 @@ export interface Task {
   attachments?: TaskAttachment[]  // Anhänge wie Wahrheitstabellen, Bilder
   createdAt: string
   completed: boolean
+  completedAt?: string
+  viewedSolution?: boolean  // Wurde die Musterlösung angesehen?
+}
+
+// Feedback-Daten von der KI-Bewertung
+export interface TaskFeedback {
+  isCorrect: boolean
+  hints?: string[]
+  transcription?: string  // KI-Transkription der Handschrift
 }
 
 export interface GeneratedTaskResponse {

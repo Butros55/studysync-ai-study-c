@@ -12,6 +12,7 @@ import { generateRecommendations, getWeakTopics, getModuleProgress, formatExamDa
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { Progress } from '@/components/ui/progress'
 import { 
   GraduationCap, 
@@ -107,10 +108,14 @@ export function TutorDashboard({
                       <span className="text-xs text-muted-foreground">{task.moduleName}</span>
                       {getDifficultyBadge(task.difficulty)}
                     </div>
-                    <p className="text-sm font-medium line-clamp-2">
-                      {task.title || task.question.substring(0, 80)}
-                      {task.question.length > 80 && !task.title ? '...' : ''}
-                    </p>
+                    <div className="text-sm font-medium line-clamp-2">
+                      <MarkdownRenderer 
+                        content={task.title || task.question} 
+                        compact 
+                        truncateLines={2}
+                        className="prose-p:my-0 prose-headings:my-0 prose-h3:text-sm"
+                      />
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {task.reason}
                     </p>

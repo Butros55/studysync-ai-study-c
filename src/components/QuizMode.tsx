@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Task, Module } from '@/lib/types'
+import { Task, Module, TaskFeedback } from '@/lib/types'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
@@ -10,6 +10,7 @@ import { Textarea } from './ui/textarea'
 import { ScrollArea } from './ui/scroll-area'
 import { Separator } from './ui/separator'
 import { cn } from '@/lib/utils'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface QuizModeProps {
   tasks: Task[]
@@ -21,11 +22,7 @@ interface QuizModeProps {
     isHandwritten: boolean,
     canvasDataUrl?: string
   ) => Promise<void>
-  feedback?: {
-    isCorrect: boolean
-    hints?: string[]
-    transcription?: string
-  }
+  feedback?: TaskFeedback
 }
 
 export function QuizMode({
@@ -239,7 +236,7 @@ export function QuizMode({
 
                 <h2 className="text-lg sm:text-xl font-semibold mb-4">Aufgabe {currentIndex + 1}</h2>
                 <div className="prose prose-sm sm:prose max-w-none">
-                  <p className="whitespace-pre-wrap text-sm sm:text-base">{currentTask.question}</p>
+                  <MarkdownRenderer content={currentTask.question} />
                 </div>
               </Card>
 

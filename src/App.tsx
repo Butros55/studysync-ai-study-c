@@ -1194,6 +1194,11 @@ Gib deine Antwort als JSON zurück:
               ? handleNextTask
               : undefined
           }
+          onTaskUpdate={async (updates) => {
+            await updateTask(activeTask.id, updates)
+            // Aktualisiere auch den lokalen State
+            setActiveTask((current) => current ? { ...current, ...updates } : null)
+          }}
         />
       </>
     )

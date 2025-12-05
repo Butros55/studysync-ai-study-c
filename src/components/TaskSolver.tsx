@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Task } from '@/lib/types'
+import { Task, TaskFeedback } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { DebugModeToggle } from './DebugModeToggle'
 import { TaskQuestionPanel } from './TaskQuestionPanel'
 import { TaskAttachments } from './TaskAttachments'
 import { SolutionPanel } from './SolutionPanel'
+import { MarkdownRenderer } from './MarkdownRenderer'
 import {
   CheckCircle,
   Lightbulb,
@@ -26,12 +27,9 @@ interface TaskSolverProps {
   task: Task
   onClose: () => void
   onSubmit: (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => Promise<void>
-  feedback?: {
-    isCorrect: boolean
-    hints?: string[]
-    transcription?: string
-  }
+  feedback?: TaskFeedback
   onNextTask?: () => void
+  onTaskUpdate?: (updates: Partial<Task>) => void
 }
 
 export function TaskSolver({
@@ -40,6 +38,7 @@ export function TaskSolver({
   onSubmit,
   feedback,
   onNextTask,
+  onTaskUpdate,
 }: TaskSolverProps) {
   const [inputMode, setInputMode] = useState<'draw' | 'type'>('draw')
   const [textAnswer, setTextAnswer] = useState('')
@@ -158,7 +157,9 @@ export function TaskSolver({
                               <p className="text-xs sm:text-sm font-medium">Hinweise:</p>
                               <ul className="list-disc list-inside space-y-0.5 text-xs sm:text-sm">
                                 {feedback.hints.map((hint, idx) => (
-                                  <li key={idx}>{hint}</li>
+                                  <li key={idx}>
+                                    <MarkdownRenderer content={hint} compact inline className="inline prose-p:inline prose-p:my-0" />
+                                  </li>
                                 ))}
                               </ul>
                             </div>
@@ -209,6 +210,11 @@ export function TaskSolver({
                       onSubmit={handleSubmit}
                       submitDisabled={!hasCanvasContent || feedback?.isCorrect}
                       isSubmitting={isSubmitting}
+                      feedback={feedback}
+                      task={task}
+                      onNextTask={onNextTask}
+                      onTaskUpdate={onTaskUpdate}
+                      onClear={handleClear}
                     />
                     {isSubmitting && (
                       <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none z-10" />
@@ -247,7 +253,13 @@ export function TaskSolver({
 
             {/* Musterlösung anzeigen - sowohl im Zeichnen- als auch Tippen-Modus verfügbar */}
             {task.solution && (
-              <SolutionPanel solution={task.solution} compact />
+              <SolutionPanel 
+                solution={task.solutionMarkdown || task.solution} 
+                compact 
+                isCorrect={feedback?.isCorrect}
+                viewedSolution={task.viewedSolution}
+                onViewSolution={() => onTaskUpdate?.({ viewedSolution: true })}
+              />
             )}
           </div>
         </div>

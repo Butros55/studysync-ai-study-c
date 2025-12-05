@@ -1847,7 +1847,8 @@
       "boolsche_werte"
     ],
     "createdAt": "2025-12-05T09:59:14.556Z",
-    "completed": false
+    "completed": true,
+    "completedAt": "2025-12-05T10:35:16.707Z"
   },
   {
     "id": "1764928754556-p80mk9czi",
@@ -1937,7 +1938,8 @@
       "grundlagen"
     ],
     "createdAt": "2025-12-05T09:59:38.275Z",
-    "completed": false
+    "completed": true,
+    "completedAt": "2025-12-05T10:21:10.316Z"
   },
   {
     "id": "1764928778275-zv11vvmzx",
@@ -1955,7 +1957,8 @@
       "übung"
     ],
     "createdAt": "2025-12-05T09:59:38.275Z",
-    "completed": false
+    "completed": true,
+    "completedAt": "2025-12-05T10:31:01.911Z"
   },
   {
     "id": "1764928778275-l2egwwf3l",

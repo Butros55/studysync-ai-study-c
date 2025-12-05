@@ -3,7 +3,10 @@ import { cn } from '@/lib/utils'
 import { DrawingToolbar } from './DrawingToolbar'
 import { useDrawingState, Point, DrawingTool } from '@/hooks/use-drawing-state'
 import { Button } from '@/components/ui/button'
-import { X, PaperPlaneTilt } from '@phosphor-icons/react'
+import { X, PaperPlaneTilt, ArrowRight, Eraser } from '@phosphor-icons/react'
+import { FullscreenBottomPanel } from './FullscreenBottomPanel'
+import { TaskFeedback, Task } from '@/lib/types'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface AdvancedDrawingCanvasProps {
   onContentChange: (hasContent: boolean) => void
@@ -18,6 +21,16 @@ interface AdvancedDrawingCanvasProps {
   submitDisabled?: boolean
   /** Ob gerade submitted wird */
   isSubmitting?: boolean
+  /** Aktuelles Feedback nach Submit */
+  feedback?: TaskFeedback | null
+  /** Aktuelle Aufgabe für Musterlösung etc. */
+  task?: Task
+  /** Callback für "Nächste Aufgabe" */
+  onNextTask?: () => void
+  /** Callback um Task zu aktualisieren (z.B. viewedSolution) */
+  onTaskUpdate?: (updates: Partial<Task>) => void
+  /** Callback um Canvas zu leeren */
+  onClear?: () => void
 }
 
 export function AdvancedDrawingCanvas({
@@ -29,6 +42,11 @@ export function AdvancedDrawingCanvas({
   onSubmit,
   submitDisabled = false,
   isSubmitting = false,
+  feedback = null,
+  task,
+  onNextTask,
+  onTaskUpdate,
+  onClear,
 }: AdvancedDrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -754,15 +772,34 @@ export function AdvancedDrawingCanvas({
                     <div className="absolute -top-2.5 left-3 bg-primary px-2.5 py-0.5 rounded text-[11px] font-medium text-primary-foreground">
                       Aufgabe
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed pt-1">
-                      {questionText}
-                    </p>
+                    <div className="pt-1">
+                      <MarkdownRenderer 
+                        content={questionText} 
+                        compact 
+                        truncateLines={3}
+                        className="prose-p:my-0 prose-headings:my-0 text-sm"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Buttons: Submit & Schließen */}
+              {/* Buttons: Löschen, Submit, Nächste Aufgabe & Schließen */}
               <div className="flex items-center gap-2 shrink-0">
+                {/* Löschen Button */}
+                {onClear && (
+                  <Button
+                    onClick={onClear}
+                    variant="outline"
+                    size="sm"
+                    className="text-muted-foreground"
+                  >
+                    <Eraser className="w-4 h-4 mr-1.5" />
+                    Löschen
+                  </Button>
+                )}
+                
+                {/* Submit Button */}
                 {onSubmit && (
                   <Button
                     onClick={onSubmit}
@@ -773,6 +810,19 @@ export function AdvancedDrawingCanvas({
                     {isSubmitting ? 'Prüfe...' : 'Einreichen'}
                   </Button>
                 )}
+                
+                {/* Nächste Aufgabe Button - nur wenn Feedback korrekt oder Lösung angesehen */}
+                {onNextTask && feedback && (feedback.isCorrect || task?.viewedSolution) && (
+                  <Button
+                    onClick={onNextTask}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-1.5" />
+                    Nächste Aufgabe
+                  </Button>
+                )}
+                
                 <Button
                   variant="ghost"
                   size="icon"
@@ -793,7 +843,7 @@ export function AdvancedDrawingCanvas({
         className={cn(
           'flex-1 overflow-hidden relative touch-none',
           isFullscreen 
-            ? 'h-[calc(100vh-60px)]' 
+            ? 'h-[calc(100vh-120px)]' // Mehr Platz für Header + Bottom Panel
             : isMobile 
               ? 'min-h-[350px]' 
               : 'min-h-[400px]'
@@ -848,6 +898,15 @@ export function AdvancedDrawingCanvas({
             Touch: Pan/Zoom | Stift: Zeichnen
           </span>
         </div>
+      )}
+
+      {/* Fullscreen Bottom Panel mit Tabs für Feedback/Lösung */}
+      {isFullscreen && task && (
+        <FullscreenBottomPanel
+          feedback={feedback}
+          task={task}
+          onTaskUpdate={onTaskUpdate}
+        />
       )}
     </div>
   )
