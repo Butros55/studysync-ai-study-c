@@ -4,8 +4,10 @@ import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { ScrollArea } from './ui/scroll-area'
 import { Separator } from './ui/separator'
-import { X, Trash, CaretDown, CaretRight, Bug } from '@phosphor-icons/react'
+import { X, Trash, CaretDown, CaretRight, Bug, Database } from '@phosphor-icons/react'
 import { Badge } from './ui/badge'
+import { StorageDebugPanel } from './StorageDebugPanel'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 
 export function DebugConsole({ onClose }: { onClose: () => void }) {
   const { logs, clearLogs } = useDebugLogs()
@@ -70,15 +72,11 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
               <div>
                 <h2 className="text-xl font-semibold">Debug Konsole</h2>
                 <p className="text-sm text-muted-foreground">
-                  Alle API-Anfragen und -Antworten
+                  API-Anfragen, Storage & Diagnostik
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={clearLogs}>
-                <Trash size={16} className="mr-2" />
-                Alle löschen
-              </Button>
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X size={20} />
               </Button>
@@ -86,8 +84,28 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden px-6 py-4">
-          <ScrollArea className="h-full">
+        <Tabs defaultValue="api" className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 border-b">
+            <TabsList className="h-11">
+              <TabsTrigger value="api" className="gap-2">
+                <Bug size={16} />
+                API-Logs
+              </TabsTrigger>
+              <TabsTrigger value="storage" className="gap-2">
+                <Database size={16} />
+                Storage
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="api" className="flex-1 overflow-hidden m-0 px-6 py-4">
+            <div className="flex items-center justify-end mb-3">
+              <Button variant="outline" size="sm" onClick={clearLogs}>
+                <Trash size={16} className="mr-2" />
+                Logs löschen
+              </Button>
+            </div>
+            <ScrollArea className="h-[calc(100%-40px)]">
             {logs.length === 0 ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
@@ -227,7 +245,14 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
               </div>
             )}
           </ScrollArea>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="storage" className="flex-1 overflow-hidden m-0 px-6 py-4">
+            <ScrollArea className="h-full">
+              <StorageDebugPanel />
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

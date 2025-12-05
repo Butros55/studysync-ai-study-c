@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useModules, useScripts, useNotes, useTasks, useFlashcards } from './hooks/use-database'
+import { useModules, useScripts, useNotes, useTasks, useFlashcards, migrateFromServerIfNeeded } from './hooks/use-database'
+import { storageReady } from './lib/storage'
 import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
 import { ModuleCard } from './components/ModuleCard'
 import { CreateModuleDialog } from './components/CreateModuleDialog'
@@ -129,6 +130,28 @@ function App() {
   } | null>(null)
   
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
+  const [storageInitialized, setStorageInitialized] = useState(false)
+
+  // Einmalige Migration beim App-Start
+  useEffect(() => {
+    const initStorage = async () => {
+      try {
+        await storageReady
+        // Versuche Daten vom lokalen Server zu migrieren (falls vorhanden)
+        const migrated = await migrateFromServerIfNeeded()
+        if (migrated) {
+          toast.success('Daten wurden erfolgreich migriert')
+          // Seite neu laden um die migrierten Daten anzuzeigen
+          window.location.reload()
+        }
+        setStorageInitialized(true)
+      } catch (e) {
+        console.error('[App] Storage initialization failed:', e)
+        setStorageInitialized(true) // Trotzdem fortfahren
+      }
+    }
+    initStorage()
+  }, [])
 
   // Handler zum Öffnen des Bearbeitungsdialogs
   const handleEditModule = (module: Module) => {
