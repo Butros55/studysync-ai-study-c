@@ -152,7 +152,8 @@ app.post("/api/llm", async (req, res) => {
       jsonMode = false,
       operation = "unknown",
       moduleId,
-      imageBase64, // Neuer Parameter für Vision-API
+      imageBase64, // Neuer Parameter für Vision-API (Legacy)
+      image, // Bevorzugter Parameter für Vision-API (Data URL)
     } = req.body;
 
     if (!prompt) {
@@ -169,12 +170,14 @@ app.post("/api/llm", async (req, res) => {
       });
     }
 
+    const imagePayload = image || imageBase64;
+
     // Prüfe ob Vision-Modus mit Bild
-    const isVisionRequest = !!imageBase64;
+    const isVisionRequest = !!imagePayload;
     const effectiveModel = isVisionRequest
       ? model.includes("gpt-4") || model.includes("gpt-5")
         ? model
-        : "gpt-4o-mini"
+        : "gpt-5.1"
       : model;
 
     console.log(
@@ -183,52 +186,72 @@ app.post("/api/llm", async (req, res) => {
       }${isVisionRequest ? ", Image included" : ""}`
     );
 
-    // Baue die Nachricht basierend auf Vision-Modus
-    let messageContent;
-    if (isVisionRequest) {
-      // Vision-API mit Bild
-      messageContent = [
-        {
-          type: "text",
-          text: prompt,
-        },
-        {
-          type: "image_url",
-          image_url: {
-            url: imageBase64.startsWith("data:")
-              ? imageBase64
-              : `data:image/png;base64,${imageBase64}`,
-            detail: "high", // Hohe Auflösung für Handschrift-Erkennung
-          },
-        },
-      ];
-    } else {
-      messageContent = prompt;
-    }
-
-    const requestOptions = {
-      model: effectiveModel,
-      messages: [
-        {
-          role: "user",
-          content: messageContent,
-        },
-      ],
-      temperature: 0.7,
-    };
-
-    if (jsonMode) {
-      requestOptions.response_format = { type: "json_object" };
-    }
-
-    const completion = await openai.chat.completions.create(requestOptions);
-
-    const responseText = completion.choices[0]?.message?.content || "";
-    const usage = completion.usage || {
+    let responseText = "";
+    let usage = {
       prompt_tokens: 0,
       completion_tokens: 0,
       total_tokens: 0,
     };
+    let completion;
+
+    if (isVisionRequest) {
+      const imageUrl = imagePayload.startsWith("data:")
+        ? imagePayload
+        : `data:image/png;base64,${imagePayload}`;
+
+      console.log(
+        "[VISION] image length:",
+        imagePayload?.length,
+        "prefix:",
+        imagePayload?.slice(0, 30)
+      );
+
+      const messages = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt,
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageUrl, detail: "high" },
+            },
+          ],
+        },
+      ];
+
+      completion = await openai.chat.completions.create({
+        model: effectiveModel,
+        messages: messages,
+        max_completion_tokens: 4096,
+      });
+
+      responseText = completion.choices[0]?.message?.content || "";
+
+      usage = completion.usage || usage;
+    } else {
+      const requestOptions = {
+        model: effectiveModel,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+      };
+
+      if (jsonMode) {
+        requestOptions.response_format = { type: "json_object" };
+      }
+
+      completion = await openai.chat.completions.create(requestOptions);
+      responseText = completion.choices[0]?.message?.content || "";
+      usage = completion.usage || usage;
+    }
+
     const cost = calculateCost(
       completion.model,
       usage.prompt_tokens,

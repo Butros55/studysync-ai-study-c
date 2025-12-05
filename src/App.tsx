@@ -31,6 +31,18 @@ import { taskQueue } from './lib/task-queue'
 import { llmWithRetry } from './lib/llm-utils'
 import { useLLMModel } from './hooks/use-llm-model'
 
+const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen.
+
+Analysiere das unten angehängte Bild der handschriftlichen Lösung und transkribiere GENAU, was du siehst.
+
+Fragestellung war: ${question}
+
+Extrahiere den gesamten Text, mathematische Formeln, Gleichungen, Tabellen und Zwischenschritte. Bewahre die mathematische Notation und Struktur.
+
+Stelle Tabellen strukturiert als Markdown-Tabelle oder in LaTeX-ähnlicher Notation dar.
+
+WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzlichen Kommentare. Nutze für Formeln LaTeX-ähnliche Schreibweise (z.B. a^2 + b^2 = c^2).`
+
 function App() {
   // Datenbank-Hooks mit SQLite-Backend
   const { 
@@ -410,25 +422,23 @@ Beispielformat:
 
       if (isHandwritten && canvasDataUrl) {
         toast.loading('Analysiere deine Handschrift...', { id: 'task-submit' })
-        
+
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 10, name: 'Handschrift wird analysiert' } : t))
         )
-        
+
         try {
-          const visionPrompt = `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
-        
-Analysiere das folgende Bild einer handschriftlichen Lösung und transkribiere GENAU was du siehst.
+          const visionPrompt = buildHandwritingPrompt(activeTask.question)
 
-Fragestellung war: ${activeTask.question}
-
-Extrahiere den gesamten Text, mathematische Formeln, Gleichungen und Schritte. Bewahre die mathematische Notation und Struktur.
-
-WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzliche Kommentare.
-
-Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
-
-          const visionResponse = await llmWithRetry(visionPrompt, visionModel, false)
+          const visionResponse = await llmWithRetry(
+            visionPrompt,
+            visionModel,
+            false,
+            1,
+            'handwriting-analysis',
+            activeTask.moduleId,
+            canvasDataUrl
+          )
           transcription = visionResponse.trim()
           userAnswer = transcription
           
@@ -903,31 +913,21 @@ Beispielformat:
 
       if (isHandwritten && canvasDataUrl) {
         toast.loading('Analysiere deine Handschrift...', { id: 'quiz-submit' })
-        
+
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 10, name: 'Handschrift wird analysiert' } : t))
         )
-        
+
         try {
-          const visionPrompt = `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen. 
-        
-Analysiere das folgende Bild einer handschriftlichen Lösung und transkribiere GENAU was du siehst.
-
-Fragestellung war: ${task.question}
-
-Extrahiere den gesamten Text, mathematische Formeln, Gleichungen und Schritte. Bewahre die mathematische Notation und Struktur.
-
-WICHTIG: Gib nur die reine Transkription zurück, keine Bewertung oder zusätzliche Kommentare.
-
-Falls du mathematische Formeln siehst, nutze LaTeX-ähnliche Notation (z.B. a^2 + b^2 = c^2).`
-
           // Sende das Bild an die Vision-API für echte Handschrift-Erkennung
+          const visionPrompt = buildHandwritingPrompt(task.question)
+
           const visionResponse = await llmWithRetry(
-            visionPrompt, 
-            visionModel, 
-            false, 
-            1, 
-            'handwriting-analysis', 
+            visionPrompt,
+            visionModel,
+            false,
+            1,
+            'handwriting-analysis',
             task.moduleId,
             canvasDataUrl  // Das Canvas-Bild wird nun mitgesendet!
           )
