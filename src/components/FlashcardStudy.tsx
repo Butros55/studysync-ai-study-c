@@ -3,16 +3,8 @@ import { Flashcard } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import { RateLimitIndicator } from './RateLimitIndicator'
 import { DebugModeToggle } from './DebugModeToggle'
-import { X, ArrowsClockwise, CaretLeft, CaretRight, List, ArrowLeft } from '@phosphor-icons/react'
+import { X, ArrowsClockwise, CaretLeft, CaretRight, ArrowLeft } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -108,33 +100,10 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-              <div className="hidden sm:flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <div className="hidden sm:flex items-center gap-2">
                 <DebugModeToggle />
-                <RateLimitIndicator />
               </div>
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden">
-                    <List size={18} />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[280px]">
-                  <SheetHeader>
-                    <SheetTitle>Optionen</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6 space-y-4">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Debug-Modus</p>
-                      <DebugModeToggle />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">API-Status</p>
-                      <RateLimitIndicator />
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
               <Button
                 variant="ghost"
                 size="icon"

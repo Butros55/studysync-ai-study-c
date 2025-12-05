@@ -1,9 +1,18 @@
 [
   {
-    "id": "1764882526572-1te27dzgp",
+    "id": "1764927666650-krns65t1k",
+    "name": "Mathematik",
+    "code": "M",
+    "createdAt": "2025-12-05T09:41:06.650Z",
+    "color": "oklch(0.47 0.17 220)",
+    "examDate": "2026-01-27"
+  },
+  {
+    "id": "1764928329062-tl6e8rrrf",
     "name": "Technische Grundlagen Informatik",
     "code": "TGI",
-    "createdAt": "2025-12-04T21:08:46.572Z",
-    "color": "oklch(0.52 0.15 170)"
+    "createdAt": "2025-12-05T09:52:09.062Z",
+    "color": "oklch(0.45 0.15 250)",
+    "examDate": "2025-12-11"
   }
 ]

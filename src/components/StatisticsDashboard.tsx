@@ -11,18 +11,10 @@ import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import { ArrowLeft, TrendUp, Fire, Clock, Target, BookOpen, Lightning, Trophy, Calendar, List } from '@phosphor-icons/react'
+import { ArrowLeft, TrendUp, Fire, Clock, Target, BookOpen, Lightning, Trophy, Calendar } from '@phosphor-icons/react'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import { Separator } from './ui/separator'
-import { RateLimitIndicator } from './RateLimitIndicator'
 import { DebugModeToggle } from './DebugModeToggle'
 import { format, formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -114,32 +106,9 @@ export function StatisticsDashboard({
                 </p>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-3 shrink-0">
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
               <DebugModeToggle />
-              <RateLimitIndicator />
             </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden">
-                  <List size={18} />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[280px]">
-                <SheetHeader>
-                  <SheetTitle>Optionen</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Debug-Modus</p>
-                    <DebugModeToggle />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">API-Status</p>
-                    <RateLimitIndicator />
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </div>

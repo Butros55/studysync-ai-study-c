@@ -9,15 +9,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ArrowLeft, List } from '@phosphor-icons/react'
+import { ArrowLeft, PencilSimple, Calendar } from '@phosphor-icons/react'
 import { ScriptsTab } from './ScriptsTab'
 import { NotesTab } from './NotesTab'
 import { TasksTab } from './TasksTab'
 import { FlashcardsTab } from './FlashcardsTab'
-import { RateLimitIndicator } from './RateLimitIndicator'
-import { RateLimitBanner } from './RateLimitBanner'
 import { DebugModeToggle } from './DebugModeToggle'
 import { LocalStorageIndicator } from './LocalStorageIndicator'
+import { formatExamDate } from '@/lib/recommendations'
 
 interface ModuleViewProps {
   module: Module
@@ -43,6 +42,7 @@ interface ModuleViewProps {
   onGenerateAllTasks: () => void
   onGenerateAllFlashcards: () => void
   onStartFlashcardStudy: () => void
+  onEditModule?: (module: Module) => void
 }
 
 export function ModuleView({
@@ -69,11 +69,12 @@ export function ModuleView({
   onGenerateAllTasks,
   onGenerateAllFlashcards,
   onStartFlashcardStudy,
+  onEditModule,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('scripts')
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 sm:mb-4">
@@ -90,44 +91,44 @@ export function ModuleView({
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-2xl font-semibold tracking-tight truncate">{module.name}</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">{module.code}</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl font-semibold tracking-tight truncate">{module.name}</h1>
+                  {onEditModule && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => onEditModule(module)}
+                    >
+                      <PencilSimple size={14} />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <span className="truncate">{module.code}</span>
+                  {module.examDate && (
+                    <>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} />
+                        {formatExamDate(module.examDate)}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-3 shrink-0">
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
               <DebugModeToggle />
-              <RateLimitIndicator />
             </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden absolute top-4 right-3">
-                  <List size={18} />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[280px]">
-                <SheetHeader>
-                  <SheetTitle>Optionen</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Debug-Modus</p>
-                    <DebugModeToggle />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">API-Status</p>
-                    <RateLimitIndicator />
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </div>
 
-      <RateLimitBanner />
-
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Hauptinhalt mit flex-1 für Sticky Footer */}
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 sm:mb-6 w-full grid grid-cols-4 sm:w-auto sm:inline-flex h-auto">
             <TabsTrigger value="scripts" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
               <span className="hidden sm:inline">Skripte ({scripts.length})</span>
@@ -190,9 +191,11 @@ export function ModuleView({
             />
           </TabsContent>
         </Tabs>
-      </div>
+        </div>
+      </main>
 
-      <footer className="border-t bg-card/50 backdrop-blur-sm mt-8">
+      {/* Sticky Footer */}
+      <footer className="border-t bg-card/50 backdrop-blur-sm mt-auto">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <LocalStorageIndicator />

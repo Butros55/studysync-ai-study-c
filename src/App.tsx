@@ -3,6 +3,7 @@ import { useModules, useScripts, useNotes, useTasks, useFlashcards } from './hoo
 import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
 import { ModuleCard } from './components/ModuleCard'
 import { CreateModuleDialog } from './components/CreateModuleDialog'
+import { EditModuleDialog } from './components/EditModuleDialog'
 import { ModuleView } from './components/ModuleView'
 import { TaskSolver } from './components/TaskSolver'
 import { FlashcardStudy } from './components/FlashcardStudy'
@@ -11,19 +12,11 @@ import { EmptyState } from './components/EmptyState'
 import { NotificationCenter, PipelineTask } from './components/NotificationCenter'
 import { StatisticsDashboard } from './components/StatisticsDashboard'
 import { CostTrackingDashboard } from './components/CostTrackingDashboard'
-import { RateLimitIndicator } from './components/RateLimitIndicator'
-import { RateLimitBanner } from './components/RateLimitBanner'
 import { DebugModeToggle } from './components/DebugModeToggle'
 import { LocalStorageIndicator, LocalStorageBanner } from './components/LocalStorageIndicator'
+import { TutorDashboard } from './components/TutorDashboard'
 import { Button } from './components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from './components/ui/sheet'
-import { Plus, ChartLine, List, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
+import { Plus, ChartLine, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -31,6 +24,7 @@ import { taskQueue } from './lib/task-queue'
 import { llmWithRetry } from './lib/llm-utils'
 import { useLLMModel } from './hooks/use-llm-model'
 import { extractTagsFromQuestion, generateTaskTitle } from './lib/task-tags'
+import { updateTopicStats } from './lib/recommendations'
 
 const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und mathematischen Notationen.
 
@@ -49,6 +43,7 @@ function App() {
   const { 
     data: modules, 
     create: createModule, 
+    update: updateModule,
     remove: removeModule,
     setItems: setModules,
     loading: modulesLoading 
@@ -87,6 +82,8 @@ function App() {
   const { standardModel, visionModel } = useLLMModel()
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editModuleDialogOpen, setEditModuleDialogOpen] = useState(false)
+  const [moduleToEdit, setModuleToEdit] = useState<Module | null>(null)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
@@ -101,19 +98,26 @@ function App() {
   
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
 
+  // Handler zum Öffnen des Bearbeitungsdialogs
+  const handleEditModule = (module: Module) => {
+    setModuleToEdit(module)
+    setEditModuleDialogOpen(true)
+  }
+
   const selectedModule = modules?.find((m) => m.id === selectedModuleId)
   const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
   const moduleNotes = notes?.filter((n) => n.moduleId === selectedModuleId) || []
   const moduleTasks = tasks?.filter((t) => t.moduleId === selectedModuleId) || []
   const moduleFlashcards = flashcards?.filter((f) => f.moduleId === selectedModuleId) || []
 
-  const handleCreateModule = async (name: string, code: string) => {
+  const handleCreateModule = async (name: string, code: string, examDate?: string) => {
     const newModule: Module = {
       id: generateId(),
       name,
       code,
       createdAt: new Date().toISOString(),
       color: getRandomColor(),
+      examDate,
     }
     try {
       await createModule(newModule)
@@ -121,6 +125,51 @@ function App() {
     } catch (error) {
       console.error('Fehler beim Erstellen des Moduls:', error)
       toast.error('Fehler beim Erstellen des Moduls')
+    }
+  }
+
+  // Modul bearbeiten
+  const handleUpdateModule = async (moduleId: string, updates: Partial<Module>) => {
+    if (!modules) return
+    
+    try {
+      await updateModule(moduleId, updates)
+      toast.success('Modul aktualisiert')
+    } catch (error) {
+      console.error('Fehler beim Aktualisieren des Moduls:', error)
+      toast.error('Fehler beim Aktualisieren des Moduls')
+    }
+  }
+
+  // Modul löschen mit allem Inhalt
+  const handleDeleteModule = async (moduleId: string) => {
+    try {
+      // Alle zugehörigen Daten löschen
+      const moduleScriptsToDelete = scripts?.filter(s => s.moduleId === moduleId) || []
+      const moduleNotesToDelete = notes?.filter(n => n.moduleId === moduleId) || []
+      const moduleTasksToDelete = tasks?.filter(t => t.moduleId === moduleId) || []
+      const moduleFlashcardsToDelete = flashcards?.filter(f => f.moduleId === moduleId) || []
+      
+      // Alle Inhalte parallel löschen
+      await Promise.all([
+        ...moduleScriptsToDelete.map(s => removeScript(s.id)),
+        ...moduleNotesToDelete.map(n => removeNote(n.id)),
+        ...moduleTasksToDelete.map(t => removeTask(t.id)),
+        ...moduleFlashcardsToDelete.map(f => removeFlashcard(f.id)),
+      ])
+      
+      // Dann das Modul selbst löschen
+      await removeModule(moduleId)
+      
+      // Falls gerade in diesem Modul, zurück zur Hauptseite
+      if (selectedModuleId === moduleId) {
+        setSelectedModuleId(null)
+      }
+      
+      toast.success('Modul und alle Inhalte gelöscht')
+    } catch (error) {
+      console.error('Fehler beim Löschen des Moduls:', error)
+      toast.error('Fehler beim Löschen des Moduls')
     }
   }
 
@@ -525,6 +574,11 @@ Gib deine Antwort als JSON zurück:
           ...evaluation,
           transcription: isHandwritten ? transcription : undefined
         })
+
+        // Statistiken für das Tutor-Dashboard aktualisieren
+        if (activeTask.topic) {
+          updateTopicStats(activeTask.moduleId, activeTask.topic, evaluation.isCorrect)
+        }
 
         if (evaluation.isCorrect) {
           await updateTask(activeTask.id, { completed: true, completedAt: new Date().toISOString() })
@@ -1214,6 +1268,22 @@ Gib deine Antwort als JSON zurück:
           onGenerateAllTasks={handleGenerateAllTasks}
           onGenerateAllFlashcards={handleGenerateAllFlashcards}
           onStartFlashcardStudy={handleStartFlashcardStudy}
+          onEditModule={handleEditModule}
+        />
+
+        {/* EditModuleDialog auch in ModuleView verfügbar */}
+        <EditModuleDialog
+          module={moduleToEdit}
+          open={editModuleDialogOpen}
+          onOpenChange={setEditModuleDialogOpen}
+          onUpdateModule={handleUpdateModule}
+          onDeleteModule={handleDeleteModule}
+          contentCount={moduleToEdit ? {
+            scripts: scripts?.filter(s => s.moduleId === moduleToEdit.id).length || 0,
+            notes: notes?.filter(n => n.moduleId === moduleToEdit.id).length || 0,
+            tasks: tasks?.filter(t => t.moduleId === moduleToEdit.id).length || 0,
+            flashcards: flashcards?.filter(f => f.moduleId === moduleToEdit.id).length || 0,
+          } : undefined}
         />
       </>
     )
@@ -1227,7 +1297,8 @@ Gib deine Antwort als JSON zurück:
         onClearAll={() => setPipelineTasks([])}
       />
       
-      <div className="min-h-screen bg-background">
+      {/* Flex-Container für Sticky Footer */}
+      <div className="min-h-screen bg-background flex flex-col">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -1245,32 +1316,9 @@ Gib deine Antwort als JSON zurück:
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="hidden sm:flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2">
                   <DebugModeToggle />
-                  <RateLimitIndicator />
                 </div>
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="sm:hidden h-9 w-9 p-0">
-                      <List size={16} />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-[280px]">
-                    <SheetHeader>
-                      <SheetTitle>Optionen</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6 space-y-4">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Debug-Modus</p>
-                        <DebugModeToggle />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">API-Status</p>
-                        <RateLimitIndicator />
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
                 <Button 
                   variant="outline" 
                   onClick={() => {
@@ -1304,37 +1352,44 @@ Gib deine Antwort als JSON zurück:
           </div>
         </div>
 
-        <RateLimitBanner />
-
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
-          {!modules || modules.length === 0 ? (
-            <>
-              <div className="mb-6">
-                <LocalStorageBanner />
-              </div>
-              <EmptyState
-                title="Noch keine Module"
-                description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
-                actionLabel="Erstes Modul erstellen"
-                onAction={() => setCreateDialogOpen(true)}
-              />
-            </>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {modules.map((module) => (
-                <ModuleCard
-                  key={module.id}
-                  module={module}
-                  onClick={() => setSelectedModuleId(module.id)}
-                  scriptCount={scripts?.filter((s) => s.moduleId === module.id).length || 0}
-                  taskCount={tasks?.filter((t) => t.moduleId === module.id).length || 0}
+        {/* Hauptinhalt mit flex-1 für Sticky Footer */}
+        <main className="flex-1">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
+            {!modules || modules.length === 0 ? (
+              <>
+                <div className="mb-6">
+                  <LocalStorageBanner />
+                </div>
+                <EmptyState
+                  title="Noch keine Module"
+                  description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
+                  actionLabel="Erstes Modul erstellen"
+                  onAction={() => setCreateDialogOpen(true)}
                 />
-              ))}
-            </div>
-          )}
-        </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-6">
+                  <LocalStorageBanner />
+                </div>
+                {/* Tutor-Dashboard mit Empfehlungen und Modulen */}
+                <TutorDashboard
+                  modules={modules}
+                  tasks={tasks || []}
+                  onSolveTask={(task) => {
+                    setActiveTask(task)
+                    setTaskFeedback(null)
+                  }}
+                  onSelectModule={setSelectedModuleId}
+                  onEditModule={handleEditModule}
+                />
+              </>
+            )}
+          </div>
+        </main>
 
-        <footer className="border-t bg-card/50 backdrop-blur-sm mt-8">
+        {/* Sticky Footer - immer am unteren Rand */}
+        <footer className="border-t bg-card/50 backdrop-blur-sm mt-auto">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <LocalStorageIndicator />
@@ -1349,6 +1404,20 @@ Gib deine Antwort als JSON zurück:
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
           onCreateModule={handleCreateModule}
+        />
+
+        <EditModuleDialog
+          module={moduleToEdit}
+          open={editModuleDialogOpen}
+          onOpenChange={setEditModuleDialogOpen}
+          onUpdateModule={handleUpdateModule}
+          onDeleteModule={handleDeleteModule}
+          contentCount={moduleToEdit ? {
+            scripts: scripts?.filter(s => s.moduleId === moduleToEdit.id).length || 0,
+            notes: notes?.filter(n => n.moduleId === moduleToEdit.id).length || 0,
+            tasks: tasks?.filter(t => t.moduleId === moduleToEdit.id).length || 0,
+            flashcards: flashcards?.filter(f => f.moduleId === moduleToEdit.id).length || 0,
+          } : undefined}
         />
       </div>
     </>

@@ -9,11 +9,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Calendar } from '@phosphor-icons/react'
 
 interface CreateModuleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreateModule: (name: string, code: string) => void
+  onCreateModule: (name: string, code: string, examDate?: string) => void
 }
 
 export function CreateModuleDialog({
@@ -23,12 +24,14 @@ export function CreateModuleDialog({
 }: CreateModuleDialogProps) {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
+  const [examDate, setExamDate] = useState('')
 
   const handleSubmit = () => {
     if (name.trim() && code.trim()) {
-      onCreateModule(name.trim(), code.trim())
+      onCreateModule(name.trim(), code.trim(), examDate || undefined)
       setName('')
       setCode('')
+      setExamDate('')
       onOpenChange(false)
     }
   }
@@ -59,6 +62,22 @@ export function CreateModuleDialog({
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="exam-date" className="flex items-center gap-2">
+              <Calendar size={16} className="text-muted-foreground" />
+              Prüfungstermin (optional)
+            </Label>
+            <Input
+              id="exam-date"
+              type="date"
+              value={examDate}
+              onChange={(e) => setExamDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+            />
+            <p className="text-xs text-muted-foreground">
+              Der Prüfungstermin wird für personalisierte Lernempfehlungen verwendet.
+            </p>
           </div>
         </div>
         <DialogFooter>

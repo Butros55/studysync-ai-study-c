@@ -1,23 +1,15 @@
 import { useState } from 'react'
 import { Task } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import { RateLimitIndicator } from './RateLimitIndicator'
 import { DebugModeToggle } from './DebugModeToggle'
 import { TaskQuestionPanel } from './TaskQuestionPanel'
+import { TaskAttachments } from './TaskAttachments'
+import { SolutionPanel } from './SolutionPanel'
 import {
-  X,
   CheckCircle,
   Lightbulb,
   ArrowRight,
@@ -26,7 +18,6 @@ import {
   PencilLine,
   Info,
   ArrowLeft,
-  List,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -84,7 +75,7 @@ export function TaskSolver({
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden">
-      {/* Compact Header */}
+      {/* Compact Header - API-Status Widget entfernt */}
       <div className="border-b bg-card shrink-0">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -99,32 +90,7 @@ export function TaskSolver({
             <h2 className="font-semibold text-sm sm:text-base truncate">Aufgabe lösen</h2>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <div className="hidden sm:flex items-center gap-2">
-              <DebugModeToggle />
-              <RateLimitIndicator />
-            </div>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:hidden">
-                  <List size={18} />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[280px]">
-                <SheetHeader>
-                  <SheetTitle>Optionen</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Debug-Modus</p>
-                    <DebugModeToggle />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">API-Status</p>
-                    <RateLimitIndicator />
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+            <DebugModeToggle />
           </div>
         </div>
       </div>
@@ -135,6 +101,11 @@ export function TaskSolver({
       <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-6 pb-safe">
           <div className="flex flex-col gap-4 sm:gap-5">
+            {/* Attachments Section - Wahrheitstabellen, Bilder, etc. */}
+            {task.attachments && task.attachments.length > 0 && (
+              <TaskAttachments attachments={task.attachments} compact />
+            )}
+
             {/* Feedback Section */}
             <AnimatePresence mode="wait">
               {feedback && (
@@ -273,6 +244,11 @@ export function TaskSolver({
                 </Button>
               </div>
             </div>
+
+            {/* Musterlösung anzeigen - sowohl im Zeichnen- als auch Tippen-Modus verfügbar */}
+            {task.solution && (
+              <SolutionPanel solution={task.solution} compact />
+            )}
           </div>
         </div>
       </div>
