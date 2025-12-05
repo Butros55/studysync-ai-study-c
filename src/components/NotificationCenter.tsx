@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Bell, X, Check, Warning, Upload, FileText, ListChecks, Cards } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -27,13 +27,16 @@ interface NotificationCenterProps {
 export function NotificationCenter({ tasks, onDismiss, onClearAll }: NotificationCenterProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [hasNewNotifications, setHasNewNotifications] = useState(false)
-  const [autoDismissedIds, setAutoDismissedIds] = useState<Set<string>>(new Set())
+  const [autoDismissedCategories, setAutoDismissedCategories] = useState<Set<string>>(new Set())
   const [expandedErrorIds, setExpandedErrorIds] = useState<Set<string>>(new Set())
   const [anchor, setAnchor] = useState<{ top: number; right: number }>({ top: 16, right: 16 })
   const [dragging, setDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [anchorStart, setAnchorStart] = useState<{ top: number; right: number } | null>(null)
   const dragHoldTimeout = 600
+  
+  // Timer-Refs für Kategorie-basiertes Auto-Dismiss
+  const dismissTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
   const activeTasks = tasks.filter(t => t.status === 'processing' || t.status === 'pending')
   const completedTasks = tasks.filter(t => t.status === 'completed')
@@ -46,17 +49,52 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
     }
   }, [completedTasks.length, errorTasks.length])
 
+  // Kategorie-basiertes Auto-Dismiss mit Timer-Reset
   useEffect(() => {
     const completedOrErrorTasks = [...completedTasks, ...errorTasks]
-    completedOrErrorTasks.forEach((task) => {
-      if (!autoDismissedIds.has(task.id)) {
-        const timer = setTimeout(() => {
-          setAutoDismissedIds((prev) => new Set(prev).add(task.id))
-        }, 5000)
-        return () => clearTimeout(timer)
+    
+    // Gruppiere nach Kategorie (status + type)
+    const categoryMap = new Map<string, PipelineTask[]>()
+    completedOrErrorTasks.forEach(task => {
+      const categoryId = `${task.status}-${task.type}`
+      if (!categoryMap.has(categoryId)) {
+        categoryMap.set(categoryId, [])
+      }
+      categoryMap.get(categoryId)!.push(task)
+    })
+    
+    // Für jede aktive Kategorie: Timer starten/resetten
+    categoryMap.forEach((categoryTasks, categoryId) => {
+      // Wenn bereits dismissed, überspringe
+      if (autoDismissedCategories.has(categoryId)) return
+      
+      // Existierenden Timer clearen (Reset bei neuer Notification)
+      if (dismissTimersRef.current.has(categoryId)) {
+        clearTimeout(dismissTimersRef.current.get(categoryId)!)
+      }
+      
+      // Neuen Timer starten (5 Sekunden)
+      const timer = setTimeout(() => {
+        setAutoDismissedCategories(prev => new Set(prev).add(categoryId))
+        dismissTimersRef.current.delete(categoryId)
+      }, 5000)
+      
+      dismissTimersRef.current.set(categoryId, timer)
+    })
+    
+    // Cleanup: Timer für nicht mehr existierende Kategorien löschen
+    dismissTimersRef.current.forEach((timer, categoryId) => {
+      if (!categoryMap.has(categoryId)) {
+        clearTimeout(timer)
+        dismissTimersRef.current.delete(categoryId)
       }
     })
-  }, [completedTasks, errorTasks, autoDismissedIds])
+    
+    return () => {
+      // Cleanup alle Timer beim Unmount
+      dismissTimersRef.current.forEach(timer => clearTimeout(timer))
+    }
+  }, [completedTasks, errorTasks, autoDismissedCategories])
 
   const handleOpen = () => {
     setIsOpen((prev) => {
@@ -103,8 +141,13 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
   }
 
   const totalNotifications = activeTasks.length + recentTasks.length
+  
+  // Filtere Tasks basierend auf dismissed Kategorien (nicht einzelne IDs)
   const visiblePopupTasks = activeTasks.concat(
-    [...completedTasks, ...errorTasks].filter(t => !autoDismissedIds.has(t.id))
+    [...completedTasks, ...errorTasks].filter(t => {
+      const categoryId = `${t.status}-${t.type}`
+      return !autoDismissedCategories.has(categoryId)
+    })
   )
 
   const getCategoryInfo = (task: PipelineTask) => {
@@ -360,79 +403,6 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
         </AnimatePresence>
 
       </div>
-    </div>
-
-    <div className="fixed bottom-4 right-4 z-[95] pointer-events-none flex flex-col items-end gap-2">
-      <AnimatePresence>
-        {groupedPopupTasks.map((group, index) => {
-          const latest = group.tasks[group.tasks.length - 1]
-          const count = group.tasks.length
-          return (
-            <motion.div
-              key={`${group.categoryId}-${group.tasks[0].id}`}
-              initial={{ opacity: 0, x: 100, scale: 0.8 }}
-              animate={{ 
-                opacity: 1, 
-                x: 0, 
-                scale: 1,
-                y: index * 6
-              }}
-              exit={{ opacity: 0, x: 100, scale: 0.8 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              style={{ zIndex: 50 - index }}
-              className="pointer-events-auto"
-            >
-              <Card className="w-80 p-4 shadow-lg border-2 bg-card relative">
-                {count > 1 && (
-                  <div className="absolute -top-2 -right-2 rounded-full bg-primary text-primary-foreground text-[10px] px-2 py-1 shadow-md">
-                    {count}x
-                  </div>
-                )}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="mt-0.5">
-                      {latest.status === 'processing' || latest.status === 'pending' ? (
-                        (() => {
-                          const Icon = getTypeIcon(latest.type)
-                          return <Icon size={18} className="text-primary" />
-                        })()
-                      ) : latest.status === 'completed' ? (
-                        <Check size={18} className="text-accent" weight="bold" />
-                      ) : (
-                        <Warning size={18} className="text-destructive" weight="bold" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm mb-0.5">
-                        {group.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {latest.name}
-                      </p>
-                      {latest.error && (
-                        <p className="text-xs text-destructive mt-1">{latest.error}</p>
-                      )}
-                      {count > 1 && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          + {count - 1} weitere in diesem Stapel
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {(latest.status === 'processing' || latest.status === 'pending') && (
-                  <div className="space-y-2">
-                    <Progress value={latest.progress} className="h-2" />
-                    <p className="text-xs text-muted-foreground text-right">
-                      {Math.round(latest.progress)}%
-                    </p>
-                  </div>
-                )}
-              </Card>
-            </motion.div>
-          )
-        })}
-      </AnimatePresence>
     </div>
 
     <div className="fixed bottom-4 right-4 z-[95] pointer-events-none flex flex-col items-end gap-2">

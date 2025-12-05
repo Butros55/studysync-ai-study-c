@@ -86,49 +86,69 @@ function useDB<T extends { id: string }>(storageKey: StorageKey): UseDBResult<T>
     }
   }, [storageKey])
 
-  // Erstelle neuen Eintrag
+  // Erstelle neuen Eintrag - nutzt funktionales Update für Race Condition Safety
   const create = useCallback(async (item: T): Promise<T> => {
-    const newData = [...data, item]
-    setData(newData)
-    await saveData(newData)
-    return item
-  }, [data, saveData])
+    return new Promise((resolve, reject) => {
+      setData(prevData => {
+        const newData = [...prevData, item]
+        // Asynchron speichern, aber sofort State updaten
+        saveData(newData).catch(reject)
+        return newData
+      })
+      // Resolve nach State-Update
+      setTimeout(() => resolve(item), 0)
+    })
+  }, [saveData])
 
   // Erstelle mehrere Einträge
   const createMany = useCallback(async (items: T[]): Promise<T[]> => {
-    const newData = [...data, ...items]
-    setData(newData)
-    await saveData(newData)
-    return items
-  }, [data, saveData])
+    return new Promise((resolve, reject) => {
+      setData(prevData => {
+        const newData = [...prevData, ...items]
+        saveData(newData).catch(reject)
+        return newData
+      })
+      setTimeout(() => resolve(items), 0)
+    })
+  }, [saveData])
 
-  // Aktualisiere Eintrag
+  // Aktualisiere Eintrag - nutzt funktionales Update für Race Condition Safety
   const update = useCallback(async (id: string, updates: Partial<T>): Promise<T> => {
-    const index = data.findIndex(item => item.id === id)
-    if (index === -1) {
-      throw new Error(`Item with id ${id} not found in ${storageKey}`)
-    }
-    
-    const updatedItem = { ...data[index], ...updates }
-    const newData = [...data]
-    newData[index] = updatedItem
-    
-    setData(newData)
-    await saveData(newData)
-    return updatedItem
-  }, [data, saveData, storageKey])
+    return new Promise((resolve, reject) => {
+      setData(prevData => {
+        const index = prevData.findIndex(item => item.id === id)
+        if (index === -1) {
+          reject(new Error(`Item with id ${id} not found in ${storageKey}`))
+          return prevData
+        }
+        
+        const updatedItem = { ...prevData[index], ...updates }
+        const newData = [...prevData]
+        newData[index] = updatedItem
+        
+        saveData(newData).catch(reject)
+        setTimeout(() => resolve(updatedItem), 0)
+        return newData
+      })
+    })
+  }, [saveData, storageKey])
 
-  // Lösche Eintrag
+  // Lösche Eintrag - nutzt funktionales Update für Race Condition Safety
   const remove = useCallback(async (id: string): Promise<boolean> => {
-    const newData = data.filter(item => item.id !== id)
-    if (newData.length === data.length) {
-      return false
-    }
-    
-    setData(newData)
-    await saveData(newData)
-    return true
-  }, [data, saveData])
+    return new Promise((resolve, reject) => {
+      setData(prevData => {
+        const newData = prevData.filter(item => item.id !== id)
+        if (newData.length === prevData.length) {
+          resolve(false)
+          return prevData
+        }
+        
+        saveData(newData).catch(reject)
+        setTimeout(() => resolve(true), 0)
+        return newData
+      })
+    })
+  }, [saveData])
 
   // Setze Daten direkt (für Batch-Operationen)
   const setItems = useCallback((updater: T[] | ((prev: T[]) => T[])) => {

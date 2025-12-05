@@ -99,7 +99,15 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
           </div>
 
           <TabsContent value="api" className="flex-1 overflow-hidden m-0 px-6 py-4">
-            <div className="flex items-center justify-end mb-3">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="font-mono text-xs">
+                  API: {import.meta.env.VITE_API_URL || 'http://localhost:3001'}
+                </Badge>
+                <Badge variant={import.meta.env.PROD ? "default" : "secondary"} className="text-xs">
+                  {import.meta.env.PROD ? 'Production' : 'Development'}
+                </Badge>
+              </div>
               <Button variant="outline" size="sm" onClick={clearLogs}>
                 <Trash size={16} className="mr-2" />
                 Logs löschen

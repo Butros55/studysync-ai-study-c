@@ -32,7 +32,9 @@ import {
   CaretUp,
   BookOpen,
   Clock,
-  Exam
+  Exam,
+  Sparkle,
+  ArrowsClockwise
 } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -40,9 +42,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface TutorDashboardProps {
   modules: Module[]
   tasks: Task[]
+  scripts?: { id: string; moduleId: string; name: string }[]
   onSolveTask: (task: Task) => void
   onSelectModule: (moduleId: string) => void
   onEditModule?: (module: Module) => void
+  onGenerateTasks?: (moduleId: string, scriptIds: string[]) => void
+  isGenerating?: boolean
 }
 
 interface TaskBlock {
@@ -56,10 +61,13 @@ interface TaskBlock {
 
 export function TutorDashboard({ 
   modules, 
-  tasks, 
+  tasks,
+  scripts = [],
   onSolveTask,
   onSelectModule,
-  onEditModule
+  onEditModule,
+  onGenerateTasks,
+  isGenerating = false
 }: TutorDashboardProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(modules.slice(0, 2).map(m => m.id)))
 
@@ -157,6 +165,35 @@ export function TutorDashboard({
     }
 
     return blocks
+  }
+
+  // Prüfe ob Modul neue Aufgaben braucht
+  const needsNewTasks = (moduleId: string): { needed: boolean; reason: string; scriptIds: string[] } => {
+    const moduleTasks = tasks.filter(t => t.moduleId === moduleId)
+    const uncompletedTasks = moduleTasks.filter(t => !t.completed)
+    const moduleScripts = scripts.filter(s => s.moduleId === moduleId)
+    
+    // Finde Skripte ohne Aufgaben
+    const scriptsWithTasks = new Set(moduleTasks.map(t => t.scriptId).filter(Boolean))
+    const scriptsWithoutTasks = moduleScripts.filter(s => !scriptsWithTasks.has(s.id))
+    
+    if (scriptsWithoutTasks.length > 0) {
+      return {
+        needed: true,
+        reason: `${scriptsWithoutTasks.length} Skript(e) ohne Aufgaben`,
+        scriptIds: scriptsWithoutTasks.map(s => s.id)
+      }
+    }
+    
+    if (uncompletedTasks.length <= 2 && moduleScripts.length > 0) {
+      return {
+        needed: true,
+        reason: uncompletedTasks.length === 0 ? 'Alle Aufgaben erledigt!' : `Nur noch ${uncompletedTasks.length} Aufgabe(n)`,
+        scriptIds: moduleScripts.map(s => s.id)
+      }
+    }
+    
+    return { needed: false, reason: '', scriptIds: [] }
   }
 
   const getDifficultyBadge = (difficulty: Task['difficulty']) => {
@@ -349,21 +386,61 @@ export function TutorDashboard({
                 )}
               </AnimatePresence>
 
-              {/* Leerer State */}
+              {/* Leerer State oder Neue Aufgaben generieren */}
               {isExpanded && taskBlocks.length === 0 && (
                 <div className="px-4 pb-4 pt-2 border-t bg-muted/20">
-                  <div className="text-center py-4 text-sm text-muted-foreground">
-                    <Exam size={24} className="mx-auto mb-2 opacity-50" />
-                    <p>Alle Aufgaben erledigt oder noch keine erstellt</p>
-                    <Button 
-                      variant="link" 
-                      size="sm" 
-                      className="mt-1"
-                      onClick={() => onSelectModule(module.id)}
-                    >
-                      Modul öffnen
-                    </Button>
-                  </div>
+                  {(() => {
+                    const taskStatus = needsNewTasks(module.id)
+                    const moduleScripts = scripts.filter(s => s.moduleId === module.id)
+                    
+                    if (moduleScripts.length === 0) {
+                      return (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          <Exam size={24} className="mx-auto mb-2 opacity-50" />
+                          <p>Lade Skripte hoch, um Aufgaben zu generieren</p>
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="mt-1"
+                            onClick={() => onSelectModule(module.id)}
+                          >
+                            Modul öffnen
+                          </Button>
+                        </div>
+                      )
+                    }
+                    
+                    return (
+                      <div className="text-center py-4">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-3">
+                          <Sparkle size={24} className="text-primary" weight="fill" />
+                        </div>
+                        <p className="font-medium mb-1">
+                          {taskStatus.needed ? taskStatus.reason : 'Alle Aufgaben erledigt! 🎉'}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Lass die KI neue Übungsaufgaben erstellen
+                        </p>
+                        <Button
+                          onClick={() => onGenerateTasks?.(module.id, taskStatus.scriptIds.length > 0 ? taskStatus.scriptIds : moduleScripts.map(s => s.id))}
+                          disabled={isGenerating}
+                          className="gap-2"
+                        >
+                          {isGenerating ? (
+                            <>
+                              <ArrowsClockwise size={16} className="animate-spin" />
+                              Generiere...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkle size={16} weight="fill" />
+                              Neue Aufgaben generieren
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </Card>

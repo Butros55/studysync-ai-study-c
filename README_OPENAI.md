@@ -56,6 +56,7 @@ npm install
 ### 4. Beide Server starten
 
 **Option A - Alles zusammen (empfohlen):**
+
 ```bash
 npm run dev:full
 ```
@@ -63,11 +64,13 @@ npm run dev:full
 **Option B - Einzeln in separaten Terminals:**
 
 Terminal 1 (Backend):
+
 ```bash
 npm run server
 ```
 
 Terminal 2 (Frontend):
+
 ```bash
 npm run dev
 ```
@@ -77,11 +80,13 @@ npm run dev
 Öffne http://localhost:5000 - die App sollte funktionieren!
 
 Um zu testen, ob der Backend-Server läuft:
+
 ```bash
 curl http://localhost:3001/api/health
 ```
 
 Erwartete Antwort:
+
 ```json
 {
   "status": "ok",
@@ -93,15 +98,18 @@ Erwartete Antwort:
 ## Geänderte Dateien
 
 ### Neu erstellt:
+
 - `server/index.js` - Express Backend mit OpenAI Integration
 - `.env.example` - Beispiel für Umgebungsvariablen
 - `README_OPENAI.md` - Diese Datei
 
 ### Modifiziert:
+
 - `src/lib/llm-utils.ts` - Ersetzt `spark.llm()` durch `fetch()` zu Backend
 - `package.json` - Neue Scripts und Dependencies (openai, express, cors, concurrently)
 
 ### Unverändert (funktionieren weiterhin):
+
 - Alle UI-Komponenten
 - Rate Limiting Logik
 - Task Queue System
@@ -113,11 +121,13 @@ Erwartete Antwort:
 ### Standard-Modell ändern
 
 In `server/index.js`, Zeile 9:
+
 ```javascript
-const DEFAULT_MODEL = 'gpt-4o-mini'  // ← Hier ändern
+const DEFAULT_MODEL = "gpt-4o-mini"; // ← Hier ändern
 ```
 
 Verfügbare Modelle (Stand Jan 2024):
+
 - `gpt-4o-mini` - Schnell, günstig, gut für die meisten Aufgaben (Standard)
 - `gpt-4o` - Leistungsstärker, teurer
 - `gpt-4-turbo` - Hohe Qualität
@@ -126,21 +136,22 @@ Verfügbare Modelle (Stand Jan 2024):
 ### Modell pro Anfrage wählen
 
 Im Frontend wird das Modell bei `llmWithRetry()` übergeben:
+
 ```typescript
 // In App.tsx, z.B. Zeile 185
-const response = await llmWithRetry(prompt, 'gpt-4o-mini', false)
+const response = await llmWithRetry(prompt, "gpt-4o-mini", false);
 ```
 
 ## Fehlerbehandlung
 
 ### Backend meldet klare Fehler:
 
-| HTTP Status | Fehler | Bedeutung |
-|-------------|--------|-----------|
-| 400 | Bad Request | Prompt fehlt im Request |
-| 429 | Rate Limit | Zu viele Anfragen an OpenAI |
-| 413 | Token Limit | Text ist zu lang für das Modell |
-| 500 | Server Error | API-Key ungültig oder nicht gesetzt |
+| HTTP Status | Fehler       | Bedeutung                           |
+| ----------- | ------------ | ----------------------------------- |
+| 400         | Bad Request  | Prompt fehlt im Request             |
+| 429         | Rate Limit   | Zu viele Anfragen an OpenAI         |
+| 413         | Token Limit  | Text ist zu lang für das Modell     |
+| 500         | Server Error | API-Key ungültig oder nicht gesetzt |
 
 ### Retry-Logik
 
@@ -152,11 +163,11 @@ const response = await llmWithRetry(prompt, 'gpt-4o-mini', false)
 
 OpenAI berechnet nach Token-Verbrauch. Ungefähre Kosten (Stand Jan 2024):
 
-| Modell | Input (pro 1M Tokens) | Output (pro 1M Tokens) |
-|--------|----------------------|------------------------|
-| gpt-4o-mini | $0.15 | $0.60 |
-| gpt-4o | $2.50 | $10.00 |
-| gpt-3.5-turbo | $0.50 | $1.50 |
+| Modell        | Input (pro 1M Tokens) | Output (pro 1M Tokens) |
+| ------------- | --------------------- | ---------------------- |
+| gpt-4o-mini   | $0.15                 | $0.60                  |
+| gpt-4o        | $2.50                 | $10.00                 |
+| gpt-3.5-turbo | $0.50                 | $1.50                  |
 
 **Beispiel**: Eine Notizgenerierung (~2000 Input + 500 Output Tokens) mit gpt-4o-mini kostet ca. $0.0006
 
@@ -165,6 +176,7 @@ OpenAI berechnet nach Token-Verbrauch. Ungefähre Kosten (Stand Jan 2024):
 ### Backend-Logs
 
 Der Server zeigt alle Requests:
+
 ```
 [LLM] Request - Model: gpt-4o-mini, JSON Mode: false, Prompt length: 1234
 [LLM] Response - Length: 567, Tokens: 234
@@ -173,6 +185,7 @@ Der Server zeigt alle Requests:
 ### Frontend Debug-Konsole
 
 Aktiviere den Debug-Modus in der App (Toggle oben rechts):
+
 - Zeigt alle Prompts
 - Zeigt alle Responses
 - Zeigt Token-Verbrauch
@@ -195,6 +208,7 @@ curl -X POST http://localhost:3001/api/llm \
 ### "Verbindung zum Backend fehlgeschlagen"
 
 **Lösung**: Stelle sicher, dass der Backend-Server läuft:
+
 ```bash
 npm run server
 ```
@@ -202,13 +216,15 @@ npm run server
 ### "OPENAI_API_KEY nicht gesetzt"
 
 **Lösung**: Erstelle `.env`-Datei mit deinem API-Key:
+
 ```bash
 echo "OPENAI_API_KEY=sk-..." > .env
 ```
 
 ### "Rate Limit erreicht"
 
-**Lösung**: 
+**Lösung**:
+
 1. Warte 5 Minuten (automatischer Cooldown)
 2. Überprüfe dein OpenAI-Kontingent: https://platform.openai.com/usage
 3. Evtl. zu `gpt-3.5-turbo` wechseln (höhere Limits)
@@ -216,6 +232,7 @@ echo "OPENAI_API_KEY=sk-..." > .env
 ### "Token-Limit überschritten"
 
 **Lösung**: Das Dokument ist zu groß. Optionen:
+
 1. Teile das Dokument in kleinere Abschnitte
 2. Wechsle zu einem Modell mit größerem Context Window (`gpt-4-turbo`: 128k Tokens)
 
@@ -224,34 +241,38 @@ echo "OPENAI_API_KEY=sk-..." > .env
 ### Neue LLM-Features hinzufügen
 
 1. **Im Frontend** (`src/lib/llm-utils.ts`):
+
 ```typescript
 const response = await llmWithRetry(
   prompt,
-  'gpt-4o-mini',  // Modell
-  false,          // JSON Mode
-  1               // Max Retries
-)
+  "gpt-4o-mini", // Modell
+  false, // JSON Mode
+  1 // Max Retries
+);
 ```
 
 2. **Backend erweitern** (`server/index.js`):
+
 ```javascript
 // Z.B. Vision Support hinzufügen:
 if (req.body.image) {
   requestOptions.messages[0].content = [
     { type: "text", text: prompt },
-    { type: "image_url", image_url: { url: req.body.image } }
-  ]
+    { type: "image_url", image_url: { url: req.body.image } },
+  ];
 }
 ```
 
 ## Migration von GitHub Models
 
 Alle Stellen, die vorher `spark.llm()` verwendet haben, nutzen jetzt:
+
 1. `llmWithRetry()` im Frontend
 2. Diese Funktion ruft `/api/llm` auf
 3. Das Backend ruft OpenAI auf
 
 **Keine Änderungen nötig** in:
+
 - `App.tsx` - verwendet bereits `llmWithRetry()`
 - Komponenten - keine direkten LLM-Calls
 - UI-Logik - bleibt gleich
@@ -261,6 +282,7 @@ Alle Stellen, die vorher `spark.llm()` verwendet haben, nutzen jetzt:
 ### Option 1: Gleicher Server (z.B. Vercel, Railway)
 
 Stelle sicher, dass:
+
 1. Beide Server starten: `npm run dev:full` (oder separates Prozess-Management)
 2. `OPENAI_API_KEY` als Umgebungsvariable gesetzt ist
 3. `VITE_API_URL` auf die Backend-URL zeigt
@@ -269,26 +291,104 @@ Stelle sicher, dass:
 
 1. Backend auf separatem Service (z.B. Railway, Render, Fly.io)
 2. Im Frontend `.env`:
+
 ```env
 VITE_API_URL=https://your-backend-url.com
 ```
 
+---
+
+## 🚀 Render Deployment (Produktion)
+
+### Backend bei Render hosten
+
+Die App ist vorbereitet für Deployment bei [Render](https://render.com):
+
+#### 1. Render-Projekt erstellen
+
+1. Gehe zu [Render Dashboard](https://dashboard.render.com)
+2. Klicke auf **"New +"** → **"Blueprint"**
+3. Verbinde dein GitHub Repository: `Butros55/studysync-ai-study-c`
+4. Render erkennt die `render.yaml` automatisch und erstellt den Service
+
+#### 2. OpenAI API-Key konfigurieren
+
+Nach dem Deployment:
+
+1. Gehe zu deinem Service im Render Dashboard
+2. Navigiere zu **"Environment"**
+3. Finde `OPENAI_API_KEY` und klicke auf **"Set Value"**
+4. Füge deinen OpenAI API-Key ein
+5. Klicke auf **"Save Changes"** - der Service startet automatisch neu
+
+#### 3. Frontend für Produktion bauen
+
+Aktualisiere `.env.production` mit deiner Render-URL:
+
+```env
+VITE_API_URL=https://studysync-backend.onrender.com
+```
+
+Dann baue das Frontend:
+
+```bash
+npm run build
+```
+
+Das Build-Ergebnis in `/dist` kann auf GitHub Pages deployed werden.
+
+#### 4. GitHub Pages Deployment
+
+Der GitHub Actions Workflow (`.github/workflows/deploy.yml`) baut das Frontend automatisch.
+Stelle sicher, dass `VITE_API_URL` in `.env.production` auf deine Render-URL zeigt.
+
+### Healthcheck testen
+
+Nach dem Deployment:
+
+```bash
+curl https://studysync-backend.onrender.com/api/health
+```
+
+Erwartete Antwort:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-12-05T10:30:00.000Z",
+  "environment": "production"
+}
+```
+
+### ⚠️ Render Free Tier Hinweise
+
+- Der Service geht nach 15 Minuten Inaktivität in den Schlafmodus
+- Der erste Request nach dem Aufwachen dauert ~30 Sekunden
+- Für bessere Performance: Upgrade auf kostenpflichtigen Plan
+
+---
+
 ## Support
 
 Bei Fragen oder Problemen:
+
 1. Überprüfe die Logs in Backend (`npm run server`) und Browser-Console
-2. Aktiviere Debug-Modus in der App
+2. Aktiviere Debug-Modus in der App (zeigt aktuelle API-URL)
 3. Überprüfe OpenAI Status: https://status.openai.com
+4. Prüfe Render Logs: Dashboard → Service → "Logs"
 
 ## Sicherheit
 
 ✅ **Richtig implementiert:**
-- API-Key nur auf Server
-- CORS konfiguriert
+
+- API-Key nur auf Server (Render ENV)
+- CORS konfiguriert für localhost + GitHub Pages
 - `.env` in `.gitignore`
 - Input-Validierung im Backend
+- Healthcheck-Route für Monitoring
 
 ⚠️ **Für Produktion zusätzlich:**
+
 - Rate Limiting pro User
 - Request-Größen-Limit
 - API-Key-Rotation

@@ -1,0 +1,19 @@
+# Render Blueprint für StudySync Backend
+# Dokumentation: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: studysync-backend
+    runtime: node
+    plan: free
+    branch: main
+    rootDir: .
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false  # Manuell im Render Dashboard setzen!
+    autoDeploy: true
+    healthCheckPath: /api/health

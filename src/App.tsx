@@ -17,6 +17,7 @@ import { DebugModeToggle } from './components/DebugModeToggle'
 import { LocalStorageIndicator } from './components/LocalStorageIndicator'
 import { TutorDashboard } from './components/TutorDashboard'
 import { ExamMode } from './components/ExamMode'
+import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
@@ -112,6 +113,9 @@ function App() {
   } = useFlashcards()
 
   const { standardModel, visionModel } = useLLMModel()
+  
+  // Onboarding Tutorial
+  const { showOnboarding, isChecked, completeOnboarding, resetOnboarding } = useOnboarding()
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editModuleDialogOpen, setEditModuleDialogOpen] = useState(false)
@@ -593,6 +597,22 @@ Regeln:
     }
 
     await taskQueue.add({ id: taskId, execute })
+  }
+
+  // Neue Funktion: Generiere Tasks für mehrere Scripts (vom Dashboard)
+  const handleGenerateTasksFromDashboard = async (moduleId: string, scriptIds: string[]) => {
+    // Filter scripts die zum Modul gehören
+    const scriptsToProcess = scripts?.filter(s => scriptIds.includes(s.id) && s.moduleId === moduleId) || []
+    
+    if (scriptsToProcess.length === 0) {
+      toast.info('Keine Skripte zum Generieren gefunden')
+      return
+    }
+
+    // Generiere Tasks für jedes Script sequentiell
+    for (const script of scriptsToProcess) {
+      await handleGenerateTasks(script.id)
+    }
   }
 
   const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
@@ -1465,6 +1485,7 @@ Gib deine Antwort als JSON zurück:
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="hidden sm:flex items-center gap-2">
+                  <OnboardingTrigger onClick={resetOnboarding} />
                   <DebugModeToggle />
                 </div>
                 <Button 
@@ -1490,7 +1511,12 @@ Gib deine Antwort als JSON zurück:
                   <CurrencyDollar size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Kosten</span>
                 </Button>
-                <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="flex-1 sm:flex-none">
+                <Button 
+                  onClick={() => setCreateDialogOpen(true)} 
+                  size="sm" 
+                  className="flex-1 sm:flex-none"
+                  data-onboarding="new-module"
+                >
                   <Plus size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Neues Modul</span>
                   <span className="sm:hidden">Modul</span>
@@ -1518,6 +1544,9 @@ Gib deine Antwort als JSON zurück:
                 <TutorDashboard
                   modules={modules}
                   tasks={tasks || []}
+                  scripts={scripts || []}
+                  onGenerateTasks={handleGenerateTasksFromDashboard}
+                  isGenerating={pipelineTasks.some(t => t.type === 'generate-tasks' && t.status === 'processing')}
                   onSolveTask={(task) => {
                     setActiveTask(task)
                     setTaskFeedback(null)
@@ -1561,6 +1590,14 @@ Gib deine Antwort als JSON zurück:
             flashcards: flashcards?.filter(f => f.moduleId === moduleToEdit.id).length || 0,
           } : undefined}
         />
+
+        {/* Onboarding Tutorial für neue Benutzer */}
+        {isChecked && showOnboarding && (
+          <OnboardingTutorial 
+            onComplete={completeOnboarding}
+            onCreateModule={() => setCreateDialogOpen(true)}
+          />
+        )}
       </div>
     </>
   )

@@ -214,8 +214,14 @@ export async function llmWithRetry(
         throw error
       }
       
-      if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
-        throw new Error('Verbindung zum Backend fehlgeschlagen. Stelle sicher, dass der Server läuft (npm run server).')
+      // Verbesserte Netzwerk-Fehlermeldung
+      if (errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('ECONNREFUSED')) {
+        const isLocalhost = API_BASE_URL.includes('localhost')
+        if (isLocalhost) {
+          throw new Error('Verbindung zum lokalen Backend fehlgeschlagen. Starte den Server mit: npm run server')
+        } else {
+          throw new Error(`Verbindung zum Backend (${API_BASE_URL}) fehlgeschlagen. Der Render-Dienst ist möglicherweise nicht erreichbar oder startet gerade neu. Bitte versuche es in 30 Sekunden erneut.`)
+        }
       }
       
       throw error

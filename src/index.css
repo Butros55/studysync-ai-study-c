@@ -138,3 +138,21 @@
   font-size: 0.875rem;
   margin-bottom: 0.125rem;
 }
+
+/* Onboarding Highlight Animation */
+.onboarding-highlight {
+  position: relative;
+  z-index: 9998;
+  animation: onboarding-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(var(--primary), 0.4);
+  border-radius: 8px;
+}
+
+@keyframes onboarding-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px var(--primary), 0 0 20px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px var(--primary), 0 0 30px rgba(59, 130, 246, 0.6);
+  }
+}

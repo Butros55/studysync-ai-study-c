@@ -14,8 +14,41 @@ import {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// CORS-Konfiguration: Erlaubte Origins für Dev und Prod
+const allowedOrigins = [
+  "http://localhost:5000",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://butros55.github.io",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Erlaube Requests ohne Origin (z.B. Server-zu-Server, Postman)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.warn(`CORS blocked origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: false,
+  })
+);
+
 app.use(express.json({ limit: "10mb" }));
+
+// Healthcheck-Route für Render
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
