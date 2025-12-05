@@ -203,7 +203,7 @@ function App() {
     }
   }
 
-  const handleUploadScript = async (content: string, name: string, fileType?: string, fileData?: string) => {
+  const handleUploadScript = async (content: string, name: string, fileType?: string, fileData?: string, category?: string) => {
     if (!selectedModuleId) return
 
     const taskId = generateId()
@@ -229,7 +229,7 @@ function App() {
         
         await new Promise(resolve => setTimeout(resolve, 200))
 
-        const newScript: Script = {
+        const newScript: Script & { category?: string } = {
           id: generateId(),
           moduleId: moduleId,
           name,
@@ -237,6 +237,7 @@ function App() {
           uploadedAt: new Date().toISOString(),
           fileType: fileType || 'text',
           fileData,
+          category: category || 'script', // Kategorie speichern
         }
         
         await createScript(newScript)

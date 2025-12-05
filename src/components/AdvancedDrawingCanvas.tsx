@@ -114,36 +114,89 @@ export function AdvancedDrawingCanvas({
         const canvas = canvasRef.current
         if (!canvas) return
 
+        // WICHTIG: Berechne Bounding Box aller Strokes für vollständiges Bild
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        
+        for (const stroke of drawing.strokes) {
+          for (const point of stroke.points) {
+            // Berücksichtige die Stiftbreite
+            const halfWidth = stroke.width / 2
+            minX = Math.min(minX, point.x - halfWidth)
+            minY = Math.min(minY, point.y - halfWidth)
+            maxX = Math.max(maxX, point.x + halfWidth)
+            maxY = Math.max(maxY, point.y + halfWidth)
+          }
+        }
+        
+        // Falls keine Strokes vorhanden sind oder ungültige Werte
+        if (!isFinite(minX) || !isFinite(maxX)) return
+        
+        // Padding hinzufügen für bessere Lesbarkeit
+        const padding = 40
+        minX = Math.max(0, minX - padding)
+        minY = Math.max(0, minY - padding)
+        maxX += padding
+        maxY += padding
+        
+        // Berechne die tatsächliche Größe des Inhalts
+        const contentWidth = maxX - minX
+        const contentHeight = maxY - minY
+        
+        // Mindestgröße für gute Vision API Erkennung (aber nicht zu groß)
+        const minSize = 800
+        const maxSize = 4096
+        
+        // Skaliere auf mindestens minSize, aber maximal maxSize
+        let scale = 1
+        const largestDim = Math.max(contentWidth, contentHeight)
+        
+        if (largestDim < minSize) {
+          scale = minSize / largestDim
+        } else if (largestDim > maxSize) {
+          scale = maxSize / largestDim
+        }
+        
+        const exportWidth = Math.ceil(contentWidth * scale)
+        const exportHeight = Math.ceil(contentHeight * scale)
+
         // Temporäres Canvas für Export erstellen
         const exportCanvas = document.createElement('canvas')
-        const dpr = window.devicePixelRatio || 1
-        exportCanvas.width = canvas.width
-        exportCanvas.height = canvas.height
+        exportCanvas.width = exportWidth
+        exportCanvas.height = exportHeight
         const ctx = exportCanvas.getContext('2d')
         if (!ctx) return
 
         // Weißer Hintergrund
         ctx.fillStyle = 'white'
-        ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+        ctx.fillRect(0, 0, exportWidth, exportHeight)
 
-        // Strokes zeichnen
+        // Skalierung und Translation anwenden
+        ctx.scale(scale, scale)
+        ctx.translate(-minX, -minY)
+
+        // Strokes zeichnen mit Anti-Aliasing
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        
         for (const stroke of drawing.strokes) {
           if (stroke.points.length < 2) continue
           ctx.beginPath()
           ctx.strokeStyle = stroke.color
-          ctx.lineWidth = stroke.width * dpr
+          ctx.lineWidth = stroke.width
           ctx.lineCap = 'round'
           ctx.lineJoin = 'round'
           const firstPoint = stroke.points[0]
-          ctx.moveTo(firstPoint.x * dpr, firstPoint.y * dpr)
+          ctx.moveTo(firstPoint.x, firstPoint.y)
           for (let i = 1; i < stroke.points.length; i++) {
             const point = stroke.points[i]
-            ctx.lineTo(point.x * dpr, point.y * dpr)
+            ctx.lineTo(point.x, point.y)
           }
           ctx.stroke()
         }
 
-        onCanvasDataUrl(exportCanvas.toDataURL('image/png'))
+        const dataUrl = exportCanvas.toDataURL('image/png')
+        console.log(`[Canvas Export] Size: ${exportWidth}x${exportHeight}, Strokes: ${drawing.strokes.length}, DataURL length: ${dataUrl.length}`)
+        onCanvasDataUrl(dataUrl)
       }, 300)
       return () => clearTimeout(timer)
     }
@@ -881,6 +934,7 @@ export function AdvancedDrawingCanvas({
           onPointerCancel={handlePointerCancel}
           onPointerLeave={handlePointerUp}
           onWheel={handleWheel}
+          onContextMenu={(e) => e.preventDefault()} // Rechtsklick-Menü deaktivieren
         />
       </div>
 

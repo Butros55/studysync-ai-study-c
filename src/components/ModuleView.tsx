@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Module, Script, StudyNote, Task, Flashcard } from '@/lib/types'
+import { Module, Script, StudyNote, Task, Flashcard, FileCategory } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -9,8 +9,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ArrowLeft, PencilSimple, Calendar } from '@phosphor-icons/react'
-import { ScriptsTab } from './ScriptsTab'
+import { ArrowLeft, PencilSimple, Calendar, House, FolderOpen, Note, Cards, ClipboardText } from '@phosphor-icons/react'
+import { ModuleDashboard } from './ModuleDashboard'
+import { FilesTab } from './FilesTab'
 import { NotesTab } from './NotesTab'
 import { TasksTab } from './TasksTab'
 import { FlashcardsTab } from './FlashcardsTab'
@@ -25,7 +26,7 @@ interface ModuleViewProps {
   tasks: Task[]
   flashcards: Flashcard[]
   onBack: () => void
-  onUploadScript: (content: string, name: string, fileType?: string, fileData?: string) => Promise<void>
+  onUploadScript: (content: string, name: string, fileType?: string, fileData?: string, category?: FileCategory) => Promise<void>
   onGenerateNotes: (scriptId: string) => void
   onGenerateTasks: (scriptId: string) => void
   onGenerateFlashcards: (noteId: string) => void
@@ -71,7 +72,7 @@ export function ModuleView({
   onStartFlashcardStudy,
   onEditModule,
 }: ModuleViewProps) {
-  const [activeTab, setActiveTab] = useState('scripts')
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -129,27 +130,47 @@ export function ModuleView({
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4 sm:mb-6 w-full grid grid-cols-4 sm:w-auto sm:inline-flex h-auto">
-            <TabsTrigger value="scripts" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
-              <span className="hidden sm:inline">Skripte ({scripts.length})</span>
-              <span className="sm:hidden">Skr. {scripts.length}</span>
+          <TabsList className="mb-4 sm:mb-6 w-full grid grid-cols-5 sm:w-auto sm:inline-flex h-auto">
+            <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <House className="w-4 h-4 sm:mr-1.5" weight="duotone" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="files" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <FolderOpen className="w-4 h-4 sm:mr-1.5" weight="duotone" />
+              <span className="hidden sm:inline">Dateien ({scripts.length})</span>
+              <span className="sm:hidden">{scripts.length}</span>
             </TabsTrigger>
             <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <Note className="w-4 h-4 sm:mr-1.5" weight="duotone" />
               <span className="hidden sm:inline">Notizen ({notes.length})</span>
-              <span className="sm:hidden">Not. {notes.length}</span>
+              <span className="sm:hidden">{notes.length}</span>
             </TabsTrigger>
             <TabsTrigger value="flashcards" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <Cards className="w-4 h-4 sm:mr-1.5" weight="duotone" />
               <span className="hidden sm:inline">Karteikarten ({flashcards.length})</span>
-              <span className="sm:hidden">Kart. {flashcards.length}</span>
+              <span className="sm:hidden">{flashcards.length}</span>
             </TabsTrigger>
             <TabsTrigger value="tasks" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+              <ClipboardText className="w-4 h-4 sm:mr-1.5" weight="duotone" />
               <span className="hidden sm:inline">Aufgaben ({tasks.length})</span>
-              <span className="sm:hidden">Aufg. {tasks.length}</span>
+              <span className="sm:hidden">{tasks.length}</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="scripts">
-            <ScriptsTab
+          <TabsContent value="dashboard">
+            <ModuleDashboard
+              module={module}
+              tasks={tasks}
+              notes={notes}
+              scripts={scripts}
+              flashcards={flashcards}
+              onSolveTask={onSolveTask}
+              onStartFlashcardStudy={onStartFlashcardStudy}
+            />
+          </TabsContent>
+
+          <TabsContent value="files">
+            <FilesTab
               scripts={scripts}
               onUploadScript={onUploadScript}
               onGenerateNotes={onGenerateNotes}

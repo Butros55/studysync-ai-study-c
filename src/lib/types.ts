@@ -5,6 +5,76 @@ export interface CustomDeadline {
   date: string       // ISO-String
 }
 
+// =========================================
+// NEUE DATEITYPEN FÜR ERWEITERTE MODUL-STRUKTUR
+// =========================================
+
+// Referenz auf eine hochgeladene Datei
+export interface FileRef {
+  id: string
+  name: string
+  type: 'pdf' | 'image' | 'text' | 'pptx'
+  path: string
+  uploadedAt: string
+  fileSize?: number
+}
+
+// Kategorien für Dateien
+export type FileCategory = 'script' | 'exercise' | 'solution' | 'exam'
+
+// Erweiterte Datei-Referenz mit Kategorie
+export interface CategorizedFileRef extends FileRef {
+  category: FileCategory
+}
+
+// Referenz auf eine Notiz
+export interface NoteRef {
+  id: string
+  title: string
+  scriptId?: string
+}
+
+// Referenz auf Karteikarten
+export interface FlashcardRef {
+  id: string
+  count: number
+  noteId?: string
+}
+
+// Referenz auf eine Aufgabe
+export interface TaskRef {
+  id: string
+  title: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  topic?: string
+}
+
+// Lernblock für strukturiertes Lernen
+export interface ModuleLearningBlock {
+  id: string
+  title: string
+  description?: string
+  topics: string[]
+  requiredTasks: TaskRef[]
+  completedTasks: string[]  // IDs der abgeschlossenen Tasks
+  completed: boolean
+  completedAt?: string
+  order: number
+}
+
+// Erweiterte Statistiken pro Thema
+export interface TopicStats {
+  topic: string
+  correct: number
+  incorrect: number
+  lastPracticed?: string
+  difficultyDistribution?: {
+    easy: number
+    medium: number
+    hard: number
+  }
+}
+
 export interface Module {
   id: string
   name: string
@@ -13,14 +83,33 @@ export interface Module {
   color: string
   examDate?: string           // ISO-String für Prüfungstermin
   customDeadlines?: CustomDeadline[]  // Weitere Termine
+  
+  // =========================================
+  // NEUE FELDER FÜR ERWEITERTE MODUL-STRUKTUR
+  // =========================================
+  
+  // Kategorisierte Dateien (Skripte, Übungsblätter, Lösungen, Probeklausuren)
+  files?: CategorizedFileRef[]
+  
+  // Lernblöcke für strukturiertes Lernen
+  learningBlocks?: ModuleLearningBlock[]
+  
+  // Modul-weite Statistiken
+  topicStats?: TopicStats[]
+  
+  // Fortschritt in Prozent
+  progress?: number
 }
 
-// Statistiken pro Thema für Lernfortschritt
-export interface TopicStats {
-  topic: string
-  correct: number
-  incorrect: number
-  lastPracticed?: string
+// Legacy Module-Interface für Abwärtskompatibilität
+export interface LegacyModule {
+  id: string
+  name: string
+  code: string
+  createdAt: string
+  color: string
+  examDate?: string
+  customDeadlines?: CustomDeadline[]
 }
 
 export interface ModuleStats {
@@ -48,6 +137,7 @@ export interface Script {
   uploadedAt: string
   fileType: string
   fileData?: string
+  category?: FileCategory  // Kategorie: script, exercise, solution, exam
 }
 
 export interface StudyNote {

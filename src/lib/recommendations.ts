@@ -116,7 +116,7 @@ export function getModuleProgress(moduleId: string): number {
 /**
  * Berechnet Tage bis zur Prüfung
  */
-function getDaysUntilExam(examDate?: string): number | null {
+export function getDaysUntilExam(examDate?: string): number | null {
   if (!examDate) return null
   
   const exam = new Date(examDate)

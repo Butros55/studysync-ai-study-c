@@ -187,12 +187,15 @@ export function useDrawingState() {
   const canUndo = historyIndexRef.current > 0
   const canRedo = historyIndexRef.current < historyRef.current.length - 1
 
+  // Clear All - aber speichere vorher den aktuellen Zustand für Undo
   const clearAll = useCallback(() => {
+    // Nur speichern wenn es etwas zu speichern gibt
+    if (strokes.length > 0) {
+      saveToHistory([]) // Speichere leeren Zustand in History
+    }
     setStrokes([])
     setSelectedStrokeIds(new Set())
-    historyRef.current = [[]]
-    historyIndexRef.current = 0
-  }, [])
+  }, [strokes.length, saveToHistory])
 
   const selectStrokes = useCallback((ids: string[]) => {
     setSelectedStrokeIds(new Set(ids))
