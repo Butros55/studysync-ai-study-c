@@ -211,36 +211,24 @@ app.post("/api/llm", async (req, res) => {
           role: "user",
           content: [
             {
-              type: "input_text",
+              type: "text",
               text: prompt,
             },
             {
-              type: "input_image",
-              image_url: { url: imageUrl },
+              type: "image_url",
+              image_url: { url: imageUrl, detail: "high" },
             },
           ],
         },
       ];
 
-      completion = await openai.responses.create({
+      completion = await openai.chat.completions.create({
         model: effectiveModel,
-        input: messages,
+        messages: messages,
+        max_completion_tokens: 4096,
       });
 
-      responseText =
-        completion.output_text ||
-        completion.output?.
-          map((item) => {
-            if (typeof item === "string") return item;
-            if (item?.content?.length) {
-              return item.content
-                .map((part) => part.text || part.content || "")
-                .join("\n");
-            }
-            return item?.text || "";
-          })
-          .join("\n") ||
-        "";
+      responseText = completion.choices[0]?.message?.content || "";
 
       usage = completion.usage || usage;
     } else {
