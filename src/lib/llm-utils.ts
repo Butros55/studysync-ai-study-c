@@ -125,7 +125,8 @@ export async function llmWithRetry(
           jsonMode,
           operation,
           moduleId,
-          imageBase64, // Bild für Vision-API mitsenden
+          image: imageBase64, // Bild für Vision-API mitsenden (Data URL bevorzugt)
+          imageBase64, // Legacy-Feld für Abwärtskompatibilität
         }),
       })
 
