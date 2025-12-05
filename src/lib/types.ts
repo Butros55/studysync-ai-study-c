@@ -20,7 +20,7 @@ export interface FileRef {
 }
 
 // Kategorien für Dateien
-export type FileCategory = 'script' | 'exercise' | 'solution' | 'exam'
+export type FileCategory = 'script' | 'exercise' | 'solution' | 'exam' | 'formula'
 
 // Erweiterte Datei-Referenz mit Kategorie
 export interface CategorizedFileRef extends FileRef {
@@ -172,6 +172,15 @@ export interface Task {
   completed: boolean
   completedAt?: string
   viewedSolution?: boolean  // Wurde die Musterlösung angesehen?
+  // Gespeicherte Zeichnung
+  savedCanvasDataUrl?: string
+  savedStrokes?: Array<{
+    id: string
+    points: Array<{ x: number; y: number; pressure?: number }>
+    color: string
+    width: number
+    tool: 'pen' | 'eraser'
+  }>
 }
 
 // Feedback-Daten von der KI-Bewertung

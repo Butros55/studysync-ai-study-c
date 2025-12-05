@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Module, Script } from '@/lib/types'
+import { Module, Script, ExamSession } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -17,13 +17,25 @@ import {
   ChartBar,
   BookOpen,
   ClipboardText,
+  Play,
+  Trash,
+  Pause,
 } from '@phosphor-icons/react'
+
+interface PausedExam {
+  session: ExamSession
+  timeRemaining: number
+  pausedAt: string
+}
 
 interface ExamSetupProps {
   module: Module
   scripts: Script[]
   onBack: () => void
   onStartExam: (config: ExamConfig) => void
+  pausedExam?: PausedExam | null
+  onResumePausedExam?: () => void
+  onDiscardPausedExam?: () => void
 }
 
 export interface ExamConfig {
@@ -32,7 +44,15 @@ export interface ExamConfig {
   taskCount: number | 'auto'
 }
 
-export function ExamSetup({ module, scripts, onBack, onStartExam }: ExamSetupProps) {
+export function ExamSetup({ 
+  module, 
+  scripts, 
+  onBack, 
+  onStartExam,
+  pausedExam,
+  onResumePausedExam,
+  onDiscardPausedExam,
+}: ExamSetupProps) {
   const [duration, setDuration] = useState<number>(45)
   const [taskCountMode, setTaskCountMode] = useState<'auto' | 'fixed'>('auto')
   const [fixedTaskCount, setFixedTaskCount] = useState<number>(5)
@@ -177,6 +197,70 @@ export function ExamSetup({ module, scripts, onBack, onStartExam }: ExamSetupPro
               </div>
             </CardContent>
           </Card>
+
+          {/* Pausierte Prüfung */}
+          {pausedExam && (
+            <Card className="mb-6 border-yellow-500/50 bg-yellow-500/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
+                  <Pause size={18} weight="fill" />
+                  Pausierte Prüfung
+                </CardTitle>
+                <CardDescription>
+                  Du hast eine laufende Prüfung pausiert. Möchtest du sie fortsetzen?
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-muted-foreground">Pausiert am:</span>
+                      <span className="font-medium">
+                        {new Date(pausedExam.pausedAt).toLocaleString('de-DE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-muted-foreground">Verbleibende Zeit:</span>
+                      <Badge variant="secondary">
+                        {Math.floor(pausedExam.timeRemaining / 60)}:{(pausedExam.timeRemaining % 60).toString().padStart(2, '0')} Min
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-muted-foreground">Aufgaben:</span>
+                      <span className="font-medium">
+                        {pausedExam.session.tasks.filter(t => t.examStatus === 'answered').length} / {pausedExam.session.tasks.length} beantwortet
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={onDiscardPausedExam}
+                      className="flex-1 sm:flex-initial"
+                    >
+                      <Trash size={14} className="mr-1.5" />
+                      Verwerfen
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={onResumePausedExam}
+                      className="flex-1 sm:flex-initial bg-yellow-500 hover:bg-yellow-600 text-white"
+                    >
+                      <Play size={14} className="mr-1.5" />
+                      Fortsetzen
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Prüfungsdauer */}
           <Card className="mb-6">

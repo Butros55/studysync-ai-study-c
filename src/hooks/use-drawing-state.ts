@@ -221,6 +221,30 @@ export function useDrawingState() {
     }))
   }, [selectedStrokeIds])
 
+  // Skaliere selektierte Strokes um einen Pivot-Punkt
+  const scaleSelectedStrokes = useCallback((
+    scaleX: number, 
+    scaleY: number, 
+    pivotX: number, 
+    pivotY: number
+  ) => {
+    setStrokes(prev => prev.map(stroke => {
+      if (selectedStrokeIds.has(stroke.id)) {
+        return {
+          ...stroke,
+          points: stroke.points.map(p => ({
+            ...p,
+            x: pivotX + (p.x - pivotX) * scaleX,
+            y: pivotY + (p.y - pivotY) * scaleY,
+          })),
+          // Strichbreite proportional skalieren
+          width: stroke.width * Math.max(scaleX, scaleY),
+        }
+      }
+      return stroke
+    }))
+  }, [selectedStrokeIds])
+
   // Transform-Funktionen für Pan/Zoom
   const pan = useCallback((deltaX: number, deltaY: number) => {
     setOffsetX(prev => prev + deltaX)
@@ -244,6 +268,14 @@ export function useDrawingState() {
     setScale(1)
     setOffsetX(0)
     setOffsetY(0)
+  }, [])
+
+  // Lade Strokes (für Persistenz)
+  const loadStrokes = useCallback((newStrokes: Stroke[]) => {
+    setStrokes(newStrokes)
+    // History zurücksetzen
+    historyRef.current = [newStrokes]
+    historyIndexRef.current = 0
   }, [])
 
   // Konvertiere Screen-Koordinaten zu Canvas-Koordinaten
@@ -296,12 +328,14 @@ export function useDrawingState() {
     selectStrokes,
     clearSelection,
     moveSelectedStrokes,
+    scaleSelectedStrokes,
     
     // View
     pan,
     zoom,
     resetView,
     clearAll,
+    loadStrokes,
     
     // Koordinaten-Transformation
     screenToCanvas,

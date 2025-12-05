@@ -2,11 +2,14 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { DrawingToolbar } from './DrawingToolbar'
 import { useDrawingState, Point, DrawingTool } from '@/hooks/use-drawing-state'
+import { useDrawingPreferences } from '@/hooks/use-drawing-preferences'
 import { Button } from '@/components/ui/button'
-import { X, PaperPlaneTilt, ArrowRight, Eraser } from '@phosphor-icons/react'
+import { X, PaperPlaneTilt, ArrowRight, Eraser, CaretDown, CaretUp } from '@phosphor-icons/react'
 import { FullscreenBottomPanel } from './FullscreenBottomPanel'
 import { TaskFeedback, Task } from '@/lib/types'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface AdvancedDrawingCanvasProps {
   onContentChange: (hasContent: boolean) => void
@@ -33,6 +36,22 @@ interface AdvancedDrawingCanvasProps {
   onClear?: () => void
   /** Prüfungsmodus - keine Hinweise und kein Feedback während Bearbeitung */
   examMode?: boolean
+  /** Callback wenn Strokes sich ändern (für Persistenz) */
+  onStrokesChange?: (strokes: Array<{
+    id: string
+    points: Array<{ x: number; y: number; pressure?: number }>
+    color: string
+    width: number
+    tool: 'pen' | 'eraser'
+  }>) => void
+  /** Initiale Strokes zum Laden (für Persistenz) */
+  initialStrokes?: Array<{
+    id: string
+    points: Array<{ x: number; y: number; pressure?: number }>
+    color: string
+    width: number
+    tool: 'pen' | 'eraser'
+  }>
 }
 
 export function AdvancedDrawingCanvas({
@@ -50,6 +69,8 @@ export function AdvancedDrawingCanvas({
   onTaskUpdate,
   onClear,
   examMode = false,
+  onStrokesChange,
+  initialStrokes,
 }: AdvancedDrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -57,9 +78,46 @@ export function AdvancedDrawingCanvas({
   // Drawing State Hook
   const drawing = useDrawingState()
   
+  // Persistente Einstellungen
+  const { preferences, updatePreference } = useDrawingPreferences()
+  const preferencesLoadedRef = useRef(false)
+  
+  // Lade persistente Einstellungen beim Start
+  useEffect(() => {
+    if (!preferencesLoadedRef.current) {
+      drawing.setPenWidth(preferences.penWidth)
+      drawing.setPenColor(preferences.penColor)
+      drawing.setEraserWidth(preferences.eraserWidth)
+      preferencesLoadedRef.current = true
+    }
+  }, [preferences, drawing])
+  
+  // Speichere Änderungen an Einstellungen
+  useEffect(() => {
+    if (preferencesLoadedRef.current) {
+      updatePreference('penWidth', drawing.penWidth)
+    }
+  }, [drawing.penWidth, updatePreference])
+  
+  useEffect(() => {
+    if (preferencesLoadedRef.current) {
+      updatePreference('penColor', drawing.penColor)
+    }
+  }, [drawing.penColor, updatePreference])
+  
+  useEffect(() => {
+    if (preferencesLoadedRef.current) {
+      updatePreference('eraserWidth', drawing.eraserWidth)
+    }
+  }, [drawing.eraserWidth, updatePreference])
+  
+  // Track ob initialStrokes geladen wurden
+  const initialStrokesLoadedRef = useRef(false)
+  
   // Lokaler UI-State
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
+  const [isQuestionExpanded, setIsQuestionExpanded] = useState(true)
   
   // Eraser-Cursor Position (für visuelles Feedback)
   const [eraserCursorPos, setEraserCursorPos] = useState<{ x: number; y: number } | null>(null)
@@ -77,10 +135,27 @@ export function AdvancedDrawingCanvas({
   const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const selectionStartRef = useRef<Point | null>(null)
   const isDraggingSelectionRef = useRef(false)
+  const isResizingSelectionRef = useRef(false)
+  const resizeHandleRef = useRef<'nw' | 'ne' | 'sw' | 'se' | null>(null)
   const dragStartRef = useRef<Point | null>(null)
+  const initialBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
 
   // Temporärer Tool-Wechsel für Pen-Button-Eraser
   const originalToolRef = useRef<DrawingTool | null>(null)
+
+  // Lade initiale Strokes (einmalig bei Mount oder wenn Task sich ändert)
+  useEffect(() => {
+    if (initialStrokes && initialStrokes.length > 0 && !initialStrokesLoadedRef.current) {
+      drawing.loadStrokes(initialStrokes as any)
+      initialStrokesLoadedRef.current = true
+      onContentChange(true)
+    }
+  }, [initialStrokes, drawing, onContentChange])
+  
+  // Reset wenn Task sich ändert
+  useEffect(() => {
+    initialStrokesLoadedRef.current = false
+  }, [task?.id])
 
   // Initialisiere Canvas-Größe
   const updateCanvasSize = useCallback(() => {
@@ -96,6 +171,13 @@ export function AdvancedDrawingCanvas({
     window.addEventListener('resize', updateCanvasSize)
     return () => window.removeEventListener('resize', updateCanvasSize)
   }, [updateCanvasSize, isFullscreen])
+
+  // Strokes-Änderungen propagieren
+  useEffect(() => {
+    if (onStrokesChange && drawing.strokes.length > 0) {
+      onStrokesChange(drawing.strokes)
+    }
+  }, [drawing.strokes, onStrokesChange])
 
   // Clear bei clearTrigger
   useEffect(() => {
@@ -334,9 +416,20 @@ export function AdvancedDrawingCanvas({
     const point = getCanvasCoordinates(e)
 
     // Pen-Button als Radierer erkennen
-    // Hinweis: Das ist browserabhängig. Bei den meisten Stiften ist buttons === 32 der Seitenknopf
-    // oder buttons === 2 für den "Radierer-Button" am Stiftende
-    if (e.pointerType === 'pen' && (e.buttons === 32 || e.buttons === 2)) {
+    // MPP 1.0/2.0 Stifte senden verschiedene Button-Werte:
+    // buttons === 2: Rechtsklick/Radierer-Ende
+    // buttons === 32: Seitenknopf (häufig bei MPP)
+    // buttons === 5: Kombination Stift + Seitenknopf
+    // button === 5: Alternative für Seitenknopf
+    const isPenButton = e.pointerType === 'pen' && (
+      e.buttons === 32 || 
+      e.buttons === 2 || 
+      e.buttons === 5 ||
+      e.button === 2 ||
+      e.button === 5
+    )
+    
+    if (isPenButton) {
       originalToolRef.current = drawing.tool
       drawing.setTool('eraser')
     }
@@ -347,7 +440,45 @@ export function AdvancedDrawingCanvas({
       isPenActiveRef.current = true
       
       if (drawing.tool === 'select') {
-        // Selection starten
+        const boundingBox = getSelectionBoundingBox()
+        
+        // Prüfe ob es eine aktive Selection gibt
+        if (boundingBox && drawing.selectedStrokeIds.size > 0) {
+          const handleSize = 12 / drawing.scale
+          const edgeTolerance = 8 / drawing.scale
+          
+          // Prüfe auf Resize-Handles (Ecken)
+          const handles = [
+            { pos: 'nw', x: boundingBox.x, y: boundingBox.y },
+            { pos: 'ne', x: boundingBox.x + boundingBox.width, y: boundingBox.y },
+            { pos: 'sw', x: boundingBox.x, y: boundingBox.y + boundingBox.height },
+            { pos: 'se', x: boundingBox.x + boundingBox.width, y: boundingBox.y + boundingBox.height },
+          ] as const
+          
+          for (const handle of handles) {
+            if (Math.abs(point.x - handle.x) < handleSize && 
+                Math.abs(point.y - handle.y) < handleSize) {
+              isResizingSelectionRef.current = true
+              resizeHandleRef.current = handle.pos
+              dragStartRef.current = point
+              initialBoundsRef.current = { ...boundingBox }
+              return
+            }
+          }
+          
+          // Prüfe ob innerhalb der Bounding Box (Verschieben)
+          if (point.x >= boundingBox.x - edgeTolerance && 
+              point.x <= boundingBox.x + boundingBox.width + edgeTolerance &&
+              point.y >= boundingBox.y - edgeTolerance && 
+              point.y <= boundingBox.y + boundingBox.height + edgeTolerance) {
+            isDraggingSelectionRef.current = true
+            dragStartRef.current = point
+            return
+          }
+        }
+        
+        // Klick außerhalb - alte Selection aufheben und neue starten
+        drawing.clearSelection()
         selectionStartRef.current = point
         setSelectionRect({ x: point.x, y: point.y, width: 0, height: 0 })
       } else if (drawing.tool === 'pen') {
@@ -386,19 +517,46 @@ export function AdvancedDrawingCanvas({
       
       // Mouse: Wie Pen behandeln (zum Testen)
       if (drawing.tool === 'select') {
-        // Prüfe ob wir auf eine selektierte Stroke klicken (zum Verschieben)
         const boundingBox = getSelectionBoundingBox()
-        if (boundingBox && 
-            point.x >= boundingBox.x && 
-            point.x <= boundingBox.x + boundingBox.width &&
-            point.y >= boundingBox.y && 
-            point.y <= boundingBox.y + boundingBox.height) {
-          isDraggingSelectionRef.current = true
-          dragStartRef.current = point
-          return
+        
+        // Prüfe ob es eine aktive Selection gibt
+        if (boundingBox && drawing.selectedStrokeIds.size > 0) {
+          const handleSize = 12 / drawing.scale // Handle-Größe in Canvas-Koordinaten
+          const edgeTolerance = 8 / drawing.scale // Toleranz für Rand-Erkennung
+          
+          // Prüfe auf Resize-Handles (Ecken)
+          const handles = [
+            { pos: 'nw', x: boundingBox.x, y: boundingBox.y },
+            { pos: 'ne', x: boundingBox.x + boundingBox.width, y: boundingBox.y },
+            { pos: 'sw', x: boundingBox.x, y: boundingBox.y + boundingBox.height },
+            { pos: 'se', x: boundingBox.x + boundingBox.width, y: boundingBox.y + boundingBox.height },
+          ] as const
+          
+          for (const handle of handles) {
+            if (Math.abs(point.x - handle.x) < handleSize && 
+                Math.abs(point.y - handle.y) < handleSize) {
+              // Resize-Handle geklickt
+              isResizingSelectionRef.current = true
+              resizeHandleRef.current = handle.pos
+              dragStartRef.current = point
+              initialBoundsRef.current = { ...boundingBox }
+              return
+            }
+          }
+          
+          // Prüfe ob innerhalb der Bounding Box (Verschieben)
+          if (point.x >= boundingBox.x - edgeTolerance && 
+              point.x <= boundingBox.x + boundingBox.width + edgeTolerance &&
+              point.y >= boundingBox.y - edgeTolerance && 
+              point.y <= boundingBox.y + boundingBox.height + edgeTolerance) {
+            isDraggingSelectionRef.current = true
+            dragStartRef.current = point
+            return
+          }
         }
         
-        // Neue Selection starten
+        // Klick außerhalb - alte Selection aufheben und neue starten
+        drawing.clearSelection()
         selectionStartRef.current = point
         setSelectionRect({ x: point.x, y: point.y, width: 0, height: 0 })
       } else if (drawing.tool === 'pen') {
@@ -440,7 +598,51 @@ export function AdvancedDrawingCanvas({
     if (e.pointerType === 'pen' || e.pointerType === 'mouse') {
       // Zeichnen/Radieren/Selektieren
       if (drawing.tool === 'select') {
-        if (isDraggingSelectionRef.current && dragStartRef.current) {
+        if (isResizingSelectionRef.current && dragStartRef.current && initialBoundsRef.current && resizeHandleRef.current) {
+          // Selection skalieren
+          const bounds = initialBoundsRef.current
+          const handle = resizeHandleRef.current
+          
+          // Berechne den Skalierungsfaktor basierend auf Handle-Position
+          let scaleX = 1
+          let scaleY = 1
+          let pivotX = bounds.x
+          let pivotY = bounds.y
+          
+          if (handle === 'se') {
+            // Südost - Pivot ist Nordwest
+            scaleX = (point.x - bounds.x) / bounds.width
+            scaleY = (point.y - bounds.y) / bounds.height
+            pivotX = bounds.x
+            pivotY = bounds.y
+          } else if (handle === 'sw') {
+            // Südwest - Pivot ist Nordost
+            scaleX = (bounds.x + bounds.width - point.x) / bounds.width
+            scaleY = (point.y - bounds.y) / bounds.height
+            pivotX = bounds.x + bounds.width
+            pivotY = bounds.y
+          } else if (handle === 'ne') {
+            // Nordost - Pivot ist Südwest
+            scaleX = (point.x - bounds.x) / bounds.width
+            scaleY = (bounds.y + bounds.height - point.y) / bounds.height
+            pivotX = bounds.x
+            pivotY = bounds.y + bounds.height
+          } else if (handle === 'nw') {
+            // Nordwest - Pivot ist Südost
+            scaleX = (bounds.x + bounds.width - point.x) / bounds.width
+            scaleY = (bounds.y + bounds.height - point.y) / bounds.height
+            pivotX = bounds.x + bounds.width
+            pivotY = bounds.y + bounds.height
+          }
+          
+          // Mindestgröße sicherstellen
+          scaleX = Math.max(0.1, scaleX)
+          scaleY = Math.max(0.1, scaleY)
+          
+          drawing.scaleSelectedStrokes(scaleX, scaleY, pivotX, pivotY)
+          // Initial-Bounds aktualisieren für nächste Berechnung
+          initialBoundsRef.current = getSelectionBoundingBox() || initialBoundsRef.current
+        } else if (isDraggingSelectionRef.current && dragStartRef.current) {
           // Selection verschieben
           const deltaX = point.x - dragStartRef.current.x
           const deltaY = point.y - dragStartRef.current.y
@@ -529,16 +731,33 @@ export function AdvancedDrawingCanvas({
     if (e.pointerType === 'pen') {
       isPenActiveRef.current = false
       
-      if (drawing.tool === 'select' && selectionStartRef.current && selectionRect) {
-        // Selection abschließen
-        const selectedIds = findStrokesInRect(selectionRect)
-        drawing.selectStrokes(selectedIds)
-        selectionStartRef.current = null
-        setSelectionRect(null)
+      if (drawing.tool === 'select') {
+        if (isResizingSelectionRef.current) {
+          // Resize beenden
+          isResizingSelectionRef.current = false
+          resizeHandleRef.current = null
+          dragStartRef.current = null
+          initialBoundsRef.current = null
+        } else if (isDraggingSelectionRef.current) {
+          isDraggingSelectionRef.current = false
+          dragStartRef.current = null
+        } else if (selectionStartRef.current && selectionRect) {
+          // Selection abschließen
+          const selectedIds = findStrokesInRect(selectionRect)
+          drawing.selectStrokes(selectedIds)
+          selectionStartRef.current = null
+          setSelectionRect(null)
+        }
       }
     } else if (e.pointerType === 'mouse') {
       if (drawing.tool === 'select') {
-        if (isDraggingSelectionRef.current) {
+        if (isResizingSelectionRef.current) {
+          // Resize beenden
+          isResizingSelectionRef.current = false
+          resizeHandleRef.current = null
+          dragStartRef.current = null
+          initialBoundsRef.current = null
+        } else if (isDraggingSelectionRef.current) {
           isDraggingSelectionRef.current = false
           dragStartRef.current = null
         } else if (selectionStartRef.current && selectionRect) {
@@ -583,15 +802,41 @@ export function AdvancedDrawingCanvas({
     }
   }, [drawing])
 
-  // Canvas als DataURL exportieren
+  // Canvas als DataURL exportieren - erfasst ALLE Strokes unabhängig von Zoom/Pan
   const exportCanvasToDataUrl = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    if (drawing.strokes.length === 0) {
+      onCanvasDataUrl?.('')
+      return
+    }
 
-    // Temporäres Canvas für Export erstellen
+    // Berechne die Bounding Box aller Strokes
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    
+    for (const stroke of drawing.strokes) {
+      for (const point of stroke.points) {
+        minX = Math.min(minX, point.x)
+        minY = Math.min(minY, point.y)
+        maxX = Math.max(maxX, point.x)
+        maxY = Math.max(maxY, point.y)
+      }
+    }
+
+    // Padding hinzufügen
+    const padding = 40
+    minX -= padding
+    minY -= padding
+    maxX += padding
+    maxY += padding
+
+    // Mindestgröße
+    const width = Math.max(400, maxX - minX)
+    const height = Math.max(300, maxY - minY)
+
+    // Export-Canvas mit der berechneten Größe erstellen
+    const dpr = window.devicePixelRatio || 1
     const exportCanvas = document.createElement('canvas')
-    exportCanvas.width = canvas.width
-    exportCanvas.height = canvas.height
+    exportCanvas.width = width * dpr
+    exportCanvas.height = height * dpr
     const ctx = exportCanvas.getContext('2d')
     if (!ctx) return
 
@@ -600,7 +845,6 @@ export function AdvancedDrawingCanvas({
     ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
 
     // Grid zeichnen
-    const dpr = window.devicePixelRatio || 1
     const gridSize = 25 * dpr
     ctx.strokeStyle = '#e8e8ea'
     ctx.lineWidth = 1
@@ -618,7 +862,7 @@ export function AdvancedDrawingCanvas({
       ctx.stroke()
     }
 
-    // Strokes zeichnen
+    // Strokes zeichnen - mit Offset zur Normalisierung
     for (const stroke of drawing.strokes) {
       if (stroke.points.length < 2) continue
 
@@ -629,11 +873,11 @@ export function AdvancedDrawingCanvas({
       ctx.lineJoin = 'round'
 
       const firstPoint = stroke.points[0]
-      ctx.moveTo(firstPoint.x * dpr, firstPoint.y * dpr)
+      ctx.moveTo((firstPoint.x - minX) * dpr, (firstPoint.y - minY) * dpr)
 
       for (let i = 1; i < stroke.points.length; i++) {
         const point = stroke.points[i]
-        ctx.lineTo(point.x * dpr, point.y * dpr)
+        ctx.lineTo((point.x - minX) * dpr, (point.y - minY) * dpr)
       }
 
       ctx.stroke()
@@ -816,27 +1060,60 @@ export function AdvancedDrawingCanvas({
         isFullscreen && 'fixed inset-0 z-50 rounded-none bg-background'
       )}
     >
-      {/* Header im Fullscreen - einheitliches Design */}
+      {/* Header im Fullscreen - mit Collapsible und Animationen */}
       {isFullscreen && (
         <div className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur-sm shadow-sm">
           <div className="max-w-5xl mx-auto px-4 py-3">
             <div className="flex items-start justify-between gap-4">
-              {/* Fragestellung */}
-              <div className="flex-1">
+              {/* Fragestellung - Collapsible mit Animation */}
+              <div className="flex-1 min-w-0">
                 {questionText && (
-                  <div className="relative bg-muted/50 rounded-lg px-4 py-3 border">
-                    <div className="absolute -top-2.5 left-3 bg-primary px-2.5 py-0.5 rounded text-[11px] font-medium text-primary-foreground">
-                      Aufgabe
+                  <Collapsible open={isQuestionExpanded} onOpenChange={setIsQuestionExpanded}>
+                    <div className="relative bg-muted/50 rounded-lg px-4 py-3 border">
+                      <CollapsibleTrigger asChild>
+                        <button className="absolute -top-2.5 left-3 bg-primary px-2.5 py-0.5 rounded text-[11px] font-medium text-primary-foreground flex items-center gap-1 hover:bg-primary/90 transition-colors">
+                          Aufgabe
+                          {isQuestionExpanded ? (
+                            <CaretUp size={12} />
+                          ) : (
+                            <CaretDown size={12} />
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <AnimatePresence initial={false}>
+                        {isQuestionExpanded ? (
+                          <motion.div
+                            key="expanded"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            className="overflow-hidden pt-1"
+                          >
+                            <MarkdownRenderer 
+                              content={questionText} 
+                              compact 
+                              truncateLines={3}
+                              className="prose-p:my-0 prose-headings:my-0 text-sm"
+                            />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="collapsed"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="pt-1"
+                          >
+                            <span className="text-xs text-muted-foreground truncate block">
+                              {questionText.substring(0, 80)}...
+                            </span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                    <div className="pt-1">
-                      <MarkdownRenderer 
-                        content={questionText} 
-                        compact 
-                        truncateLines={3}
-                        className="prose-p:my-0 prose-headings:my-0 text-sm"
-                      />
-                    </div>
-                  </div>
+                  </Collapsible>
                 )}
               </div>
 
@@ -893,13 +1170,13 @@ export function AdvancedDrawingCanvas({
         </div>
       )}
 
-      {/* Canvas Container */}
+      {/* Canvas Container - flex-1 füllt automatisch den verfügbaren Platz */}
       <div
         ref={containerRef}
         className={cn(
           'flex-1 overflow-hidden relative touch-none',
           isFullscreen 
-            ? 'h-[calc(100vh-120px)]' // Mehr Platz für Header + Bottom Panel
+            ? 'min-h-0' // flex-1 übernimmt, min-h-0 für korrektes Schrumpfen
             : isMobile 
               ? 'min-h-[350px]' 
               : 'min-h-[400px]'

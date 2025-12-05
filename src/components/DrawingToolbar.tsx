@@ -82,7 +82,7 @@ export function DrawingToolbar({
   return (
     <div className="absolute top-2 right-2 z-20 flex flex-col gap-2">
       {/* Haupttoolbar */}
-      <div className="flex items-center gap-1 p-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border">
+      <div className="flex items-center gap-1 p-1.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border min-w-[340px]">
         {/* Tool-Auswahl */}
         <div className="flex items-center gap-0.5">
           <Button

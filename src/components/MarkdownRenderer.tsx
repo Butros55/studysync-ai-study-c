@@ -104,10 +104,18 @@ function normalizeContent(content: string): string {
     processed = processed.replace(pattern, ' $$$1$ ')
   }
   
-  // SCHRITT 3: Konvertiere \begin{tabular} zu Markdown-Tabellen
+  // SCHRITT 3: Konvertiere \begin{tabular} zu Markdown-Tabellen (nur außerhalb von $ Blöcken)
+  // Nur tabular außerhalb von Math-Blöcken konvertieren
   processed = processed.replace(
     /\\begin\{tabular\}\{[^}]*\}([\s\S]*?)\\end\{tabular\}/g,
-    (_, tableContent: string) => {
+    (match, tableContent: string) => {
+      // Prüfe ob in einem Math-Block - wenn ja, nicht konvertieren
+      const beforeMatch = processed.indexOf(match)
+      const textBefore = processed.substring(0, beforeMatch)
+      const dollarCount = (textBefore.match(/\$/g) || []).length
+      // Ungerade Anzahl = wir sind in einem Math-Block
+      if (dollarCount % 2 !== 0) return match
+      
       const rows = tableContent
         .split('\\\\')
         .map(row => row.trim())
@@ -126,27 +134,51 @@ function normalizeContent(content: string): string {
     }
   )
   
-  // SCHRITT 4: Konvertiere \begin{array} zu Markdown-Tabellen
-  processed = processed.replace(
-    /\\\[?\s*\\begin\{array\}\{[^}]*\}([\s\S]*?)\\end\{array\}\s*\\\]?/g,
-    (_, tableContent: string) => {
+  // SCHRITT 4: \begin{array} innerhalb von $$ ... $$ bleibt für KaTeX
+  // Nur array AUSSERHALB von Math-Blöcken konvertieren
+  // Dies ist ein einfacher Ansatz: Ersetze nur wenn NICHT in $$ eingeschlossen
+  const arrayPattern = /\\\[?\s*\\begin\{array\}\{[^}]*\}([\s\S]*?)\\end\{array\}\s*\\\]?/g
+  let lastIndex = 0
+  let result = ''
+  let match
+  
+  while ((match = arrayPattern.exec(processed)) !== null) {
+    const textBefore = processed.substring(0, match.index)
+    result += processed.substring(lastIndex, match.index)
+    
+    // Zähle $$ Paare bis zu diesem Punkt
+    const doubleDollarPairs = (textBefore.match(/\$\$/g) || []).length
+    const singleDollars = (textBefore.match(/\$/g) || []).length - (doubleDollarPairs * 2)
+    
+    // Wenn wir in einem $$ Block sind ODER in einem $ Block, lass KaTeX rendern
+    if (doubleDollarPairs % 2 !== 0 || singleDollars % 2 !== 0) {
+      // Belasse es für KaTeX
+      result += match[0]
+    } else {
+      // Konvertiere zu Markdown-Tabelle
+      const tableContent = match[1]
       const rows = tableContent
         .split('\\\\')
-        .map(row => row.trim())
-        .filter(row => row.length > 0 && row !== '\\hline')
-        .map(row => {
-          const cells = row.replace(/\\hline/g, '').split('&').map(cell => cell.trim())
+        .map((row: string) => row.trim())
+        .filter((row: string) => row.length > 0 && row !== '\\hline')
+        .map((row: string) => {
+          const cells = row.replace(/\\hline/g, '').split('&').map((cell: string) => cell.trim())
           return '| ' + cells.join(' | ') + ' |'
         })
       
-      if (rows.length === 0) return ''
-      
-      const colCount = rows[0].split('|').filter(c => c.trim()).length
-      const separator = '|' + Array(colCount).fill('---').join('|') + '|'
-      
-      return '\n\n' + [rows[0], separator, ...rows.slice(1)].join('\n') + '\n\n'
+      if (rows.length > 0) {
+        const colCount = rows[0].split('|').filter((c: string) => c.trim()).length
+        const separator = '|' + Array(colCount).fill('---').join('|') + '|'
+        result += '\n\n' + [rows[0], separator, ...rows.slice(1)].join('\n') + '\n\n'
+      } else {
+        result += match[0]
+      }
     }
-  )
+    
+    lastIndex = match.index + match[0].length
+  }
+  result += processed.substring(lastIndex)
+  processed = result
   
   // SCHRITT 5: Bereinige Tabellen - entferne alleinstehende |----| Zeilen
   const tableLines = processed.split('\n')

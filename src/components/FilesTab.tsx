@@ -87,6 +87,13 @@ const CATEGORY_CONFIG: Record<FileCategory, {
     color: 'text-purple-500',
     description: 'Altklausuren und Übungsklausuren',
   },
+  formula: {
+    label: 'Formelsammlung',
+    pluralLabel: 'Formelsammlungen',
+    icon: BookOpen,
+    color: 'text-cyan-500',
+    description: 'Formelsammlungen und Nachschlagewerke für Prüfungen',
+  },
 }
 
 interface FilesTabProps {

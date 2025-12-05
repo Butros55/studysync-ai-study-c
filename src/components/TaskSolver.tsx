@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Task, TaskFeedback } from '@/lib/types'
+import { useState, useEffect } from 'react'
+import { Task, TaskFeedback, Script } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
@@ -10,6 +10,7 @@ import { TaskQuestionPanel } from './TaskQuestionPanel'
 import { TaskAttachments } from './TaskAttachments'
 import { SolutionPanel } from './SolutionPanel'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { FormulaSheetPanel } from './FormulaSheetPanel'
 import {
   CheckCircle,
   Lightbulb,
@@ -19,6 +20,8 @@ import {
   PencilLine,
   Info,
   ArrowLeft,
+  XCircle,
+  Confetti,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -30,6 +33,122 @@ interface TaskSolverProps {
   feedback?: TaskFeedback
   onNextTask?: () => void
   onTaskUpdate?: (updates: Partial<Task>) => void
+  /** Formelsammlungen aus dem aktuellen Modul */
+  formulaSheets?: Script[]
+}
+
+// Prominentes Feedback-Overlay
+function FeedbackOverlay({ 
+  feedback, 
+  onDismiss,
+  onNextTask 
+}: { 
+  feedback: TaskFeedback
+  onDismiss: () => void
+  onNextTask?: () => void
+}) {
+  useEffect(() => {
+    // Auto-Dismiss nach 3 Sekunden, wenn korrekt
+    if (feedback.isCorrect) {
+      const timer = setTimeout(onDismiss, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback.isCorrect, onDismiss])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm"
+      onClick={onDismiss}
+    >
+      <motion.div
+        initial={{ scale: 0.8, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: -20 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+        className="max-w-md mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {feedback.isCorrect ? (
+          <Card className="p-6 bg-green-500/20 border-green-500/40 shadow-2xl shadow-green-500/20">
+            <div className="flex flex-col items-center text-center gap-4">
+              <motion.div
+                initial={{ rotate: -10, scale: 0 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+              >
+                <div className="w-20 h-20 rounded-full bg-green-500/30 flex items-center justify-center">
+                  <Confetti size={48} className="text-green-500" weight="fill" />
+                </div>
+              </motion.div>
+              <div>
+                <h3 className="text-2xl font-bold text-green-600 dark:text-green-400 mb-2">
+                  Richtig!
+                </h3>
+                <p className="text-muted-foreground">
+                  Sehr gut! Deine Lösung ist korrekt.
+                </p>
+              </div>
+              {onNextTask && (
+                <Button 
+                  onClick={() => {
+                    onDismiss()
+                    onNextTask()
+                  }}
+                  size="lg" 
+                  className="bg-green-600 hover:bg-green-700 mt-2"
+                >
+                  <ArrowRight size={18} className="mr-2" />
+                  Nächste Aufgabe
+                </Button>
+              )}
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-6 bg-yellow-500/20 border-yellow-500/40 shadow-2xl shadow-yellow-500/20">
+            <div className="flex flex-col items-center text-center gap-4">
+              <motion.div
+                initial={{ x: -5 }}
+                animate={{ x: [0, -5, 5, -3, 3, 0] }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className="w-20 h-20 rounded-full bg-yellow-500/30 flex items-center justify-center">
+                  <Lightbulb size={48} className="text-yellow-500" weight="fill" />
+                </div>
+              </motion.div>
+              <div>
+                <h3 className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
+                  Noch nicht ganz
+                </h3>
+                <p className="text-muted-foreground mb-3">
+                  Schau dir die Hinweise an und versuch es nochmal.
+                </p>
+                {feedback.hints && feedback.hints.length > 0 && (
+                  <div className="text-left bg-background/50 rounded-lg p-3 text-sm">
+                    <ul className="list-disc list-inside space-y-1">
+                      {feedback.hints.slice(0, 2).map((hint, idx) => (
+                        <li key={idx} className="text-muted-foreground">{hint}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <Button 
+                onClick={onDismiss}
+                variant="outline"
+                size="lg"
+                className="mt-2"
+              >
+                Nochmal versuchen
+              </Button>
+            </div>
+          </Card>
+        )}
+      </motion.div>
+    </motion.div>
+  )
 }
 
 export function TaskSolver({
@@ -39,6 +158,7 @@ export function TaskSolver({
   feedback,
   onNextTask,
   onTaskUpdate,
+  formulaSheets = [],
 }: TaskSolverProps) {
   const [inputMode, setInputMode] = useState<'draw' | 'type'>('draw')
   const [textAnswer, setTextAnswer] = useState('')
@@ -46,6 +166,14 @@ export function TaskSolver({
   const [hasCanvasContent, setHasCanvasContent] = useState(false)
   const [canvasDataUrl, setCanvasDataUrl] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showFeedbackOverlay, setShowFeedbackOverlay] = useState(false)
+  
+  // Zeige Overlay wenn neues Feedback kommt
+  useEffect(() => {
+    if (feedback && !showFeedbackOverlay) {
+      setShowFeedbackOverlay(true)
+    }
+  }, [feedback])
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
@@ -74,6 +202,22 @@ export function TaskSolver({
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden">
+      {/* Formelsammlung-Panel (rechte Seite) */}
+      {formulaSheets.length > 0 && (
+        <FormulaSheetPanel formulaSheets={formulaSheets} />
+      )}
+
+      {/* Prominentes Feedback-Overlay */}
+      <AnimatePresence>
+        {feedback && showFeedbackOverlay && (
+          <FeedbackOverlay 
+            feedback={feedback} 
+            onDismiss={() => setShowFeedbackOverlay(false)}
+            onNextTask={onNextTask}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Compact Header - API-Status Widget entfernt */}
       <div className="border-b bg-card shrink-0">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between gap-2">
@@ -87,6 +231,28 @@ export function TaskSolver({
               <ArrowLeft size={18} />
             </Button>
             <h2 className="font-semibold text-sm sm:text-base truncate">Aufgabe lösen</h2>
+            
+            {/* Mini Feedback Badge im Header */}
+            {feedback && !showFeedbackOverlay && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="cursor-pointer"
+                onClick={() => setShowFeedbackOverlay(true)}
+              >
+                {feedback.isCorrect ? (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-600 text-xs font-medium">
+                    <CheckCircle size={14} weight="fill" />
+                    <span className="hidden sm:inline">Richtig</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-600 text-xs font-medium">
+                    <Lightbulb size={14} weight="fill" />
+                    <span className="hidden sm:inline">Hinweise</span>
+                  </div>
+                )}
+              </motion.div>
+            )}
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <DebugModeToggle />
@@ -215,6 +381,11 @@ export function TaskSolver({
                       onNextTask={onNextTask}
                       onTaskUpdate={onTaskUpdate}
                       onClear={handleClear}
+                      initialStrokes={task.savedStrokes}
+                      onStrokesChange={(strokes) => {
+                        // Speichere Strokes bei jeder Änderung
+                        onTaskUpdate?.({ savedStrokes: strokes })
+                      }}
                     />
                     {isSubmitting && (
                       <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none z-10" />

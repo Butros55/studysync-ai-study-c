@@ -64,7 +64,7 @@ export function TaskQuestionPanel({
 
   if (isFullscreen) {
     return (
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
+      <div className="z-20 bg-background/95 backdrop-blur-sm border-b">
         <div className="max-w-7xl mx-auto px-3 sm:px-6">
           <div 
             className="py-2 sm:py-3 flex items-center justify-between cursor-pointer"

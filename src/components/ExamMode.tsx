@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Module, Script, ExamSession, ExamTask, ExamResults, TopicStats } from '@/lib/types'
 import { ExamSetup, ExamConfig } from './ExamSetup'
 import { ExamPreparation } from './ExamPreparation'
@@ -14,15 +14,57 @@ import { useLLMModel } from '@/hooks/use-llm-model'
 import { loadModuleStats, saveModuleStats } from '@/lib/recommendations'
 import { toast } from 'sonner'
 
+const PAUSED_EXAM_KEY = 'studysync_paused_exam'
+
+interface PausedExam {
+  session: ExamSession
+  timeRemaining: number
+  pausedAt: string
+}
+
 interface ExamModeProps {
   module: Module
   scripts: Script[]
   onBack: () => void
+  /** Formelsammlungen für die Prüfung */
+  formulaSheets?: Script[]
 }
 
 type ExamPhase = 'setup' | 'preparing' | 'in-progress' | 'results'
 
-export function ExamMode({ module, scripts, onBack }: ExamModeProps) {
+// Helper functions for localStorage
+function savePausedExam(moduleId: string, session: ExamSession, timeRemaining: number) {
+  const paused: PausedExam = {
+    session,
+    timeRemaining,
+    pausedAt: new Date().toISOString(),
+  }
+  const allPaused = loadAllPausedExams()
+  allPaused[moduleId] = paused
+  localStorage.setItem(PAUSED_EXAM_KEY, JSON.stringify(allPaused))
+}
+
+function loadPausedExam(moduleId: string): PausedExam | null {
+  const allPaused = loadAllPausedExams()
+  return allPaused[moduleId] || null
+}
+
+function loadAllPausedExams(): Record<string, PausedExam> {
+  try {
+    const data = localStorage.getItem(PAUSED_EXAM_KEY)
+    return data ? JSON.parse(data) : {}
+  } catch {
+    return {}
+  }
+}
+
+function clearPausedExam(moduleId: string) {
+  const allPaused = loadAllPausedExams()
+  delete allPaused[moduleId]
+  localStorage.setItem(PAUSED_EXAM_KEY, JSON.stringify(allPaused))
+}
+
+export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamModeProps) {
   const [phase, setPhase] = useState<ExamPhase>('setup')
   const [session, setSession] = useState<ExamSession | null>(null)
   const [results, setResults] = useState<ExamResults | null>(null)
@@ -30,8 +72,18 @@ export function ExamMode({ module, scripts, onBack }: ExamModeProps) {
   const [preparationStep, setPreparationStep] = useState<'style' | 'generating' | 'finalizing'>('style')
   const [generatedCount, setGeneratedCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [pausedExam, setPausedExam] = useState<PausedExam | null>(null)
+  const [initialTimeRemaining, setInitialTimeRemaining] = useState<number | null>(null)
 
   const { standardModel } = useLLMModel()
+
+  // Check for paused exam on mount
+  useEffect(() => {
+    const paused = loadPausedExam(module.id)
+    if (paused) {
+      setPausedExam(paused)
+    }
+  }, [module.id])
 
   // Kategorisiere Skripte
   const categorizedScripts = {
@@ -306,17 +358,67 @@ export function ExamMode({ module, scripts, onBack }: ExamModeProps) {
 
   // Exit handler
   const handleExit = useCallback(() => {
+    clearPausedExam(module.id)
     setPhase('setup')
     setSession(null)
     setResults(null)
-  }, [])
+    setPausedExam(null)
+    setInitialTimeRemaining(null)
+  }, [module.id])
+
+  // Pause handler
+  const handlePauseExam = useCallback(() => {
+    if (!session) return
+    
+    // Calculate remaining time (approximate based on session duration)
+    const startTime = new Date(session.startedAt).getTime()
+    const elapsed = (Date.now() - startTime) / 1000
+    const remaining = Math.max(0, session.duration * 60 - elapsed)
+    
+    savePausedExam(module.id, session, Math.floor(remaining))
+    toast.success('Prüfung pausiert und gespeichert!')
+    
+    setPhase('setup')
+    setSession(null)
+    setPausedExam(loadPausedExam(module.id))
+  }, [session, module.id])
+
+  // Resume handler
+  const handleResumePausedExam = useCallback(() => {
+    if (!pausedExam) return
+    
+    const { session: savedSession, timeRemaining } = pausedExam
+    
+    // Update session start time to account for pause
+    const adjustedSession: ExamSession = {
+      ...savedSession,
+      startedAt: new Date(Date.now() - (savedSession.duration * 60 - timeRemaining) * 1000).toISOString(),
+      status: 'in-progress',
+    }
+    
+    setSession(adjustedSession)
+    setInitialTimeRemaining(timeRemaining)
+    clearPausedExam(module.id)
+    setPausedExam(null)
+    setPhase('in-progress')
+    toast.success('Prüfung wird fortgesetzt!')
+  }, [pausedExam, module.id])
+
+  // Discard paused exam handler
+  const handleDiscardPausedExam = useCallback(() => {
+    clearPausedExam(module.id)
+    setPausedExam(null)
+    toast.info('Pausierte Prüfung wurde verworfen.')
+  }, [module.id])
 
   // Retry handler
   const handleRetry = useCallback(() => {
+    clearPausedExam(module.id)
     setPhase('setup')
     setSession(null)
     setResults(null)
-  }, [])
+    setInitialTimeRemaining(null)
+  }, [module.id])
 
   // Render based on phase
   switch (phase) {
@@ -327,6 +429,9 @@ export function ExamMode({ module, scripts, onBack }: ExamModeProps) {
           scripts={scripts}
           onBack={onBack}
           onStartExam={handleStartExam}
+          pausedExam={pausedExam}
+          onResumePausedExam={handleResumePausedExam}
+          onDiscardPausedExam={handleDiscardPausedExam}
         />
       )
 
@@ -349,6 +454,8 @@ export function ExamMode({ module, scripts, onBack }: ExamModeProps) {
           onUpdateTask={handleUpdateTask}
           onSubmitExam={handleSubmitExam}
           onExit={handleExit}
+          onPauseExam={handlePauseExam}
+          formulaSheets={formulaSheets}
         />
       )
 

@@ -1287,6 +1287,7 @@ Gib deine Antwort als JSON zurück:
         <ExamMode
           module={selectedModule}
           scripts={moduleScripts}
+          formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
           onBack={() => setShowExamMode(false)}
         />
       </>
@@ -1319,6 +1320,7 @@ Gib deine Antwort als JSON zurück:
             // Aktualisiere auch den lokalen State
             setActiveTask((current) => current ? { ...current, ...updates } : null)
           }}
+          formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
         />
       </>
     )

@@ -240,7 +240,7 @@ app.post("/api/llm", async (req, res) => {
             content: prompt,
           },
         ],
-        temperature: 0.7,
+        temperature: 1,
       };
 
       if (jsonMode) {

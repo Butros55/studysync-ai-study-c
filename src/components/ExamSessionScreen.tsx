@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ExamSession, ExamTask, ExamTaskStatus } from '@/lib/types'
+import { ExamSession, ExamTask, ExamTaskStatus, Script } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
   Clock,
   Flag,
   Check,
@@ -28,10 +33,14 @@ import {
   PencilLine,
   Eraser,
   Warning,
+  CaretDown,
+  CaretUp,
+  Pause,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { TaskAttachments } from './TaskAttachments'
+import { FormulaSheetPanel } from './FormulaSheetPanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +49,8 @@ interface ExamSessionScreenProps {
   onUpdateTask: (taskId: string, updates: Partial<ExamTask>) => void
   onSubmitExam: () => void
   onExit: () => void
+  onPauseExam?: () => void
+  formulaSheets?: Script[]
 }
 
 export function ExamSessionScreen({
@@ -47,6 +58,8 @@ export function ExamSessionScreen({
   onUpdateTask,
   onSubmitExam,
   onExit,
+  onPauseExam,
+  formulaSheets = [],
 }: ExamSessionScreenProps) {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
   const [inputMode, setInputMode] = useState<'draw' | 'type'>('draw')
@@ -56,7 +69,9 @@ export function ExamSessionScreen({
   const [canvasDataUrl, setCanvasDataUrl] = useState('')
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [showExitDialog, setShowExitDialog] = useState(false)
-  const [timeRemaining, setTimeRemaining] = useState(session.duration * 60) // in Sekunden
+  const [showPauseDialog, setShowPauseDialog] = useState(false)
+  const [timeRemaining, setTimeRemaining] = useState(session.duration * 60)
+  const [isQuestionExpanded, setIsQuestionExpanded] = useState(true)
 
   const currentTask = session.tasks[currentTaskIndex]
   const totalTasks = session.tasks.length
@@ -135,12 +150,14 @@ export function ExamSessionScreen({
   const goToTask = (index: number) => {
     saveAnswer()
     setCurrentTaskIndex(index)
+    setIsQuestionExpanded(true)
   }
 
   const goToPrev = () => {
     if (currentTaskIndex > 0) {
       saveAnswer()
       setCurrentTaskIndex(currentTaskIndex - 1)
+      setIsQuestionExpanded(true)
     }
   }
 
@@ -148,6 +165,7 @@ export function ExamSessionScreen({
     if (currentTaskIndex < totalTasks - 1) {
       saveAnswer()
       setCurrentTaskIndex(currentTaskIndex + 1)
+      setIsQuestionExpanded(true)
     }
   }
 
@@ -192,7 +210,16 @@ export function ExamSessionScreen({
   const unansweredCount = session.tasks.filter(t => t.examStatus === 'unanswered').length
 
   // Timer-Warnung wenn unter 5 Minuten
-  const isTimeWarning = timeRemaining < 300 // 5 Minuten
+  const isTimeWarning = timeRemaining < 300
+
+  const getDifficultyLabel = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'Einfach'
+      case 'medium': return 'Mittel'
+      case 'hard': return 'Schwer'
+      default: return difficulty
+    }
+  }
 
   const getTaskIcon = (task: ExamTask) => {
     switch (task.examStatus) {
@@ -224,184 +251,230 @@ export function ExamSessionScreen({
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Header mit Timer */}
-      <div className="border-b bg-card shrink-0">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* Left: Exit & Info */}
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => setShowExitDialog(true)}>
-                <ArrowLeft size={18} />
+      {/* Formelsammlung-Panel (rechte Seite) */}
+      {formulaSheets.length > 0 && (
+        <FormulaSheetPanel formulaSheets={formulaSheets} />
+      )}
+
+      {/* Kompakter Header */}
+      <div className="border-b bg-card/95 backdrop-blur-sm shrink-0">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2">
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: Navigation */}
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowExitDialog(true)}
+                className="h-8 w-8"
+              >
+                <ArrowLeft size={16} />
               </Button>
-              <div className="hidden sm:block">
-                <p className="font-medium text-sm">Prüfungsmodus</p>
-                <p className="text-xs text-muted-foreground">
-                  {answeredCount}/{totalTasks} beantwortet
-                </p>
-              </div>
-            </div>
-
-            {/* Center: Timer */}
-            <motion.div
-              animate={isTimeWarning ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.5, repeat: isTimeWarning ? Infinity : 0 }}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-lg font-bold',
-                isTimeWarning ? 'bg-red-500/10 text-red-600' : 'bg-muted'
-              )}
-            >
-              <Clock size={20} weight={isTimeWarning ? 'fill' : 'regular'} />
-              {formatTime(timeRemaining)}
-            </motion.div>
-
-            {/* Right: Submit */}
-            <Button onClick={() => setShowSubmitDialog(true)} variant="default">
-              <PaperPlaneTilt size={18} className="mr-2" />
-              <span className="hidden sm:inline">Prüfung abgeben</span>
-              <span className="sm:hidden">Abgeben</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Task Navigation Sidebar */}
-        <div className="hidden md:flex w-64 border-r bg-card flex-col">
-          <div className="p-4 border-b">
-            <h3 className="font-medium text-sm mb-2">Aufgaben</h3>
-            <div className="flex gap-2 text-xs">
-              <Badge variant="secondary" className="bg-green-500/10 text-green-600">
-                <Check size={12} className="mr-1" />
-                {answeredCount}
-              </Badge>
-              <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600">
-                <Flag size={12} className="mr-1" />
-                {flaggedCount}
-              </Badge>
-              <Badge variant="secondary" className="bg-muted">
-                <Question size={12} className="mr-1" />
-                {unansweredCount}
-              </Badge>
-            </div>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-2 space-y-1">
-              {session.tasks.map((task, index) => (
-                <button
-                  key={task.id}
-                  onClick={() => goToTask(index)}
-                  className={cn(
-                    'w-full flex items-center gap-2 p-2 rounded-lg text-left text-sm transition-colors',
-                    index === currentTaskIndex
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  )}
-                >
-                  <div className={cn(
-                    'w-6 h-6 rounded flex items-center justify-center text-xs font-medium',
-                    index === currentTaskIndex ? 'bg-primary-foreground/20' : 'bg-muted'
-                  )}>
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 truncate">
-                    {task.topic || `Aufgabe ${index + 1}`}
-                  </div>
-                  <div className={cn(
-                    'w-2 h-2 rounded-full',
-                    getDifficultyColor(task.difficulty)
-                  )} />
-                  {index !== currentTaskIndex && getTaskIcon(task)}
-                </button>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Task Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Mobile Task Navigation */}
-          <div className="md:hidden border-b p-2">
-            <ScrollArea className="w-full">
-              <div className="flex gap-1 pb-2">
+              
+              {/* Task Pills - Kompakt Desktop */}
+              <div className="hidden sm:flex items-center gap-1">
                 {session.tasks.map((task, index) => (
                   <button
                     key={task.id}
                     onClick={() => goToTask(index)}
                     className={cn(
-                      'shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-sm font-medium transition-colors relative',
+                      'w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium transition-all',
                       index === currentTaskIndex
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
                         : task.examStatus === 'answered'
-                        ? 'bg-green-500/10 text-green-600 border border-green-500/30'
+                        ? 'bg-green-500/15 text-green-600 hover:bg-green-500/25'
                         : task.examStatus === 'flagged'
-                        ? 'bg-yellow-500/10 text-yellow-600 border border-yellow-500/30'
-                        : 'bg-muted hover:bg-muted/80'
+                        ? 'bg-yellow-500/15 text-yellow-600 hover:bg-yellow-500/25'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                     )}
                   >
                     {index + 1}
-                    {task.examStatus === 'flagged' && index !== currentTaskIndex && (
-                      <Flag size={10} className="absolute -top-1 -right-1 text-yellow-600" weight="fill" />
-                    )}
                   </button>
                 ))}
               </div>
-            </ScrollArea>
-          </div>
 
-          {/* Task Question */}
-          <div className="p-4 border-b bg-muted/30">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    Aufgabe {currentTaskIndex + 1} / {totalTasks}
-                  </Badge>
-                  <div className={cn(
-                    'w-2 h-2 rounded-full',
-                    getDifficultyColor(currentTask.difficulty)
-                  )} />
-                  {currentTask.points && (
-                    <span className="text-xs text-muted-foreground">
-                      {currentTask.points} Punkte
-                    </span>
-                  )}
-                </div>
-                <Button
-                  variant={currentTask.examStatus === 'flagged' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={toggleFlag}
-                  className={currentTask.examStatus === 'flagged' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}
-                >
-                  <Flag size={14} className="mr-1" weight={currentTask.examStatus === 'flagged' ? 'fill' : 'regular'} />
-                  Markieren
-                </Button>
+              {/* Mobile: Aktuelle Aufgabe */}
+              <div className="sm:hidden flex items-center gap-1.5">
+                <Badge variant="secondary" className="text-xs h-6">
+                  {currentTaskIndex + 1}/{totalTasks}
+                </Badge>
               </div>
-              <Card className="bg-card">
-                <CardContent className="p-4">
-                  <MarkdownRenderer content={currentTask.question} />
-                </CardContent>
-              </Card>
-              {currentTask.attachments && currentTask.attachments.length > 0 && (
-                <div className="mt-3">
-                  <TaskAttachments attachments={currentTask.attachments} compact />
-                </div>
+            </div>
+
+            {/* Center: Timer */}
+            <motion.div
+              animate={isTimeWarning ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 0.5, repeat: isTimeWarning ? Infinity : 0 }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-sm font-semibold',
+                isTimeWarning 
+                  ? 'bg-red-500/10 text-red-600 ring-1 ring-red-500/20' 
+                  : 'bg-muted/80'
               )}
+            >
+              <Clock size={14} weight={isTimeWarning ? 'fill' : 'regular'} />
+              {formatTime(timeRemaining)}
+            </motion.div>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1.5">
+              {/* Status Badges - nur Desktop */}
+              <div className="hidden lg:flex items-center gap-1 mr-2">
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600 text-xs h-6">
+                  <Check size={10} className="mr-0.5" />{answeredCount}
+                </Badge>
+                <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600 text-xs h-6">
+                  <Flag size={10} className="mr-0.5" />{flaggedCount}
+                </Badge>
+              </div>
+
+              {onPauseExam && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowPauseDialog(true)}
+                  className="h-8"
+                >
+                  <Pause size={14} className="sm:mr-1.5" />
+                  <span className="hidden sm:inline">Pausieren</span>
+                </Button>
+              )}
+              
+              <Button 
+                onClick={() => setShowSubmitDialog(true)} 
+                size="sm"
+                className="h-8"
+              >
+                <PaperPlaneTilt size={14} className="sm:mr-1.5" />
+                <span className="hidden sm:inline">Abgeben</span>
+              </Button>
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Answer Area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto p-4">
+      {/* Mobile Task Pills */}
+      <div className="sm:hidden border-b bg-card/50 px-2 py-1.5 overflow-x-auto">
+        <div className="flex gap-1">
+          {session.tasks.map((task, index) => (
+            <button
+              key={task.id}
+              onClick={() => goToTask(index)}
+              className={cn(
+                'shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium transition-all',
+                index === currentTaskIndex
+                  ? 'bg-primary text-primary-foreground'
+                  : task.examStatus === 'answered'
+                  ? 'bg-green-500/15 text-green-600'
+                  : task.examStatus === 'flagged'
+                  ? 'bg-yellow-500/15 text-yellow-600'
+                  : 'bg-muted/50 text-muted-foreground'
+              )}
+            >
+              {index + 1}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content - Komplett scrollbar */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4">
+          {/* Aufgaben-Karte - Collapsible */}
+          <Collapsible open={isQuestionExpanded} onOpenChange={setIsQuestionExpanded}>
+            <Card className="mb-4 overflow-hidden">
+              {/* Aufgaben-Header */}
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center justify-between p-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      Aufgabe {currentTaskIndex + 1}
+                    </Badge>
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        'text-xs',
+                        currentTask.difficulty === 'easy' && 'border-green-500/50 text-green-600 bg-green-500/5',
+                        currentTask.difficulty === 'medium' && 'border-yellow-500/50 text-yellow-600 bg-yellow-500/5',
+                        currentTask.difficulty === 'hard' && 'border-red-500/50 text-red-600 bg-red-500/5'
+                      )}
+                    >
+                      {getDifficultyLabel(currentTask.difficulty)}
+                    </Badge>
+                    {currentTask.topic && (
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{currentTask.topic}</span>
+                    )}
+                    {currentTask.points && (
+                      <Badge variant="secondary" className="text-xs">
+                        {currentTask.points} Pkt.
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={currentTask.examStatus === 'flagged' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleFlag()
+                      }}
+                      className={cn(
+                        'h-7 text-xs',
+                        currentTask.examStatus === 'flagged' && 'bg-yellow-500 hover:bg-yellow-600'
+                      )}
+                    >
+                      <Flag size={12} weight={currentTask.examStatus === 'flagged' ? 'fill' : 'regular'} className="mr-1" />
+                      <span className="hidden sm:inline">Markieren</span>
+                    </Button>
+                    {isQuestionExpanded ? (
+                      <CaretUp size={16} className="text-muted-foreground" />
+                    ) : (
+                      <CaretDown size={16} className="text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
+
+              {/* Aufgaben-Inhalt */}
+              <CollapsibleContent>
+                <CardContent className="p-4 pt-3">
+                  <div className="prose-container">
+                    <MarkdownRenderer 
+                      content={currentTask.question} 
+                      className="scientific-content text-sm leading-relaxed"
+                    />
+                  </div>
+                  {currentTask.attachments && currentTask.attachments.length > 0 && (
+                    <div className="mt-4 pt-3 border-t">
+                      <TaskAttachments attachments={currentTask.attachments} compact />
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+
+              {/* Collapsed Preview */}
+              {!isQuestionExpanded && (
+                <div className="px-4 pb-3">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {currentTask.question.substring(0, 150)}...
+                  </p>
+                </div>
+              )}
+            </Card>
+          </Collapsible>
+
+          {/* Antwort-Bereich */}
+          <Card>
+            <CardContent className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="font-medium text-sm">Deine Antwort</h3>
                 <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')}>
-                  <TabsList className="h-8">
-                    <TabsTrigger value="draw" className="text-xs h-7">
+                  <TabsList className="h-8 p-0.5">
+                    <TabsTrigger value="draw" className="text-xs h-7 px-3">
                       <PencilLine size={14} className="mr-1.5" />
                       Zeichnen
                     </TabsTrigger>
-                    <TabsTrigger value="type" className="text-xs h-7">
+                    <TabsTrigger value="type" className="text-xs h-7 px-3">
                       <Keyboard size={14} className="mr-1.5" />
                       Tippen
                     </TabsTrigger>
@@ -413,9 +486,9 @@ export function ExamSessionScreen({
                 {inputMode === 'draw' ? (
                   <motion.div
                     key="draw"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                   >
                     <AdvancedDrawingCanvas
                       onContentChange={setHasCanvasContent}
@@ -438,37 +511,54 @@ export function ExamSessionScreen({
                 ) : (
                   <motion.div
                     key="type"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                   >
                     <Textarea
                       value={textAnswer}
                       onChange={(e) => setTextAnswer(e.target.value)}
                       placeholder="Schreibe deine Antwort hier..."
-                      className="min-h-[300px] font-mono resize-none text-sm"
+                      className="min-h-[250px] sm:min-h-[300px] font-mono resize-none text-sm"
                     />
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" onClick={handleClear} className="flex-1">
-                  <Eraser size={16} className="mr-2" />
+              <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleClear}
+                  className="text-muted-foreground"
+                >
+                  <Eraser size={14} className="mr-1.5" />
                   Löschen
                 </Button>
-                <Button variant="outline" onClick={goToPrev} disabled={currentTaskIndex === 0}>
-                  <ArrowLeft size={16} className="mr-2" />
-                  Zurück
-                </Button>
-                <Button onClick={goToNext} disabled={currentTaskIndex === totalTasks - 1}>
-                  Weiter
-                  <ArrowRight size={16} className="ml-2" />
-                </Button>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={goToPrev} 
+                    disabled={currentTaskIndex === 0}
+                  >
+                    <ArrowLeft size={14} className="sm:mr-1" />
+                    <span className="hidden sm:inline">Zurück</span>
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={goToNext} 
+                    disabled={currentTaskIndex === totalTasks - 1}
+                  >
+                    <span className="hidden sm:inline">Weiter</span>
+                    <ArrowRight size={14} className="sm:ml-1" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -477,34 +567,58 @@ export function ExamSessionScreen({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Prüfung abgeben?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>Möchtest du die Prüfung wirklich abgeben?</p>
-              <div className="flex gap-4 mt-4 text-sm">
-                <div className="flex items-center gap-1">
-                  <Check size={16} className="text-green-600" />
-                  <span>{answeredCount} beantwortet</span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Möchtest du die Prüfung wirklich abgeben?</p>
+                <div className="flex gap-4 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <Check size={16} className="text-green-600" />
+                    <span>{answeredCount} beantwortet</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Flag size={16} className="text-yellow-600" />
+                    <span>{flaggedCount} markiert</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Question size={16} className="text-muted-foreground" />
+                    <span>{unansweredCount} offen</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Flag size={16} className="text-yellow-600" />
-                  <span>{flaggedCount} markiert</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Question size={16} className="text-muted-foreground" />
-                  <span>{unansweredCount} offen</span>
-                </div>
+                {unansweredCount > 0 && (
+                  <div className="flex items-center gap-1.5 text-yellow-600 text-sm">
+                    <Warning size={16} />
+                    <span>Du hast noch {unansweredCount} unbeantwortete Aufgabe(n).</span>
+                  </div>
+                )}
               </div>
-              {unansweredCount > 0 && (
-                <p className="text-yellow-600 flex items-center gap-1 mt-2">
-                  <Warning size={16} />
-                  Du hast noch {unansweredCount} unbeantwortete Aufgabe(n).
-                </p>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Zurück zur Prüfung</AlertDialogCancel>
+            <AlertDialogCancel>Zurück</AlertDialogCancel>
             <AlertDialogAction onClick={onSubmitExam}>
               Endgültig abgeben
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pause Dialog */}
+      <AlertDialog open={showPauseDialog} onOpenChange={setShowPauseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Prüfung pausieren?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Die Prüfung wird gespeichert und du kannst sie später fortsetzen.
+              Die verbleibende Zeit wird gespeichert.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Zurück</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowPauseDialog(false)
+              onPauseExam?.()
+            }}>
+              Pausieren & Speichern
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -516,14 +630,28 @@ export function ExamSessionScreen({
           <AlertDialogHeader>
             <AlertDialogTitle>Prüfung verlassen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Wenn du die Prüfung jetzt verlässt, gehen alle Antworten verloren.
-              Die Prüfung wird nicht gewertet.
+              {onPauseExam 
+                ? 'Möchtest du die Prüfung pausieren oder abbrechen?'
+                : 'Wenn du die Prüfung jetzt verlässt, gehen alle Antworten verloren.'
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Zurück zur Prüfung</AlertDialogCancel>
-            <AlertDialogAction onClick={onExit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Prüfung abbrechen
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Zurück</AlertDialogCancel>
+            {onPauseExam && (
+              <Button variant="outline" onClick={() => {
+                setShowExitDialog(false)
+                onPauseExam()
+              }}>
+                <Pause size={14} className="mr-1.5" />
+                Pausieren
+              </Button>
+            )}
+            <AlertDialogAction 
+              onClick={onExit} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Abbrechen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
