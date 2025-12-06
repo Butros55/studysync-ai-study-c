@@ -44,6 +44,7 @@ interface TutorDashboardProps {
   tasks: Task[]
   scripts?: { id: string; moduleId: string; name: string }[]
   onSolveTask: (task: Task) => void
+  onStartTaskSequence?: (tasks: Task[], startTaskId?: string) => void
   onSelectModule: (moduleId: string) => void
   onEditModule?: (module: Module) => void
   onGenerateTasks?: (moduleId: string, scriptIds: string[]) => void
@@ -64,6 +65,7 @@ export function TutorDashboard({
   tasks,
   scripts = [],
   onSolveTask,
+  onStartTaskSequence,
   onSelectModule,
   onEditModule,
   onGenerateTasks,
@@ -210,6 +212,12 @@ export function TutorDashboard({
     )
   }
 
+  const getTaskPreview = (task: Task) => {
+    if (task.title?.trim()) return task.title
+    const firstContentLine = task.question.split('\n').find(line => line.trim().length > 0)
+    return firstContentLine || task.question
+  }
+
   // Sortiere Module nach Prüfungsdatum (nächste zuerst)
   const sortedModules = [...modules].sort((a, b) => {
     const daysA = getDaysUntilExam(a.examDate)
@@ -342,9 +350,24 @@ export function TutorDashboard({
                       
                       <div className="grid gap-3 sm:grid-cols-2">
                         {taskBlocks.map((block, blockIdx) => (
-                          <Card 
-                            key={`${module.id}-block-${blockIdx}`} 
+                          <Card
+                            key={`${module.id}-block-${blockIdx}`}
                             className={`p-3 border-l-4 ${block.color}`}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              const sequence = block.tasks
+                              const startTask = sequence.find(t => !t.completed) || sequence[0]
+                              onStartTaskSequence?.(sequence, startTask?.id)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                const sequence = block.tasks
+                                const startTask = sequence.find(t => !t.completed) || sequence[0]
+                                onStartTaskSequence?.(sequence, startTask?.id)
+                              }
+                            }}
                           >
                             <div className="flex items-center gap-2 mb-2">
                               {block.icon}
@@ -353,11 +376,11 @@ export function TutorDashboard({
                                 {block.tasks.length} Aufgaben
                               </Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground mb-2">{block.description}</p>
-                            
+                              <p className="text-xs text-muted-foreground mb-2">{block.description}</p>
+
                             <div className="space-y-1.5">
                               {block.tasks.slice(0, 3).map(task => (
-                                <div 
+                                <div
                                   key={task.id}
                                   className="flex items-center gap-2 p-2 rounded-md bg-background/50 hover:bg-background cursor-pointer group text-xs"
                                   onClick={(e) => {
@@ -366,10 +389,15 @@ export function TutorDashboard({
                                   }}
                                 >
                                   <div className="flex-1 min-w-0 truncate font-medium">
-                                    {task.title || task.question.substring(0, 50)}...
+                                    <MarkdownRenderer
+                                      content={getTaskPreview(task)}
+                                      compact
+                                      truncateLines={1}
+                                      className="text-xs font-medium"
+                                    />
                                   </div>
                                   {getDifficultyBadge(task.difficulty)}
-                                  <ArrowRight 
+                                  <ArrowRight
                                     size={12} 
                                     className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
                                   />

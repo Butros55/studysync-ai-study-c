@@ -122,6 +122,8 @@ function App() {
   const [moduleToEdit, setModuleToEdit] = useState<Module | null>(null)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [taskSequence, setTaskSequence] = useState<Task[] | null>(null)
+  const [activeSequenceIndex, setActiveSequenceIndex] = useState<number | null>(null)
   const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
   const [showCostTracking, setShowCostTracking] = useState(false)
@@ -798,10 +800,75 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
+  const openTask = (task: Task, sequence?: Task[], startTaskId?: string) => {
+    setSelectedModuleId(task.moduleId)
+
+    if (sequence && sequence.length > 0) {
+      const startIndex = startTaskId ? sequence.findIndex(t => t.id === startTaskId) : 0
+      setTaskSequence(sequence)
+      setActiveSequenceIndex(startIndex >= 0 ? startIndex : 0)
+    } else {
+      setTaskSequence(null)
+      setActiveSequenceIndex(null)
+    }
+
+    setActiveTask(task)
+    setTaskFeedback(null)
+  }
+
+  const startTaskSequence = (sequence: Task[], startTaskId?: string) => {
+    if (sequence.length === 0) return
+
+    const uniqueSequence = sequence.filter((task, index, self) =>
+      self.findIndex(t => t.id === task.id) === index
+    )
+
+    const startTask = startTaskId
+      ? uniqueSequence.find(t => t.id === startTaskId)
+      : uniqueSequence[0]
+
+    if (!startTask) return
+
+    openTask(startTask, uniqueSequence, startTask.id)
+  }
+
   const handleNextTask = () => {
-    const currentIndex = moduleTasks.findIndex((t) => t.id === activeTask?.id)
+    if (!activeTask) return
+
+    if (taskSequence && taskSequence.length > 0 && activeSequenceIndex !== null) {
+      const syncedSequence = taskSequence.map(seqTask => tasks?.find(t => t.id === seqTask.id) || seqTask)
+
+      const nextInSequence = syncedSequence.find((t, idx) => idx > activeSequenceIndex && !t.completed)
+
+      if (nextInSequence) {
+        setTaskSequence(syncedSequence)
+        setActiveSequenceIndex(syncedSequence.findIndex(t => t.id === nextInSequence.id))
+        setActiveTask(nextInSequence)
+        setTaskFeedback(null)
+        return
+      }
+
+      const remaining = syncedSequence.find(t => !t.completed && t.id !== activeTask.id)
+
+      if (remaining) {
+        setTaskSequence(syncedSequence)
+        setActiveSequenceIndex(syncedSequence.findIndex(t => t.id === remaining.id))
+        setActiveTask(remaining)
+        setTaskFeedback(null)
+        return
+      }
+
+      setTaskSequence(null)
+      setActiveSequenceIndex(null)
+      setActiveTask(null)
+      setTaskFeedback(null)
+      toast.success('Alle Aufgaben im Block abgeschlossen! 🎉')
+      return
+    }
+
+    const currentIndex = moduleTasks.findIndex((t) => t.id === activeTask.id)
     const incompleteTasks = moduleTasks.filter((t) => !t.completed)
-    const nextTask = incompleteTasks.find((t, idx) => {
+    const nextTask = incompleteTasks.find((t) => {
       const taskIndex = moduleTasks.indexOf(t)
       return taskIndex > currentIndex
     })
@@ -1338,6 +1405,10 @@ Gib deine Antwort als JSON zurück:
   }
 
   if (activeTask) {
+    const hasNextTask =
+      (taskSequence && taskSequence.some(t => !t.completed && t.id !== activeTask.id)) ||
+      moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
+
     return (
       <>
         <NotificationCenter
@@ -1350,14 +1421,12 @@ Gib deine Antwort als JSON zurück:
           onClose={() => {
             setActiveTask(null)
             setTaskFeedback(null)
+            setTaskSequence(null)
+            setActiveSequenceIndex(null)
           }}
           onSubmit={handleSubmitTaskAnswer}
           feedback={taskFeedback || undefined}
-          onNextTask={
-            moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
-              ? handleNextTask
-              : undefined
-          }
+          onNextTask={hasNextTask ? handleNextTask : undefined}
           onTaskUpdate={async (updates) => {
             await updateTask(activeTask.id, updates)
             // Aktualisiere auch den lokalen State
@@ -1423,10 +1492,8 @@ Gib deine Antwort als JSON zurück:
           onGenerateTasks={handleGenerateTasks}
           onGenerateFlashcards={handleGenerateFlashcards}
           onDeleteScript={handleDeleteScript}
-          onSolveTask={(task) => {
-            setActiveTask(task)
-            setTaskFeedback(null)
-          }}
+          onSolveTask={(task) => openTask(task)}
+          onStartTaskSequence={(sequence, startTaskId) => startTaskSequence(sequence, startTaskId)}
           onDeleteTask={handleDeleteTask}
           onDeleteNote={handleDeleteNote}
           onDeleteFlashcard={handleDeleteFlashcard}
@@ -1547,10 +1614,8 @@ Gib deine Antwort als JSON zurück:
                   scripts={scripts || []}
                   onGenerateTasks={handleGenerateTasksFromDashboard}
                   isGenerating={pipelineTasks.some(t => t.type === 'generate-tasks' && t.status === 'processing')}
-                  onSolveTask={(task) => {
-                    setActiveTask(task)
-                    setTaskFeedback(null)
-                  }}
+                  onSolveTask={(task) => openTask(task)}
+                  onStartTaskSequence={(sequence, startTaskId) => startTaskSequence(sequence, startTaskId)}
                   onSelectModule={setSelectedModuleId}
                   onEditModule={handleEditModule}
                 />
