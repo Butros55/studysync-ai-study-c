@@ -140,36 +140,59 @@ export function FilesTab({
   // Get moduleId from first script
   const moduleId = scripts[0]?.moduleId ?? ''
   
-  // Load analysis records when moduleId changes
+  const pollingRef = useRef<number | null>(null)
+
+  // Load analysis records when moduleId or scripts change
   useEffect(() => {
     if (!moduleId) return
-    
-    let mounted = true
+
+    let cancelled = false
+
     const loadRecords = async () => {
       try {
         const records = await listDocumentAnalyses(moduleId)
-        if (mounted) {
-          const recordMap = new Map<string, DocumentAnalysisRecord>()
-          for (const record of records) {
-            recordMap.set(record.documentId, record)
-          }
-          setAnalysisRecords(recordMap)
+        if (cancelled) return
+
+        const recordMap = new Map<string, DocumentAnalysisRecord>()
+        for (const record of records) {
+          recordMap.set(record.documentId, record)
         }
+
+        setAnalysisRecords(prev => {
+          if (prev.size === recordMap.size) {
+            let isSame = true
+            for (const [id, record] of recordMap) {
+              const existing = prev.get(id)
+              if (!existing || existing.status !== record.status || existing.documentId !== record.documentId) {
+                isSame = false
+                break
+              }
+            }
+            if (isSame) return prev
+          }
+
+          console.debug('[FilesTab] Loaded', recordMap.size, 'document analyses')
+          return recordMap
+        })
       } catch (e) {
         console.warn('[FilesTab] Failed to load analysis records:', e)
       }
     }
-    
+
     loadRecords()
-    
-    // Refresh periodically to catch updates
-    const interval = setInterval(loadRecords, 5000)
-    
-    return () => {
-      mounted = false
-      clearInterval(interval)
+
+    if (!pollingRef.current) {
+      pollingRef.current = window.setInterval(loadRecords, 5000)
     }
-  }, [moduleId])
+
+    return () => {
+      cancelled = true
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
+  }, [moduleId, scripts.length])
 
   // Use custom hooks for file upload and bulk selection
   const {
