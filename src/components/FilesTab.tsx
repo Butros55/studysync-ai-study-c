@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Script, FileCategory } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,6 +45,7 @@ import {
   X,
   UploadSimple,
   CheckSquareOffset,
+  MagnifyingGlass,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -53,6 +54,10 @@ import { isValidFileType, getFileExtension, parseFile, fileToDataURL } from '@/l
 import { getFileIcon } from '@/lib/file-utils'
 import { useBulkSelection } from '@/hooks/use-bulk-selection'
 import { useFileUpload } from '@/hooks/use-file-upload'
+import { AnalysisStatusBadge } from './AnalysisStatusBadge'
+import { ModuleProfileStatus } from './ModuleProfileStatus'
+import { listDocumentAnalyses } from '@/lib/analysis-storage'
+import type { DocumentAnalysisRecord } from '@/lib/analysis-types'
 
 // Kategorie-Konfiguration
 const CATEGORY_CONFIG: Record<FileCategory, {
@@ -108,6 +113,7 @@ interface FilesTabProps {
   onBulkDeleteScripts: (ids: string[]) => void
   onGenerateAllNotes: () => void
   onGenerateAllTasks: () => void
+  onAnalyzeScript?: (scriptId: string) => void
 }
 
 export function FilesTab({
@@ -119,6 +125,7 @@ export function FilesTab({
   onBulkDeleteScripts,
   onGenerateAllNotes,
   onGenerateAllTasks,
+  onAnalyzeScript,
 }: FilesTabProps) {
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<FileCategory>>(
@@ -128,6 +135,43 @@ export function FilesTab({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Analysis records for status badges
+  const [analysisRecords, setAnalysisRecords] = useState<Map<string, DocumentAnalysisRecord>>(new Map())
+  
+  // Get moduleId from first script
+  const moduleId = scripts[0]?.moduleId ?? ''
+  
+  // Load analysis records when moduleId changes
+  useEffect(() => {
+    if (!moduleId) return
+    
+    let mounted = true
+    const loadRecords = async () => {
+      try {
+        const records = await listDocumentAnalyses(moduleId)
+        if (mounted) {
+          const recordMap = new Map<string, DocumentAnalysisRecord>()
+          for (const record of records) {
+            recordMap.set(record.documentId, record)
+          }
+          setAnalysisRecords(recordMap)
+        }
+      } catch (e) {
+        console.warn('[FilesTab] Failed to load analysis records:', e)
+      }
+    }
+    
+    loadRecords()
+    
+    // Refresh periodically to catch updates
+    const interval = setInterval(loadRecords, 5000)
+    
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [moduleId])
 
   // Use custom hooks for file upload and bulk selection
   const {
@@ -276,6 +320,9 @@ export function FilesTab({
 
   return (
     <div className="space-y-6">
+      {/* Module Profile Status */}
+      {moduleId && <ModuleProfileStatus moduleId={moduleId} />}
+      
       {/* Hidden File Input für Bulk Upload */}
       <input
         ref={fileInputRef}
@@ -511,9 +558,18 @@ export function FilesTab({
                               />
                               <FileIcon className="w-5 h-5 text-muted-foreground shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">
-                                  {script.name}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm truncate">
+                                    {script.name}
+                                  </p>
+                                  <AnalysisStatusBadge
+                                    moduleId={moduleId}
+                                    documentId={script.id}
+                                    analysisRecord={analysisRecords.get(script.id) ?? null}
+                                    size="sm"
+                                    showCoverage={true}
+                                  />
+                                </div>
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(script.uploadedAt).toLocaleDateString('de-DE')}
                                 </p>
@@ -529,6 +585,12 @@ export function FilesTab({
                                     <Eye className="w-4 h-4 mr-2" />
                                     Vorschau
                                   </DropdownMenuItem>
+                                  {onAnalyzeScript && (
+                                    <DropdownMenuItem onClick={() => onAnalyzeScript(script.id)}>
+                                      <MagnifyingGlass className="w-4 h-4 mr-2" />
+                                      Analyse starten
+                                    </DropdownMenuItem>
+                                  )}
                                   {category === 'script' && (
                                     <>
                                       <DropdownMenuSeparator />

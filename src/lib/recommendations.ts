@@ -8,6 +8,7 @@
  */
 
 import { Module, Task, ModuleStats, TopicStats, Recommendation, RecommendationType } from './types'
+import { canonicalKey, cleanLabel } from './tag-canonicalizer'
 
 const STATS_STORAGE_KEY = 'studymate-topic-stats'
 
@@ -33,7 +34,9 @@ export function saveModuleStats(stats: ModuleStats[]): void {
 }
 
 /**
- * Aktualisiert die Statistiken nach einer Aufgabenlösung
+ * Aktualisiert die Statistiken nach einer Aufgabenlösung.
+ * Uses canonical keys for topic matching to prevent duplicate entries
+ * for semantically identical topics (e.g., "Quine-McCluskey" vs "Minimierung (Quine-McCluskey)")
  */
 export function updateTopicStats(
   moduleId: string,
@@ -52,15 +55,27 @@ export function updateTopicStats(
     allStats.push(moduleStats)
   }
   
-  let topicStats = moduleStats.topics.find(t => t.topic === topic)
+  // Use canonical key for matching to merge similar topics
+  const topicKey = canonicalKey(topic)
+  const cleanedLabel = cleanLabel(topic)
+  
+  // Find existing topic stats by canonical key match
+  let topicStats = moduleStats.topics.find(t => canonicalKey(t.topic) === topicKey)
+  
   if (!topicStats) {
     topicStats = {
-      topic,
+      topic: cleanedLabel, // Store the clean label
       correct: 0,
       incorrect: 0,
       lastPracticed: new Date().toISOString()
     }
     moduleStats.topics.push(topicStats)
+  } else {
+    // Optionally update the label to the newest form if it's "better"
+    // (shorter, no parentheses, proper capitalization)
+    if (cleanedLabel.length < topicStats.topic.length && !cleanedLabel.includes('(')) {
+      topicStats.topic = cleanedLabel
+    }
   }
   
   if (isCorrect) {
@@ -92,10 +107,62 @@ export function getWeakTopics(moduleId: string): string[] {
   const moduleStats = allStats.find(s => s.moduleId === moduleId)
   if (!moduleStats) return []
   
-  return moduleStats.topics
+  // Group by canonical key to avoid returning duplicates
+  const groupedByKey = new Map<string, TopicStats>()
+  for (const topic of moduleStats.topics) {
+    const key = canonicalKey(topic.topic)
+    const existing = groupedByKey.get(key)
+    if (existing) {
+      // Merge stats
+      existing.correct += topic.correct
+      existing.incorrect += topic.incorrect
+      // Use the shorter/cleaner label
+      if (topic.topic.length < existing.topic.length) {
+        existing.topic = topic.topic
+      }
+    } else {
+      groupedByKey.set(key, { ...topic })
+    }
+  }
+  
+  return Array.from(groupedByKey.values())
     .filter(t => getSuccessRate(t) < 0.6 && (t.correct + t.incorrect) >= 2)
     .sort((a, b) => getSuccessRate(a) - getSuccessRate(b))
     .map(t => t.topic)
+}
+
+/**
+ * Get consolidated topic stats with duplicates merged by canonical key.
+ * Returns stats grouped by canonical key but displaying the best label.
+ */
+export function getConsolidatedTopicStats(moduleId: string): TopicStats[] {
+  const allStats = loadModuleStats()
+  const moduleStats = allStats.find(s => s.moduleId === moduleId)
+  if (!moduleStats) return []
+  
+  // Group by canonical key
+  const groupedByKey = new Map<string, TopicStats>()
+  for (const topic of moduleStats.topics) {
+    const key = canonicalKey(topic.topic)
+    const existing = groupedByKey.get(key)
+    if (existing) {
+      // Merge stats
+      existing.correct += topic.correct
+      existing.incorrect += topic.incorrect
+      // Use more recent lastPracticed
+      if (topic.lastPracticed && (!existing.lastPracticed || topic.lastPracticed > existing.lastPracticed)) {
+        existing.lastPracticed = topic.lastPracticed
+      }
+      // Use the shorter/cleaner label
+      if (topic.topic.length < existing.topic.length && !topic.topic.includes('(')) {
+        existing.topic = topic.topic
+      }
+    } else {
+      groupedByKey.set(key, { ...topic })
+    }
+  }
+  
+  return Array.from(groupedByKey.values())
 }
 
 /**

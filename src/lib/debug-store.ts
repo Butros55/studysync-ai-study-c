@@ -1,7 +1,7 @@
 export interface DebugLogEntry {
   id: string
   timestamp: number
-  type: 'llm-request' | 'llm-response' | 'llm-error'
+  type: 'llm-request' | 'llm-response' | 'llm-error' | 'task-validation' | 'task-repair'
   data: {
     prompt?: string
     model?: string
@@ -17,6 +17,20 @@ export interface DebugLogEntry {
       prompt_tokens?: number
       completion_tokens?: number
       total_tokens?: number
+    }
+    // Task validation specific
+    validation?: {
+      taskQuestion?: string
+      ok?: boolean
+      issues?: string[]
+      missingInfo?: string[]
+      styleMismatches?: string[]
+      requiresDrawing?: boolean
+      confidence?: number
+      timeMs?: number
+      wasRepaired?: boolean
+      wasRegenerated?: boolean
+      repairAttempt?: number
     }
   }
 }

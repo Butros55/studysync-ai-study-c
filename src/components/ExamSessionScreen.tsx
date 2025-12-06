@@ -43,6 +43,7 @@ import { TaskAttachments } from './TaskAttachments'
 import { FormulaSheetPanel } from './FormulaSheetPanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { usePreferredInputMode } from '@/hooks/use-preferred-input-mode'
 
 interface ExamSessionScreenProps {
   session: ExamSession
@@ -61,6 +62,9 @@ export function ExamSessionScreen({
   onPauseExam,
   formulaSheets = [],
 }: ExamSessionScreenProps) {
+  // Get user's preferred input mode
+  const { mode: preferredInputMode, isLoading: isPreferenceLoading } = usePreferredInputMode()
+  
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
   const [inputMode, setInputMode] = useState<'draw' | 'type'>('draw')
   const [textAnswer, setTextAnswer] = useState('')
@@ -75,6 +79,17 @@ export function ExamSessionScreen({
 
   const currentTask = session.tasks[currentTaskIndex]
   const totalTasks = session.tasks.length
+  
+  // Sync inputMode with user preference when it loads
+  useEffect(() => {
+    if (!isPreferenceLoading && preferredInputMode) {
+      setInputMode(preferredInputMode)
+    }
+  }, [preferredInputMode, isPreferenceLoading])
+  
+  // Determine if we should show tabs (only in draw mode preference)
+  // In type mode preference, only typing is available
+  const showInputModeTabs = preferredInputMode !== 'type'
 
   // Timer Effect
   useEffect(() => {
@@ -468,22 +483,32 @@ export function ExamSessionScreen({
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="font-medium text-sm">Deine Antwort</h3>
-                <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')}>
-                  <TabsList className="h-8 p-0.5">
-                    <TabsTrigger value="draw" className="text-xs h-7 px-3">
-                      <PencilLine size={14} className="mr-1.5" />
-                      Zeichnen
-                    </TabsTrigger>
-                    <TabsTrigger value="type" className="text-xs h-7 px-3">
-                      <Keyboard size={14} className="mr-1.5" />
-                      Tippen
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                {/* Only show tabs if preference is 'draw' or not set */}
+                {showInputModeTabs ? (
+                  <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')}>
+                    <TabsList className="h-8 p-0.5">
+                      <TabsTrigger value="draw" className="text-xs h-7 px-3">
+                        <PencilLine size={14} className="mr-1.5" />
+                        Zeichnen
+                      </TabsTrigger>
+                      <TabsTrigger value="type" className="text-xs h-7 px-3">
+                        <Keyboard size={14} className="mr-1.5" />
+                        Tippen
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                ) : (
+                  /* Type-only mode indicator */
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Keyboard size={14} />
+                    <span>Tastatureingabe</span>
+                  </div>
+                )}
               </div>
 
               <AnimatePresence mode="wait">
-                {inputMode === 'draw' ? (
+                {/* Only render canvas if inputMode is 'draw' AND preference allows drawing */}
+                {inputMode === 'draw' && showInputModeTabs ? (
                   <motion.div
                     key="draw"
                     initial={{ opacity: 0 }}

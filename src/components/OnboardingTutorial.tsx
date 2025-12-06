@@ -1,6 +1,9 @@
 /**
  * Interaktives Onboarding Tutorial für neue Benutzer
  * Führt Schritt für Schritt durch die wichtigsten Features
+ * 
+ * Skip ist deaktiviert - Benutzer müssen alle Schritte durchlaufen
+ * und einen Input-Mode wählen bevor das Onboarding abgeschlossen wird.
  */
 
 import { useState, useEffect } from 'react'
@@ -12,18 +15,19 @@ import {
   GraduationCap,
   FolderPlus,
   FileArrowUp,
-  Lightning,
   PencilSimple,
   Exam,
   CheckCircle,
   ArrowRight,
   ArrowLeft,
-  X,
   Sparkle,
-  Books,
-  Brain,
-  Target
+  Target,
+  Keyboard,
+  PencilLine,
 } from '@phosphor-icons/react'
+import { usePreferredInputMode } from '@/hooks/use-preferred-input-mode'
+import type { InputMode } from '@/lib/analysis-types'
+import { cn } from '@/lib/utils'
 
 const ONBOARDING_KEY = 'studysync_onboarding_completed'
 
@@ -35,6 +39,8 @@ interface OnboardingStep {
   highlight?: string // CSS-Selektor für Highlight
   position?: 'center' | 'top' | 'bottom'
   action?: string
+  /** Special step type for input mode selection */
+  isInputModeStep?: boolean
 }
 
 const STEPS: OnboardingStep[] = [
@@ -93,6 +99,14 @@ const STEPS: OnboardingStep[] = [
     position: 'top'
   },
   {
+    id: 'input-mode',
+    title: 'Wie möchtest du Aufgaben lösen?',
+    description: 'Wähle deine bevorzugte Eingabemethode. Du kannst sie später jederzeit ändern.',
+    icon: <PencilLine size={48} weight="duotone" />,
+    position: 'center',
+    isInputModeStep: true
+  },
+  {
     id: 'done',
     title: 'Du bist bereit! 🚀',
     description: 'Erstelle jetzt dein erstes Modul und lade ein Skript hoch. Viel Erfolg beim Lernen!',
@@ -109,11 +123,35 @@ interface OnboardingTutorialProps {
 export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
+  const [selectedInputMode, setSelectedInputMode] = useState<InputMode | undefined>(undefined)
+  
+  // Use the hook to get existing preference and setter
+  const { mode: existingMode, setMode, isLoading: isModeLoading } = usePreferredInputMode()
 
   const step = STEPS[currentStep]
   const progress = ((currentStep + 1) / STEPS.length) * 100
+  
+  // Check if we're on the input mode step
+  const isInputModeStep = step.isInputModeStep === true
+  
+  // Pre-select existing mode if available
+  useEffect(() => {
+    if (existingMode && !selectedInputMode) {
+      setSelectedInputMode(existingMode)
+    }
+  }, [existingMode, selectedInputMode])
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // If on input mode step, must have selection and persist it
+    if (isInputModeStep) {
+      if (!selectedInputMode) {
+        // Cannot proceed without selection
+        return
+      }
+      // Persist the choice
+      await setMode(selectedInputMode)
+    }
+    
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
@@ -128,12 +166,16 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
   }
 
   const handleComplete = () => {
-    localStorage.setItem(ONBOARDING_KEY, 'true')
-    setIsVisible(false)
-    setTimeout(onComplete, 300)
-  }
-
-  const handleSkip = () => {
+    // Only complete if input mode was selected
+    if (!selectedInputMode) {
+      // Find input mode step and go there
+      const inputModeStepIndex = STEPS.findIndex(s => s.isInputModeStep)
+      if (inputModeStepIndex >= 0) {
+        setCurrentStep(inputModeStepIndex)
+        return
+      }
+    }
+    
     localStorage.setItem(ONBOARDING_KEY, 'true')
     setIsVisible(false)
     setTimeout(onComplete, 300)
@@ -150,16 +192,20 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
     }
   }, [step.highlight])
 
-  // Tastatur-Navigation
+  // Tastatur-Navigation (Skip via Escape disabled)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === 'Enter') handleNext()
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        // Don't allow Enter to proceed on input mode step without selection
+        if (isInputModeStep && !selectedInputMode) return
+        handleNext()
+      }
       if (e.key === 'ArrowLeft') handlePrev()
-      if (e.key === 'Escape') handleSkip()
+      // Escape no longer skips - onboarding is mandatory
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentStep])
+  }, [currentStep, selectedInputMode, isInputModeStep])
 
   return (
     <AnimatePresence>
@@ -211,6 +257,71 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
                   </div>
                 )}
 
+                {/* Input Mode Selection Step */}
+                {isInputModeStep && (
+                  <div className="space-y-3 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedInputMode('type')}
+                      className={cn(
+                        "w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-all",
+                        selectedInputMode === 'type'
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center",
+                        selectedInputMode === 'type' ? "bg-primary text-primary-foreground" : "bg-muted"
+                      )}>
+                        <Keyboard size={24} weight="duotone" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <div className="font-medium">⌨️ Tastatur (Tippen)</div>
+                        <div className="text-sm text-muted-foreground">
+                          Antworten per Tastatur eingeben
+                        </div>
+                      </div>
+                      {selectedInputMode === 'type' && (
+                        <CheckCircle size={24} weight="fill" className="text-primary" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedInputMode('draw')}
+                      className={cn(
+                        "w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-all",
+                        selectedInputMode === 'draw'
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center",
+                        selectedInputMode === 'draw' ? "bg-primary text-primary-foreground" : "bg-muted"
+                      )}>
+                        <PencilLine size={24} weight="duotone" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <div className="font-medium">✍️ Stift (Zeichnen)</div>
+                        <div className="text-sm text-muted-foreground">
+                          Handschriftlich auf dem Canvas zeichnen
+                        </div>
+                      </div>
+                      {selectedInputMode === 'draw' && (
+                        <CheckCircle size={24} weight="fill" className="text-primary" />
+                      )}
+                    </button>
+
+                    {!selectedInputMode && (
+                      <p className="text-xs text-center text-amber-600 dark:text-amber-400">
+                        Bitte wähle eine Eingabemethode aus, um fortzufahren.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Progress */}
                 <div className="mb-4">
                   <Progress value={progress} className="h-2" />
@@ -219,7 +330,7 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
                   </p>
                 </div>
 
-                {/* Navigation */}
+                {/* Navigation - Skip button removed */}
                 <div className="flex items-center justify-between gap-3">
                   <Button
                     variant="ghost"
@@ -232,19 +343,14 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
                     Zurück
                   </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSkip}
-                    className="text-muted-foreground"
-                  >
-                    Überspringen
-                  </Button>
+                  {/* Spacer instead of skip button */}
+                  <div className="flex-1" />
 
                   <Button
                     onClick={handleNext}
                     size="sm"
                     className="gap-1"
+                    disabled={isInputModeStep && !selectedInputMode}
                   >
                     {currentStep === STEPS.length - 1 ? (
                       <>

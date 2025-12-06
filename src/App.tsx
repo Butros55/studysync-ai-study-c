@@ -18,6 +18,7 @@ import { LocalStorageIndicator } from './components/LocalStorageIndicator'
 import { TutorDashboard } from './components/TutorDashboard'
 import { ExamMode } from './components/ExamMode'
 import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
+import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
@@ -29,6 +30,17 @@ import { llmWithRetry } from './lib/llm-utils'
 import { useLLMModel } from './hooks/use-llm-model'
 import { extractTagsFromQuestion, generateTaskTitle } from './lib/task-tags'
 import { updateTopicStats } from './lib/recommendations'
+import { enqueueAnalysis, onAnalysisProgress, removeFromAnalysisQueue } from './lib/analysis-queue'
+import { deleteDocumentAnalysis } from './lib/analysis-storage'
+import { invalidateModuleProfile } from './lib/module-profile-builder'
+import { buildGenerationContext, formatContextForPrompt } from './lib/generation-context'
+import { getUserPreferencePreferredInputMode } from './lib/analysis-storage'
+import { runValidationPipeline } from './lib/task-validator'
+import { normalizeTags, getModuleAllowedTags, formatAllowedTagsForPrompt, migrateExistingTags } from './lib/tag-canonicalizer'
+import type { DocumentType } from './lib/analysis-types'
+
+// Key for tracking tag migration
+const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
 
 const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und die Erkennung mathematischer Notationen.
 
@@ -159,6 +171,102 @@ function App() {
     initStorage()
   }, [])
 
+  // Einmalige Tag-Migration für bestehende Tasks
+  useEffect(() => {
+    const migrateTagsOnce = async () => {
+      // Check if migration was already done
+      const alreadyMigrated = localStorage.getItem(TAG_MIGRATION_KEY)
+      if (alreadyMigrated) return
+      
+      // Wait for tasks to be loaded
+      if (!tasks || tasks.length === 0) return
+      
+      console.log('[App] Starting one-time tag migration...')
+      
+      try {
+        const result = await migrateExistingTags(
+          tasks.map(t => ({ id: t.id, moduleId: t.moduleId, tags: t.tags })),
+          async (taskId, updates) => {
+            await updateTask(taskId, updates)
+          }
+        )
+        
+        // Mark migration as complete
+        localStorage.setItem(TAG_MIGRATION_KEY, new Date().toISOString())
+        
+        if (result.tagsNormalized > 0) {
+          console.log(`[App] Tag migration complete: ${result.tasksProcessed} tasks processed, ${result.tagsNormalized} tags normalized`)
+          toast.success(`Tags normalisiert: ${result.tagsNormalized} Tags in ${result.tasksProcessed} Aufgaben`)
+        } else {
+          console.log('[App] Tag migration complete: No tags needed normalization')
+        }
+        
+        if (result.errors.length > 0) {
+          console.warn('[App] Tag migration errors:', result.errors)
+        }
+      } catch (error) {
+        console.error('[App] Tag migration failed:', error)
+        // Don't mark as complete so it can retry
+      }
+    }
+    
+    if (storageInitialized) {
+      migrateTagsOnce()
+    }
+  }, [storageInitialized, tasks, updateTask])
+
+  // Subscribe to analysis queue progress updates
+  useEffect(() => {
+    const unsubscribe = onAnalysisProgress((job, status, progress, error) => {
+      const taskId = `analyze-${job.documentId}`
+      
+      if (status === 'queued') {
+        // Add new task to pipeline
+        setPipelineTasks((current) => {
+          // Don't add if already exists
+          if (current.some((t) => t.id === taskId)) {
+            return current.map((t) =>
+              t.id === taskId ? { ...t, status: 'pending', progress: 0 } : t
+            )
+          }
+          return [
+            ...current,
+            {
+              id: taskId,
+              type: 'analyze' as const,
+              name: job.documentName,
+              progress: 0,
+              status: 'pending',
+              timestamp: Date.now(),
+            },
+          ]
+        })
+      } else if (status === 'running') {
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { ...t, status: 'processing', progress } : t
+          )
+        )
+      } else if (status === 'completed') {
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { ...t, status: 'completed', progress: 100 } : t
+          )
+        )
+      } else if (status === 'error') {
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId
+              ? { ...t, status: 'error', error: 'Analyse fehlgeschlagen', errorDetails: error }
+              : t
+          )
+        )
+      }
+    })
+    
+    return unsubscribe
+  }, [])
+
   // Handler zum Öffnen des Bearbeitungsdialogs
   const handleEditModule = (module: Module) => {
     setModuleToEdit(module)
@@ -284,6 +392,31 @@ function App() {
         )
 
         toast.success(`"${name}" erfolgreich hochgeladen`)
+        
+        // Enqueue document analysis (runs in background)
+        // Map script category to DocumentType
+        const documentTypeMap: Record<string, DocumentType> = {
+          'script': 'script',
+          'exam': 'exam',
+          'exercise': 'exercise',
+          'formula-sheet': 'formula-sheet',
+          'lecture-notes': 'lecture-notes',
+          'summary': 'summary',
+        }
+        const docType: DocumentType = documentTypeMap[newScript.category || 'script'] || 'script'
+        
+        // Only analyze if we have text content
+        if (content && content.trim().length > 0) {
+          enqueueAnalysis(
+            moduleId,
+            newScript.id,
+            docType,
+            name,
+            content
+          ).catch((err) => {
+            console.warn('[App] Failed to enqueue analysis:', err)
+          })
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         const errorStack = error instanceof Error ? error.stack : undefined
@@ -486,12 +619,36 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mat
 
       try {
         setPipelineTasks((current) =>
-          current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
+          current.map((t) => (t.id === taskId ? { ...t, progress: 5 } : t))
         )
 
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // Load user's preferred input mode
+        const preferredInputMode = await getUserPreferencePreferredInputMode()
 
-        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Übungsaufgaben basierend auf diesem Material.
+        // Build rich context from analyzed module data
+        const contextPack = await buildGenerationContext({
+          moduleId: script.moduleId,
+          target: 'single-task',
+          preferredInputMode,
+        })
+
+        // Load existing canonical tags for this module
+        const allowedTags = await getModuleAllowedTags(script.moduleId)
+        const allowedTagsSection = formatAllowedTagsForPrompt(allowedTags)
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 15 } : t))
+        )
+
+        // Format context for prompt
+        const moduleContext = formatContextForPrompt(contextPack)
+
+        // Build the prompt with analyzed context (or fallback to script content)
+        const contentSection = contextPack.hasAnalyzedData
+          ? moduleContext
+          : `Kursmaterial:\n${script.content.substring(0, 8000)}`
+
+        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Übungsaufgaben basierend auf dem bereitgestellten Kontext.
 
 WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
 - easy = 1-2 Minuten Lösungszeit, sehr kurze Rechenaufgaben
@@ -500,8 +657,9 @@ WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
 
 Variation: Mische kurze Berechnungen, Verständnisfragen und ab und zu komplexere Aufgaben.
 
-Kursmaterial:
-${script.content.substring(0, 4000)}
+${contentSection}
+${contextPack.inputModeConstraints}
+${allowedTagsSection}
 
 ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 {
@@ -520,7 +678,8 @@ Regeln:
 - Fragen in Markdown formatieren (### für Titel, - für Listen)
 - Keine Textwüsten - maximal 3-4 Sätze pro Aufgabe
 - Teilaufgaben als a), b), c) formatieren
-- Alles auf DEUTSCH`
+- Alles auf DEUTSCH
+- Nutze die analysierten Themen, Definitionen und Formeln aus dem Kontext`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -550,11 +709,17 @@ Regeln:
         // Modul-Informationen für Tags holen
         const moduleInfo = modules?.find(m => m.id === script.moduleId)
 
-        const newTasks: Task[] = parsed.tasks.map((t: any) => {
+        // Create initial tasks from parsed response with normalized tags
+        const initialTasks: Task[] = []
+        for (const t of parsed.tasks) {
           // Extrahiere zusätzliche Tags wenn nicht vom LLM geliefert
           const extracted = extractTagsFromQuestion(t.question)
+          const rawTags = t.tags || extracted.tags
           
-          return {
+          // Normalize tags using the module's tag registry
+          const normalizedResult = await normalizeTags(rawTags, script.moduleId)
+          
+          initialTasks.push({
             id: generateId(),
             moduleId: script.moduleId,
             scriptId: script.id,
@@ -564,20 +729,95 @@ Regeln:
             difficulty: t.difficulty || extracted.estimatedDifficulty || 'medium',
             topic: t.topic || extracted.topic,
             module: t.module || moduleInfo?.name || extracted.module,
-            tags: t.tags || extracted.tags,
+            tags: normalizedResult.tags,
             createdAt: new Date().toISOString(),
             completed: false,
-          }
-        })
+          })
+        }
 
-        // Alle Tasks in die Datenbank speichern
-        await Promise.all(newTasks.map(task => createTask(task)))
+        // Validate each task with quality gate
+        const validatedTasks: Task[] = []
+        let validationStats = { passed: 0, repaired: 0, failed: 0 }
+
+        for (const task of initialTasks) {
+          const validationResult = await runValidationPipeline({
+            task,
+            preferredInputMode,
+            contextPack,
+            model: standardModel,
+            moduleId: script.moduleId,
+            maxRepairAttempts: 2,
+            enableDebugReport: false,
+            onRegenerate: async (issuesToAvoid) => {
+              // Regenerate this single task with issues to avoid
+              const regeneratePrompt = `Generiere EINE neue Übungsaufgabe zum Thema "${task.topic || 'Allgemein'}".
+
+${contentSection}
+${contextPack.inputModeConstraints}
+${allowedTagsSection}
+
+WICHTIG - VERMEIDE DIESE PROBLEME:
+- ${issuesToAvoid.join('\n- ')}
+
+ANTWORTE NUR MIT VALIDEM JSON:
+{
+  "question": "Präzise Aufgabenstellung",
+  "solution": "Kurze Lösung",
+  "difficulty": "${task.difficulty}",
+  "topic": "${task.topic || ''}",
+  "tags": ["tag1", "tag2"]
+}`
+              const response = await llmWithRetry(regeneratePrompt, standardModel, true, 1, 'task-regenerate', script.moduleId)
+              const regenerated = JSON.parse(response)
+              const extracted = extractTagsFromQuestion(regenerated.question)
+              const rawTags = regenerated.tags || extracted.tags
+              
+              // Normalize tags for regenerated task
+              const normalizedResult = await normalizeTags(rawTags, script.moduleId)
+              
+              return {
+                ...task,
+                id: generateId(),
+                question: regenerated.question,
+                solution: regenerated.solution,
+                tags: normalizedResult.tags,
+                createdAt: new Date().toISOString()
+              }
+            }
+          })
+
+          if (validationResult.passed) {
+            if (validationResult.wasRepaired) validationStats.repaired++
+            else validationStats.passed++
+          } else {
+            validationStats.failed++
+          }
+
+          validatedTasks.push(validationResult.task as Task)
+        }
+
+        // Log validation summary
+        if (validationStats.repaired > 0 || validationStats.failed > 0) {
+          console.log('[App] Task validation summary:', validationStats)
+        }
+
+        // Alle validierten Tasks in die Datenbank speichern
+        await Promise.all(validatedTasks.map(task => createTask(task)))
         
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        toast.success(`${newTasks.length} Aufgaben für "${script.name}" erstellt`)
+        // Show validation info in toast if repairs/failures occurred
+        if (validationStats.repaired > 0 || validationStats.failed > 0) {
+          toast.success(
+            `${validatedTasks.length} Aufgaben für "${script.name}" erstellt` +
+            (validationStats.repaired > 0 ? ` (${validationStats.repaired} repariert)` : '') +
+            (validationStats.failed > 0 ? ` (${validationStats.failed} mit Warnungen)` : '')
+          )
+        } else {
+          toast.success(`${validatedTasks.length} Aufgaben für "${script.name}" erstellt`)
+        }
       } catch (error) {
         console.error('Fehler bei Aufgabenerstellung:', error)
         const errorMessage = error instanceof Error ? error.message : String(error)
@@ -885,10 +1125,26 @@ Gib deine Antwort als JSON zurück:
 
   const handleDeleteScript = async (scriptId: string) => {
     try {
+      // Find the script to get the moduleId
+      const script = scripts?.find((s) => s.id === scriptId)
+      const moduleId = script?.moduleId
+      
       // Zuerst verknüpfte Daten löschen
       const relatedNotes = notes?.filter((n) => n.scriptId === scriptId) || []
       const relatedTasks = tasks?.filter((t) => t.scriptId === scriptId) || []
       const relatedFlashcards = relatedNotes.flatMap((n) => flashcards?.filter((f) => f.noteId === n.id) || [])
+      
+      // Remove from analysis queue and delete analysis record
+      removeFromAnalysisQueue(scriptId)
+      if (moduleId) {
+        deleteDocumentAnalysis(moduleId, scriptId).catch((err) => {
+          console.warn('[App] Failed to delete document analysis:', err)
+        })
+        // Invalidate module profile so it gets rebuilt
+        invalidateModuleProfile(moduleId).catch((err) => {
+          console.warn('[App] Failed to invalidate module profile:', err)
+        })
+      }
       
       await Promise.all([
         ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
@@ -901,6 +1157,39 @@ Gib deine Antwort als JSON zurück:
     } catch (error) {
       console.error('Fehler beim Löschen:', error)
       toast.error('Fehler beim Löschen des Skripts')
+    }
+  }
+
+  const handleAnalyzeScript = async (scriptId: string) => {
+    const script = scripts?.find((s) => s.id === scriptId)
+    if (!script || !script.content) {
+      toast.error('Skript hat keinen Inhalt zum Analysieren')
+      return
+    }
+    
+    // Map script category to DocumentType
+    const documentTypeMap: Record<string, DocumentType> = {
+      'script': 'script',
+      'exam': 'exam',
+      'exercise': 'exercise',
+      'formula-sheet': 'formula-sheet',
+      'lecture-notes': 'lecture-notes',
+      'summary': 'summary',
+    }
+    const docType: DocumentType = documentTypeMap[script.category || 'script'] || 'script'
+    
+    try {
+      await enqueueAnalysis(
+        script.moduleId,
+        script.id,
+        docType,
+        script.name,
+        script.content
+      )
+      toast.info(`Analyse für "${script.name}" wurde gestartet`)
+    } catch (error) {
+      console.error('Fehler beim Starten der Analyse:', error)
+      toast.error('Fehler beim Starten der Analyse')
     }
   }
 
@@ -1093,9 +1382,29 @@ Beispielformat:
 
   const handleBulkDeleteScripts = async (ids: string[]) => {
     try {
+      // Collect moduleIds for each script to delete analysis records
+      const scriptsToDelete = scripts?.filter((s) => ids.includes(s.id)) || []
+      
       const relatedNotes = notes?.filter((n) => ids.includes(n.scriptId)) || []
       const relatedTasks = tasks?.filter((t) => ids.includes(t.scriptId || '')) || []
       const relatedFlashcards = relatedNotes.flatMap((n) => flashcards?.filter((f) => f.noteId === n.id) || [])
+
+      // Remove from analysis queue and delete analysis records
+      const affectedModuleIds = new Set<string>()
+      for (const script of scriptsToDelete) {
+        removeFromAnalysisQueue(script.id)
+        deleteDocumentAnalysis(script.moduleId, script.id).catch((err) => {
+          console.warn('[App] Failed to delete document analysis:', err)
+        })
+        affectedModuleIds.add(script.moduleId)
+      }
+      
+      // Invalidate module profiles for all affected modules
+      for (const moduleId of affectedModuleIds) {
+        invalidateModuleProfile(moduleId).catch((err) => {
+          console.warn('[App] Failed to invalidate module profile:', err)
+        })
+      }
 
       await Promise.all([
         ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
@@ -1507,6 +1816,7 @@ Gib deine Antwort als JSON zurück:
           onStartFlashcardStudy={handleStartFlashcardStudy}
           onEditModule={handleEditModule}
           onStartExamMode={() => setShowExamMode(true)}
+          onAnalyzeScript={handleAnalyzeScript}
         />
 
         {/* EditModuleDialog auch in ModuleView verfügbar */}
@@ -1552,6 +1862,7 @@ Gib deine Antwort als JSON zurück:
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="hidden sm:flex items-center gap-2">
+                  <InputModeSettingsButton />
                   <OnboardingTrigger onClick={resetOnboarding} />
                   <DebugModeToggle />
                 </div>
