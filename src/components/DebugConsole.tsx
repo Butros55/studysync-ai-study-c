@@ -42,6 +42,10 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
         return 'bg-green-500/10 text-green-600 border-green-500/20'
       case 'llm-error':
         return 'bg-destructive/10 text-destructive border-destructive/20'
+      case 'task-validation':
+        return 'bg-purple-500/10 text-purple-600 border-purple-500/20'
+      case 'task-repair':
+        return 'bg-amber-500/10 text-amber-600 border-amber-500/20'
       default:
         return 'bg-muted text-muted-foreground'
     }
@@ -55,6 +59,10 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
         return 'Antwort'
       case 'llm-error':
         return 'Fehler'
+      case 'task-validation':
+        return 'Validierung'
+      case 'task-repair':
+        return 'Reparatur'
       default:
         return type
     }
@@ -184,6 +192,27 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
                                   {log.data.error}
                                 </p>
                               )}
+                              {log.type === 'task-validation' && log.data.validationResult && (
+                                <p className={log.data.validationResult.ok ? 'text-green-600' : 'text-orange-600'}>
+                                  {log.data.validationResult.ok ? '✓ Aufgabe ist gültig' : `✗ ${log.data.issues?.length || 0} Problem(e) gefunden`}
+                                  {log.data.validationResult.confidence !== undefined && 
+                                    ` (${Math.round(log.data.validationResult.confidence * 100)}% Konfidenz)`}
+                                </p>
+                              )}
+                              {log.type === 'task-repair' && (
+                                <p className="text-orange-600">
+                                  🔧 Reparaturversuch {log.data.totalAttempts || 1}
+                                  {log.data.validationResult?.ok ? ' - Erfolgreich' : ' - Fehlgeschlagen'}
+                                </p>
+                              )}
+                              {log.type === 'validation-pipeline' && (
+                                <p className={log.data.validationResult?.ok !== false ? 'text-green-600' : 'text-destructive'}>
+                                  {log.data.wasRepaired && '🔧 Repariert'}
+                                  {log.data.wasRegenerated && '🔄 Neu generiert'}
+                                  {!log.data.wasRepaired && !log.data.wasRegenerated && '✓ Direkt gültig'}
+                                  {log.data.totalAttempts !== undefined && ` (${log.data.totalAttempts} Versuch${log.data.totalAttempts !== 1 ? 'e' : ''})`}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -242,6 +271,83 @@ export function DebugConsole({ onClose }: { onClose: () => void }) {
                                     {log.data.errorStack}
                                   </pre>
                                 </div>
+                              </div>
+                            )}
+
+                            {/* Validation-specific fields */}
+                            {log.data.taskQuestion && (
+                              <div>
+                                <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
+                                  Aufgabe
+                                </h4>
+                                <div className="text-xs bg-background p-3 rounded-md border max-w-full overflow-hidden">
+                                  <pre className="whitespace-pre-wrap break-words font-mono">
+                                    {log.data.taskQuestion}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {log.data.validationResult && (
+                              <div>
+                                <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
+                                  Validierungsergebnis
+                                </h4>
+                                <div className={`text-xs p-3 rounded-md border max-w-full overflow-hidden ${
+                                  log.data.validationResult.ok 
+                                    ? 'bg-green-500/10 border-green-500/30' 
+                                    : 'bg-destructive/10 border-destructive/30'
+                                }`}>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className={`font-semibold ${log.data.validationResult.ok ? 'text-green-600' : 'text-destructive'}`}>
+                                      {log.data.validationResult.ok ? '✓ Gültig' : '✗ Ungültig'}
+                                    </span>
+                                    {log.data.validationResult.confidence !== undefined && (
+                                      <span className="text-muted-foreground">
+                                        (Konfidenz: {Math.round(log.data.validationResult.confidence * 100)}%)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <pre className="whitespace-pre-wrap break-words font-mono text-foreground/80">
+                                    {JSON.stringify(log.data.validationResult, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+
+                            {log.data.issues && log.data.issues.length > 0 && (
+                              <div>
+                                <h4 className="text-xs font-semibold mb-2 uppercase text-orange-600">
+                                  Probleme ({log.data.issues.length})
+                                </h4>
+                                <ul className="text-xs bg-orange-500/10 p-3 rounded-md border border-orange-500/30 space-y-1">
+                                  {log.data.issues.map((issue: string, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-2">
+                                      <span className="text-orange-600">•</span>
+                                      <span>{issue}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {(log.data.wasRepaired !== undefined || log.data.wasRegenerated !== undefined) && (
+                              <div className="flex flex-wrap gap-2">
+                                {log.data.wasRepaired && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-500/20 text-orange-600 border border-orange-500/30">
+                                    🔧 Repariert
+                                  </span>
+                                )}
+                                {log.data.wasRegenerated && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-600 border border-blue-500/30">
+                                    🔄 Neu generiert
+                                  </span>
+                                )}
+                                {log.data.totalAttempts !== undefined && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground border">
+                                    Versuche: {log.data.totalAttempts}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>

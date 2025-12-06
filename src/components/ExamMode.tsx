@@ -11,6 +11,7 @@ import {
 } from '@/lib/exam-generator'
 import { generateId } from '@/lib/utils-app'
 import { useLLMModel } from '@/hooks/use-llm-model'
+import { usePreferredInputMode } from '@/hooks/use-preferred-input-mode'
 import { loadModuleStats, saveModuleStats } from '@/lib/recommendations'
 import { 
   savePausedExam, 
@@ -42,6 +43,7 @@ export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamMo
   const [initialTimeRemaining, setInitialTimeRemaining] = useState<number | null>(null)
 
   const { standardModel } = useLLMModel()
+  const { mode: preferredInputMode } = usePreferredInputMode()
 
   // Check for paused exam on mount
   useEffect(() => {
@@ -108,7 +110,9 @@ export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamMo
         (current, total) => {
           setGeneratedCount(current)
           setPreparationProgress(25 + (current / total) * 60)
-        }
+        },
+        preferredInputMode || undefined,
+        config.duration // Pass exam duration for blueprint planning
       )
 
       // Schritt 3: Session finalisieren

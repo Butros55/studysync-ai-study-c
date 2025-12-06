@@ -1,16 +1,31 @@
 /**
  * Exam Style Extraction & Task Generation
  * 
- * Extrahiert Stilprofile aus Probeklausuren und generiert neue Aufgaben im gleichen Stil.
+ * UPDATED: Now uses the multi-stage blueprint pipeline for improved quality.
  * 
  * WICHTIG: 
- * - Nur Skripte liefern Wissensbasis
- * - Übungsblätter und Lösungen dienen NUR für Struktur- und Stil-Analyse
+ * - Nutzt analysierte JSON-Daten statt roher Skript-Inhalte
+ * - Blueprint-System verteilt Aufgaben über ALLE Themen/Skripte
+ * - Keine arbiträren Limits mehr (max 3 scripts, 3000 char truncation)
+ * - Unterstützt Input-Mode-Constraints (keine Zeichen-Aufgaben bei Tastatur-Modus)
  */
 
 import { Script, ExamStyleProfile, ExamSubtaskPattern, ExamTask, Task, TopicStats } from './types'
 import { llmWithRetry } from './llm-utils'
 import { generateId } from './utils-app'
+import { 
+  buildGenerationContext, 
+  formatContextForPrompt, 
+  getTopicSpecificContext,
+  MAX_CONTEXT_CHARS 
+} from './generation-context'
+import { getUserPreferencePreferredInputMode } from './analysis-storage'
+import type { InputMode } from './analysis-types'
+import { 
+  generateExamTasksWithBlueprint, 
+  type BlueprintOptions,
+  type ExamBlueprint 
+} from './exam-blueprint'
 
 // ============================================
 // Stil-Extraktion aus Probeklausuren
@@ -18,6 +33,9 @@ import { generateId } from './utils-app'
 
 /**
  * Extrahiert das Stilprofil aus einer oder mehreren Probeklausuren
+ * 
+ * NOTE: This is now mostly used as a fallback. The primary path uses
+ * cached ModuleProfileRecord.examStyleProfileJson via the blueprint system.
  */
 export async function extractExamStyle(
   sampleExamFiles: Script[],
@@ -154,7 +172,7 @@ function getDefaultExamStyleProfile(): ExamStyleProfile {
 // ============================================
 
 interface ModuleData {
-  scripts: Script[]           // Wissensbasis (NUR diese für Inhalte verwenden!)
+  scripts: Script[]           // Wissensbasis (wird jetzt aus analysierten Daten gezogen)
   exercises: Script[]         // Übungsblätter (nur für Struktur)
   solutions: Script[]         // Lösungen (nur für Struktur)
   exams: Script[]             // Probeklausuren (nur für Stil)
@@ -164,44 +182,65 @@ interface ModuleData {
 /**
  * Generiert eine neue Aufgabe im Stil der Probeklausuren
  * 
- * WICHTIG: Nutzt NUR Skripte als Wissensquelle!
+ * WICHTIG: Nutzt analysierte JSON-Daten statt roher Skript-Inhalte!
  */
 export async function generateStyledExamTask(
   style: ExamStyleProfile,
   moduleData: ModuleData,
   difficulty: 'easy' | 'medium' | 'hard',
   moduleId: string,
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-4o-mini',
+  preferredInputMode?: InputMode
 ): Promise<ExamTask> {
-  // Nur Skripte für Wissensbasis
-  const scriptContents = moduleData.scripts
-    .filter(s => s.category === 'script' || !s.category)
-    .slice(0, 3) // Max 3 Skripte für Token-Limit
-    .map((s) => `--- ${s.name} ---\n${s.content.substring(0, 3000)}`)
-    .join('\n\n')
-
-  // Übungsblätter nur für Strukturanalyse (kein Inhalt!)
-  const exerciseStructures = moduleData.exercises
-    .slice(0, 2)
-    .map((e) => `Übungsblatt: ${e.name}`)
-    .join(', ')
-
   // Schwache Themen priorisieren
   const weakTopics = moduleData.topicStats
     ?.filter((t) => t.correct < t.incorrect)
     .map((t) => t.topic)
     .slice(0, 3) || []
 
+  // Build rich context from analyzed module data
+  const contextPack = await buildGenerationContext({
+    moduleId,
+    target: 'exam-tasks',
+    preferredInputMode,
+    topicHints: weakTopics,
+    difficulty,
+    model,
+  })
+
+  // Format context for prompt
+  const moduleContext = formatContextForPrompt(contextPack)
+
+  // Fallback to raw script content if no analyzed data
+  let contentSection: string
+  if (contextPack.hasAnalyzedData) {
+    contentSection = moduleContext
+  } else {
+    // Legacy fallback: use raw script content
+    // NOTE: This path is deprecated. The blueprint pipeline should be used instead.
+    // We still limit to prevent context overflow, but use ALL available scripts
+    const allScripts = moduleData.scripts.filter(s => s.category === 'script' || !s.category)
+    const maxCharsPerScript = Math.floor(15000 / Math.max(allScripts.length, 1))
+    const scriptContents = allScripts
+      .map((s) => `--- ${s.name} ---\n${s.content.substring(0, maxCharsPerScript)}`)
+      .join('\n\n')
+    contentSection = `WISSENSBASIS (aus Skripten):\n${scriptContents || 'Keine Skripte verfügbar.'}`
+  }
+
   const phraseExamples = style.commonPhrases.slice(0, 5).join('", "')
   const structureType = selectRandomStructure(style.typicalStructures)
+
+  // Build input mode constraints
+  const inputModeConstraint = preferredInputMode === 'type'
+    ? `\nEINGABE-EINSCHRÄNKUNG: Der Nutzer verwendet TASTATUREINGABE. Generiere KEINE Aufgaben, die Zeichnungen, Diagramme oder handschriftliche Skizzen als Lösung erfordern. Aufgaben müssen durch Texteingabe, Formeln oder Code lösbar sein.`
+    : ''
 
   const systemMessage = `Du bist ein Universitätsprofessor, der Prüfungsaufgaben erstellt.
 
 WICHTIG - STRIKTE REGELN:
-1. Nutze Übungsblätter und Lösungen ausschließlich für Struktur- und Stil-Analyse.
-2. Übernimm KEINE Inhalte aus Übungsblättern oder Lösungen.
-3. Verwende NUR die Skripte des Moduls zur Wissensbasis.
-4. Generiere NEUE, ORIGINALE Aufgaben - kopiere NIEMALS existierende Aufgaben.
+1. Generiere NEUE, ORIGINALE Aufgaben basierend auf der Wissensbasis.
+2. Kopiere NIEMALS existierende Aufgaben.
+3. Nutze die bereitgestellten Themen, Definitionen und Formeln.
 
 STIL-VORGABEN:
 - Typische Formulierungen: "${phraseExamples}"
@@ -212,14 +251,11 @@ ${style.formattingPatterns.usesTables ? '- Nutze Tabellen wo sinnvoll' : ''}
 
 SCHWIERIGKEIT: ${difficulty === 'easy' ? 'Einfach - grundlegendes Verständnis' : difficulty === 'medium' ? 'Mittel - Anwendung und Transfer' : 'Schwer - komplexe Analyse und Synthese'}
 
-${weakTopics.length > 0 ? `PRIORISIERTE THEMEN (Schwachstellen des Nutzers): ${weakTopics.join(', ')}` : ''}`
+${weakTopics.length > 0 ? `PRIORISIERTE THEMEN (Schwachstellen des Nutzers): ${weakTopics.join(', ')}` : ''}${inputModeConstraint}`
 
   const prompt = `${systemMessage}
 
-WISSENSBASIS (NUR aus diesen Skripten schöpfen!):
-${scriptContents || 'Keine Skripte verfügbar - erstelle eine allgemeine akademische Aufgabe.'}
-
-${exerciseStructures ? `STRUKTUR-REFERENZ (nur für Format, NICHT für Inhalte): ${exerciseStructures}` : ''}
+${contentSection}
 
 Erstelle eine ${difficulty === 'easy' ? 'einfache' : difficulty === 'medium' ? 'mittelschwere' : 'schwere'} Prüfungsaufgabe.
 
@@ -262,6 +298,13 @@ Gib NUR das JSON zurück.`
 
 /**
  * Generiert mehrere Aufgaben für eine Prüfung
+ * 
+ * UPDATED: Now uses the multi-stage blueprint pipeline for better quality.
+ * - Stage A: Creates a blueprint over the full knowledge index
+ * - Stage B: Generates each task with topic-specific retrieval
+ * - Stage C: Uses cached style profiles (no re-extraction needed)
+ * 
+ * This ensures ALL scripts contribute without context overflow.
  */
 export async function generateExamTasks(
   style: ExamStyleProfile,
@@ -270,7 +313,66 @@ export async function generateExamTasks(
   count: number,
   difficultyMix: { easy: number; medium: number; hard: number },
   model: string = 'gpt-4o-mini',
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  preferredInputMode?: InputMode,
+  duration: number = 90 // Default 90 minutes exam
+): Promise<ExamTask[]> {
+  // Load input mode if not provided
+  const inputMode = preferredInputMode ?? await getUserPreferencePreferredInputMode()
+  
+  // Extract weak topics from module stats
+  const weakTopics = moduleData.topicStats
+    ?.filter((t) => t.correct < t.incorrect)
+    .map((t) => t.topic)
+    .slice(0, 5) || []
+
+  // Use the new blueprint pipeline
+  try {
+    const blueprintOptions: BlueprintOptions = {
+      moduleId,
+      duration,
+      taskCount: count,
+      difficultyMix,
+      preferredInputMode: inputMode,
+      weakTopics,
+      model
+    }
+
+    const { tasks } = await generateExamTasksWithBlueprint(
+      blueprintOptions,
+      (current, total, phase) => {
+        // Map blueprint progress (0-10%) and task progress (10-100%) to task count
+        if (phase === 'blueprint') {
+          // Don't report blueprint phase to keep original API
+        } else {
+          const taskIndex = Math.floor((current - 10) / 90 * count)
+          onProgress?.(Math.min(taskIndex + 1, count), count)
+        }
+      }
+    )
+
+    return tasks
+  } catch (error) {
+    console.error('[generateExamTasks] Blueprint pipeline failed, falling back to legacy:', error)
+    // Fallback to legacy generation if blueprint fails
+    return generateExamTasksLegacy(style, moduleData, moduleId, count, difficultyMix, model, onProgress, inputMode)
+  }
+}
+
+/**
+ * Legacy exam task generation (fallback)
+ * 
+ * @deprecated Use generateExamTasks with blueprint pipeline instead
+ */
+async function generateExamTasksLegacy(
+  style: ExamStyleProfile,
+  moduleData: ModuleData,
+  moduleId: string,
+  count: number,
+  difficultyMix: { easy: number; medium: number; hard: number },
+  model: string = 'gpt-4o-mini',
+  onProgress?: (current: number, total: number) => void,
+  inputMode?: InputMode
 ): Promise<ExamTask[]> {
   const tasks: ExamTask[] = []
   
@@ -294,7 +396,7 @@ export async function generateExamTasks(
   for (let i = 0; i < difficulties.length; i++) {
     const difficulty = difficulties[i]
     try {
-      const task = await generateStyledExamTask(style, moduleData, difficulty, moduleId, model)
+      const task = await generateStyledExamTask(style, moduleData, difficulty, moduleId, model, inputMode)
       tasks.push(task)
       onProgress?.(i + 1, difficulties.length)
     } catch (error) {

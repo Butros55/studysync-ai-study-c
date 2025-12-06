@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Bell, X, Check, Warning, Upload, FileText, ListChecks, Cards } from '@phosphor-icons/react'
+import { Bell, X, Check, Warning, Upload, FileText, ListChecks, Cards, MagnifyingGlass } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 export interface PipelineTask {
   id: string
-  type: 'upload' | 'generate-notes' | 'generate-tasks' | 'generate-flashcards' | 'task-submit'
+  type: 'upload' | 'generate-notes' | 'generate-tasks' | 'generate-flashcards' | 'task-submit' | 'analyze'
   name: string
   progress: number
   status: 'pending' | 'processing' | 'completed' | 'error'
@@ -113,6 +113,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
       case 'generate-tasks': return ListChecks
       case 'generate-flashcards': return Cards
       case 'task-submit': return Check
+      case 'analyze': return MagnifyingGlass
       default: return FileText
     }
   }
@@ -124,6 +125,7 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
       case 'generate-tasks': return 'Aufgaben generieren'
       case 'generate-flashcards': return 'Karteikarten generieren'
       case 'task-submit': return 'Aufgabe einreichen'
+      case 'analyze': return 'Dokument analysieren'
       default: return 'Verarbeitung'
     }
   }

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Script, FileCategory } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +27,6 @@ import {
 import {
   Upload,
   File,
-  FilePdf,
   FileText,
   Image,
   DotsThreeVertical,
@@ -43,8 +42,8 @@ import {
   Plus,
   FolderOpen,
   X,
-  UploadSimple,
   CheckSquareOffset,
+  MagnifyingGlass,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -53,6 +52,10 @@ import { isValidFileType, getFileExtension, parseFile, fileToDataURL } from '@/l
 import { getFileIcon } from '@/lib/file-utils'
 import { useBulkSelection } from '@/hooks/use-bulk-selection'
 import { useFileUpload } from '@/hooks/use-file-upload'
+import { AnalysisStatusBadge } from './AnalysisStatusBadge'
+import { ModuleProfileStatus } from './ModuleProfileStatus'
+import { listDocumentAnalyses } from '@/lib/analysis-storage'
+import type { DocumentAnalysisRecord } from '@/lib/analysis-types'
 
 // Kategorie-Konfiguration
 const CATEGORY_CONFIG: Record<FileCategory, {
@@ -108,6 +111,7 @@ interface FilesTabProps {
   onBulkDeleteScripts: (ids: string[]) => void
   onGenerateAllNotes: () => void
   onGenerateAllTasks: () => void
+  onAnalyzeScript?: (scriptId: string) => void
 }
 
 export function FilesTab({
@@ -119,6 +123,7 @@ export function FilesTab({
   onBulkDeleteScripts,
   onGenerateAllNotes,
   onGenerateAllTasks,
+  onAnalyzeScript,
 }: FilesTabProps) {
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<FileCategory>>(
@@ -128,6 +133,66 @@ export function FilesTab({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Analysis records for status badges
+  const [analysisRecords, setAnalysisRecords] = useState<Map<string, DocumentAnalysisRecord>>(new Map())
+  
+  // Get moduleId from first script
+  const moduleId = scripts[0]?.moduleId ?? ''
+  
+  const pollingRef = useRef<number | null>(null)
+
+  // Load analysis records when moduleId or scripts change
+  useEffect(() => {
+    if (!moduleId) return
+
+    let cancelled = false
+
+    const loadRecords = async () => {
+      try {
+        const records = await listDocumentAnalyses(moduleId)
+        if (cancelled) return
+
+        const recordMap = new Map<string, DocumentAnalysisRecord>()
+        for (const record of records) {
+          recordMap.set(record.documentId, record)
+        }
+
+        setAnalysisRecords(prev => {
+          if (prev.size === recordMap.size) {
+            let isSame = true
+            for (const [id, record] of recordMap) {
+              const existing = prev.get(id)
+              if (!existing || existing.status !== record.status || existing.documentId !== record.documentId) {
+                isSame = false
+                break
+              }
+            }
+            if (isSame) return prev
+          }
+
+          console.debug('[FilesTab] Loaded', recordMap.size, 'document analyses')
+          return recordMap
+        })
+      } catch (e) {
+        console.warn('[FilesTab] Failed to load analysis records:', e)
+      }
+    }
+
+    loadRecords()
+
+    if (!pollingRef.current) {
+      pollingRef.current = window.setInterval(loadRecords, 5000)
+    }
+
+    return () => {
+      cancelled = true
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
+  }, [moduleId, scripts.length])
 
   // Use custom hooks for file upload and bulk selection
   const {
@@ -141,6 +206,8 @@ export function FilesTab({
     clearFiles,
   } = useFileUpload()
 
+  const getScriptId = useCallback((script: Script) => script.id, [])
+
   const {
     selectedIds,
     hasSelection: hasSelectedFiles,
@@ -149,7 +216,7 @@ export function FilesTab({
     clearSelection,
   } = useBulkSelection({
     items: scripts,
-    getId: (script) => script.id,
+    getId: getScriptId,
   })
 
   // Öffne Upload-Dialog für eine Kategorie
@@ -276,6 +343,9 @@ export function FilesTab({
 
   return (
     <div className="space-y-6">
+      {/* Module Profile Status */}
+      {moduleId && <ModuleProfileStatus moduleId={moduleId} />}
+      
       {/* Hidden File Input für Bulk Upload */}
       <input
         ref={fileInputRef}
@@ -285,73 +355,6 @@ export function FilesTab({
         multiple
         onChange={handleFileSelect}
       />
-      
-      {/* Upload Dialog mit Drag & Drop */}
-      <Dialog open={uploadDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {(() => {
-                const Icon = CATEGORY_CONFIG[uploadCategory].icon
-                return <Icon className={cn('w-5 h-5', CATEGORY_CONFIG[uploadCategory].color)} weight="duotone" />
-              })()}
-              {CATEGORY_CONFIG[uploadCategory].pluralLabel} hochladen
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Drag & Drop Zone */}
-          <div
-            className={cn(
-              'border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer',
-              isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
-            )}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <UploadSimple className="w-10 h-10 mx-auto mb-3 text-muted-foreground" weight="duotone" />
-            <p className="text-sm font-medium">
-              Dateien hier ablegen oder klicken
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              PDF, PPTX, TXT, MD oder Bilder
-            </p>
-          </div>
-
-          {/* Ausgewählte Dateien */}
-          {selectedFiles.length > 0 && (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              <p className="text-sm font-medium">{selectedFiles.length} Datei(en) ausgewählt:</p>
-              {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FilePdf className="w-4 h-4 shrink-0 text-muted-foreground" />
-                    <span className="text-sm truncate">{file.name}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => removeFile(index)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDialogClose(false)} disabled={isUploading}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleBulkUpload} disabled={selectedFiles.length === 0 || isUploading}>
-              {isUploading ? 'Lädt hoch...' : `${selectedFiles.length} Datei(en) hochladen`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
       {/* Header mit Bulk-Aktionen */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -511,9 +514,18 @@ export function FilesTab({
                               />
                               <FileIcon className="w-5 h-5 text-muted-foreground shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">
-                                  {script.name}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm truncate">
+                                    {script.name}
+                                  </p>
+                                  <AnalysisStatusBadge
+                                    moduleId={moduleId}
+                                    documentId={script.id}
+                                    analysisRecord={analysisRecords.get(script.id) ?? null}
+                                    size="sm"
+                                    showCoverage={true}
+                                  />
+                                </div>
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(script.uploadedAt).toLocaleDateString('de-DE')}
                                 </p>
@@ -529,6 +541,12 @@ export function FilesTab({
                                     <Eye className="w-4 h-4 mr-2" />
                                     Vorschau
                                   </DropdownMenuItem>
+                                  {onAnalyzeScript && (
+                                    <DropdownMenuItem onClick={() => onAnalyzeScript(script.id)}>
+                                      <MagnifyingGlass className="w-4 h-4 mr-2" />
+                                      Analyse starten
+                                    </DropdownMenuItem>
+                                  )}
                                   {category === 'script' && (
                                     <>
                                       <DropdownMenuSeparator />
@@ -630,9 +648,7 @@ export function FilesTab({
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 shrink-0"
-                    onClick={() => {
-                      setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-                    }}
+                    onClick={() => removeFile(index)}
                   >
                     <X className="w-3 h-3" />
                   </Button>

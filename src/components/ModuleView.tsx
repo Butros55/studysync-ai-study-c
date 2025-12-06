@@ -46,6 +46,7 @@ interface ModuleViewProps {
   onStartFlashcardStudy: () => void
   onEditModule?: (module: Module) => void
   onStartExamMode?: () => void
+  onAnalyzeScript?: (scriptId: string) => void
 }
 
 export function ModuleView({
@@ -75,6 +76,7 @@ export function ModuleView({
   onStartTaskSequence,
   onEditModule,
   onStartExamMode,
+  onAnalyzeScript,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('dashboard')
 
@@ -191,6 +193,7 @@ export function ModuleView({
               onBulkDeleteScripts={onBulkDeleteScripts}
               onGenerateAllNotes={onGenerateAllNotes}
               onGenerateAllTasks={onGenerateAllTasks}
+              onAnalyzeScript={onAnalyzeScript}
             />
           </TabsContent>
 

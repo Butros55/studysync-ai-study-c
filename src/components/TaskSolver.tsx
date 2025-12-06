@@ -20,11 +20,11 @@ import {
   PencilLine,
   Info,
   ArrowLeft,
-  XCircle,
   Confetti,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { motion, AnimatePresence } from 'framer-motion'
+import { usePreferredInputMode } from '@/hooks/use-preferred-input-mode'
 
 interface TaskSolverProps {
   task: Task
@@ -160,6 +160,10 @@ export function TaskSolver({
   onTaskUpdate,
   formulaSheets = [],
 }: TaskSolverProps) {
+  // Get user's preferred input mode
+  const { mode: preferredInputMode, isLoading: isPreferenceLoading } = usePreferredInputMode()
+  
+  // Initialize inputMode based on preference (default to 'draw' if not set)
   const [inputMode, setInputMode] = useState<'draw' | 'type'>('draw')
   const [textAnswer, setTextAnswer] = useState('')
   const [clearCanvasTrigger, setClearCanvasTrigger] = useState(0)
@@ -167,6 +171,17 @@ export function TaskSolver({
   const [canvasDataUrl, setCanvasDataUrl] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFeedbackOverlay, setShowFeedbackOverlay] = useState(false)
+  
+  // Sync inputMode with user preference when it loads
+  useEffect(() => {
+    if (!isPreferenceLoading && preferredInputMode) {
+      setInputMode(preferredInputMode)
+    }
+  }, [preferredInputMode, isPreferenceLoading])
+  
+  // Determine if we should show tabs (only in draw mode preference)
+  // In type mode preference, only typing is available
+  const showInputModeTabs = preferredInputMode !== 'type'
   
   // Zeige Overlay wenn neues Feedback kommt
   useEffect(() => {
@@ -350,22 +365,32 @@ export function TaskSolver({
             <div className="flex flex-col">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                 <h3 className="font-medium text-sm sm:text-base">Deine Lösung</h3>
-                <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')} className="w-full sm:w-auto">
-                  <TabsList className="w-full sm:w-auto grid grid-cols-2 h-8">
-                    <TabsTrigger value="draw" className="text-xs h-7">
-                      <PencilLine size={14} className="mr-1.5" />
-                      Zeichnen
-                    </TabsTrigger>
-                    <TabsTrigger value="type" className="text-xs h-7">
-                      <Keyboard size={14} className="mr-1.5" />
-                      Tippen
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                {/* Only show tabs if preference is 'draw' or not set */}
+                {showInputModeTabs ? (
+                  <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'draw' | 'type')} className="w-full sm:w-auto">
+                    <TabsList className="w-full sm:w-auto grid grid-cols-2 h-8">
+                      <TabsTrigger value="draw" className="text-xs h-7">
+                        <PencilLine size={14} className="mr-1.5" />
+                        Zeichnen
+                      </TabsTrigger>
+                      <TabsTrigger value="type" className="text-xs h-7">
+                        <Keyboard size={14} className="mr-1.5" />
+                        Tippen
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                ) : (
+                  /* Type-only mode indicator */
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Keyboard size={14} />
+                    <span>Tastatureingabe</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 mb-3 relative">
-                {inputMode === 'draw' ? (
+                {/* Only render canvas if inputMode is 'draw' AND preference allows drawing */}
+                {inputMode === 'draw' && showInputModeTabs ? (
                   <div className="relative">
                     <AdvancedDrawingCanvas
                       onContentChange={setHasCanvasContent}
