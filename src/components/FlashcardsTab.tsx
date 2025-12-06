@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Flashcard, StudyNote } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
+import { useBulkSelection } from '@/hooks/use-bulk-selection'
 
 interface FlashcardsTabProps {
   flashcards: Flashcard[]
@@ -34,17 +35,17 @@ export function FlashcardsTab({
   onStartStudy,
   onGenerateAllFlashcards,
 }: FlashcardsTabProps) {
-  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    setSelectedCards((prev) => {
-      const valid = new Set<string>()
-      flashcards.forEach((c) => {
-        if (prev.has(c.id)) valid.add(c.id)
-      })
-      return valid
-    })
-  }, [flashcards])
+  const {
+    selectedIds: selectedCards,
+    hasSelection,
+    allSelected,
+    toggleSelection: toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+  } = useBulkSelection({
+    items: flashcards,
+    getId: (card) => card.id,
+  })
 
   const getDueFlashcards = () => {
     const now = new Date()
@@ -61,31 +62,13 @@ export function FlashcardsTab({
     return flashcards.filter((card) => card.noteId === noteId)
   }
 
-  const toggleSelect = (id: string) => {
-    setSelectedCards((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    setSelectedCards((prev) => {
-      const allSelected = prev.size === flashcards.length && flashcards.length > 0
-      return allSelected ? new Set() : new Set(flashcards.map((c) => c.id))
-    })
-  }
-
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedCards)
     if (ids.length === 0) return
     if (!confirm(`Sollen ${ids.length} Karteikarten geloescht werden?`)) return
     await onBulkDeleteFlashcards(ids)
-    setSelectedCards(new Set())
+    clearSelection()
   }
-
-  const hasSelection = selectedCards.size > 0
-  const allSelected = flashcards.length > 0 && selectedCards.size === flashcards.length
 
   if (flashcards.length === 0 && notes.length === 0) {
     return (

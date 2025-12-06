@@ -12,15 +12,13 @@ import {
 import { generateId } from '@/lib/utils-app'
 import { useLLMModel } from '@/hooks/use-llm-model'
 import { loadModuleStats, saveModuleStats } from '@/lib/recommendations'
+import { 
+  savePausedExam, 
+  loadPausedExam, 
+  clearPausedExam,
+  type PausedExam 
+} from '@/lib/exam-storage'
 import { toast } from 'sonner'
-
-const PAUSED_EXAM_KEY = 'studysync_paused_exam'
-
-interface PausedExam {
-  session: ExamSession
-  timeRemaining: number
-  pausedAt: string
-}
 
 interface ExamModeProps {
   module: Module
@@ -31,38 +29,6 @@ interface ExamModeProps {
 }
 
 type ExamPhase = 'setup' | 'preparing' | 'in-progress' | 'results'
-
-// Helper functions for localStorage
-function savePausedExam(moduleId: string, session: ExamSession, timeRemaining: number) {
-  const paused: PausedExam = {
-    session,
-    timeRemaining,
-    pausedAt: new Date().toISOString(),
-  }
-  const allPaused = loadAllPausedExams()
-  allPaused[moduleId] = paused
-  localStorage.setItem(PAUSED_EXAM_KEY, JSON.stringify(allPaused))
-}
-
-function loadPausedExam(moduleId: string): PausedExam | null {
-  const allPaused = loadAllPausedExams()
-  return allPaused[moduleId] || null
-}
-
-function loadAllPausedExams(): Record<string, PausedExam> {
-  try {
-    const data = localStorage.getItem(PAUSED_EXAM_KEY)
-    return data ? JSON.parse(data) : {}
-  } catch {
-    return {}
-  }
-}
-
-function clearPausedExam(moduleId: string) {
-  const allPaused = loadAllPausedExams()
-  delete allPaused[moduleId]
-  localStorage.setItem(PAUSED_EXAM_KEY, JSON.stringify(allPaused))
-}
 
 export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamModeProps) {
   const [phase, setPhase] = useState<ExamPhase>('setup')

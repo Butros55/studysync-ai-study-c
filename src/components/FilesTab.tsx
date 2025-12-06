@@ -50,6 +50,9 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { ScriptPreviewDialog } from './ScriptPreviewDialog'
 import { isValidFileType, getFileExtension, parseFile, fileToDataURL } from '@/lib/file-parser'
+import { getFileIcon } from '@/lib/file-utils'
+import { useBulkSelection } from '@/hooks/use-bulk-selection'
+import { useFileUpload } from '@/hooks/use-file-upload'
 
 // Kategorie-Konfiguration
 const CATEGORY_CONFIG: Record<FileCategory, {
@@ -117,22 +120,41 @@ export function FilesTab({
   onGenerateAllNotes,
   onGenerateAllTasks,
 }: FilesTabProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<FileCategory>>(
     new Set(['script', 'exercise', 'solution', 'exam'])
   )
   const [uploadCategory, setUploadCategory] = useState<FileCategory>('script')
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Use custom hooks for file upload and bulk selection
+  const {
+    selectedFiles,
+    isDragging,
+    handleFileSelect,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    removeFile,
+    clearFiles,
+  } = useFileUpload()
+
+  const {
+    selectedIds,
+    hasSelection: hasSelectedFiles,
+    toggleSelection: toggleSelect,
+    clearSelection,
+  } = useBulkSelection({
+    items: scripts,
+    getId: (script) => script.id,
+  })
 
   // Öffne Upload-Dialog für eine Kategorie
   const openUploadDialog = (category: FileCategory) => {
     setUploadCategory(category)
-    setSelectedFiles([])
+    clearFiles()
     setUploadDialogOpen(true)
   }
 
@@ -177,67 +199,6 @@ export function FilesTab({
 
   // ===== BULK UPLOAD FUNKTIONEN =====
   
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const validFiles: File[] = []
-    const invalidFiles: string[] = []
-
-    files.forEach((file) => {
-      if (isValidFileType(file.name)) {
-        validFiles.push(file)
-      } else {
-        invalidFiles.push(file.name)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
-    }
-
-    if (validFiles.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...validFiles])
-    }
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files)
-    const validFiles: File[] = []
-    const invalidFiles: string[] = []
-
-    files.forEach((file) => {
-      if (isValidFileType(file.name)) {
-        validFiles.push(file)
-      } else {
-        invalidFiles.push(file.name)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
-    }
-
-    if (validFiles.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...validFiles])
-    }
-  }
-
-  const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-  }
-
   const handleBulkUpload = async () => {
     if (selectedFiles.length === 0) return
 
@@ -260,7 +221,7 @@ export function FilesTab({
       }
       
       toast.success(`${selectedFiles.length} ${categoryConfig.pluralLabel} hochgeladen`)
-      setSelectedFiles([])
+      clearFiles()
       setUploadDialogOpen(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -274,7 +235,7 @@ export function FilesTab({
     if (!isUploading) {
       setUploadDialogOpen(open)
       if (!open) {
-        setSelectedFiles([])
+        clearFiles()
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
@@ -283,18 +244,6 @@ export function FilesTab({
   }
 
   // ===== SELEKTION FUNKTIONEN =====
-
-  const toggleSelection = (id: string) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
-      } else {
-        newSet.add(id)
-      }
-      return newSet
-    })
-  }
 
   // Alle in einer Kategorie auswählen/abwählen
   const toggleSelectAllInCategory = (category: FileCategory, e: React.MouseEvent) => {
@@ -305,16 +254,13 @@ export function FilesTab({
     const categoryIds = categoryScripts.map(s => s.id)
     const allSelected = categoryIds.every(id => selectedIds.has(id))
 
-    setSelectedIds(prev => {
-      const newSet = new Set(prev)
-      if (allSelected) {
-        // Alle abwählen
-        categoryIds.forEach(id => newSet.delete(id))
-      } else {
-        // Alle auswählen
-        categoryIds.forEach(id => newSet.add(id))
+    // Use toggleSelection from hook for each ID
+    categoryIds.forEach(id => {
+      const shouldBeSelected = !allSelected
+      const isCurrentlySelected = selectedIds.has(id)
+      if (shouldBeSelected !== isCurrentlySelected) {
+        toggleSelect(id)
       }
-      return newSet
     })
   }
 
@@ -328,18 +274,10 @@ export function FilesTab({
   const handleBulkDelete = () => {
     if (selectedIds.size === 0) return
     onBulkDeleteScripts(Array.from(selectedIds))
-    setSelectedIds(new Set())
-  }
-
-  const getFileIcon = (fileType?: string) => {
-    if (fileType === 'pdf') return FilePdf
-    if (fileType?.startsWith('image/')) return Image
-    if (fileType === 'pptx') return File
-    return FileText
+    clearSelection()
   }
 
   const totalFiles = scripts.length
-  const hasSelectedFiles = selectedIds.size > 0
 
   return (
     <div className="space-y-6">
