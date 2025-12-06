@@ -16,7 +16,6 @@ import {
   Brain,
   CheckCircle,
   Circle,
-  ArrowRight,
   Sparkle,
   Fire,
   ChartBar,
@@ -24,6 +23,7 @@ import {
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { formatExamDate, getDaysUntilExam } from '@/lib/recommendations'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface ModuleDashboardProps {
   module: Module
@@ -33,6 +33,7 @@ interface ModuleDashboardProps {
   flashcards: Flashcard[]
   onSolveTask: (task: Task) => void
   onStartFlashcardStudy: () => void
+  onStartTaskSequence?: (tasks: Task[], startTaskId?: string) => void
   onBlockComplete?: (blockId: string) => void
   onGenerateAllTasks?: () => void
   isGenerating?: boolean
@@ -128,6 +129,7 @@ export function ModuleDashboard({
   scripts,
   flashcards,
   onSolveTask,
+  onStartTaskSequence,
   onStartFlashcardStudy,
   onBlockComplete,
   onGenerateAllTasks,
@@ -160,33 +162,48 @@ export function ModuleDashboard({
   // Prüfungstermin
   const daysUntilExam = module.examDate ? getDaysUntilExam(module.examDate) : null
   
-  // Empfohlene Aufgaben für heute
+  // Empfohlene Aufgaben für heute (gewichtete Auswahl nach Schwächen & Staleness)
   const todaysTasks = useMemo(() => {
-    // Priorisiere: unvollständige Aufgaben aus schwachen Themen
     const weakTopicNames = new Set(weakTopics.map(w => w.topic))
-    const prioritized: Task[] = []
-    
-    // Erst schwache Themen
-    for (const task of tasks) {
-      if (!task.completed && weakTopicNames.has(task.topic || 'Allgemein')) {
-        prioritized.push(task)
-        if (prioritized.length >= 5) break
-      }
-    }
-    
-    // Dann andere unvollständige
-    if (prioritized.length < 5) {
-      for (const task of tasks) {
-        if (!task.completed && !prioritized.includes(task)) {
-          prioritized.push(task)
-          if (prioritized.length >= 5) break
-        }
-      }
-    }
-    
-    return prioritized
-  }, [tasks, weakTopics])
+    const staleTopicNames = new Set(staleTopics.map(s => s.topic))
+
+    return tasks
+      .filter(task => !task.completed)
+      .map(task => {
+        let score = 0
+
+        if (weakTopicNames.has(task.topic || 'Allgemein')) score += 3
+        if (staleTopicNames.has(task.topic || 'Allgemein')) score += 2
+        if (daysUntilExam !== null && daysUntilExam <= 14) score += 2
+        if (task.difficulty === 'medium') score += 0.5
+        if (task.difficulty === 'hard') score += 1
+
+        return { task, score }
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map(entry => entry.task)
+  }, [daysUntilExam, staleTopics, tasks, weakTopics])
   
+  const getTaskPreview = (task: Task) => {
+    if (task.title?.trim()) return task.title
+    const firstContentLine = task.question.split('\n').find(line => line.trim().length > 0)
+    return firstContentLine || task.question
+  }
+
+  const startBlockSequence = (block: ModuleLearningBlock) => {
+    if (!onStartTaskSequence) return
+
+    const blockTasks = block.requiredTasks
+      .map(ref => tasks.find(t => t.id === ref.id))
+      .filter((t): t is Task => Boolean(t))
+
+    if (blockTasks.length === 0) return
+
+    const firstIncomplete = blockTasks.find(t => !t.completed) || blockTasks[0]
+    onStartTaskSequence(blockTasks, firstIncomplete?.id)
+  }
+
   // Nächster empfohlener Block
   const nextBlock = learningBlocks.find(b => !b.completed)
 
@@ -312,9 +329,12 @@ export function ModuleDashboard({
                       task.difficulty === 'hard' && 'bg-red-500'
                     )} />
                     <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {task.title || task.question.substring(0, 60)}...
-                      </p>
+                      <MarkdownRenderer
+                        content={getTaskPreview(task)}
+                        compact
+                        truncateLines={2}
+                        className="font-medium text-sm"
+                      />
                       {task.topic && (
                         <Badge variant="secondary" className="text-xs mt-1">
                           {task.topic}
@@ -442,9 +462,18 @@ export function ModuleDashboard({
                   <div
                     key={block.id}
                     className={cn(
-                      'p-4 rounded-lg border transition-colors',
+                      'p-4 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary',
                       block.completed ? 'bg-green-500/10 border-green-500/30' : 'hover:bg-muted/50'
                     )}
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => startBlockSequence(block)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        startBlockSequence(block)
+                      }
+                    }}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -461,21 +490,6 @@ export function ModuleDashboard({
                     </div>
                     <Progress value={progress} className="h-1.5 mb-2" />
                     <p className="text-xs text-muted-foreground">{block.description}</p>
-                    
-                    {!block.completed && block === nextBlock && (
-                      <Button size="sm" className="mt-3" onClick={() => {
-                        const firstIncomplete = block.requiredTasks.find(
-                          t => !block.completedTasks.includes(t.id)
-                        )
-                        if (firstIncomplete) {
-                          const task = tasks.find(t => t.id === firstIncomplete.id)
-                          if (task) onSolveTask(task)
-                        }
-                      }}>
-                        <ArrowRight className="w-4 h-4 mr-1" />
-                        Weiter lernen
-                      </Button>
-                    )}
                   </div>
                 )
               })}

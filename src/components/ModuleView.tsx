@@ -32,6 +32,7 @@ interface ModuleViewProps {
   onGenerateFlashcards: (noteId: string) => void
   onDeleteScript: (scriptId: string) => void
   onSolveTask: (task: Task) => void
+  onStartTaskSequence?: (tasks: Task[], startTaskId?: string) => void
   onDeleteTask: (taskId: string) => void
   onDeleteNote: (noteId: string) => void
   onDeleteFlashcard: (flashcardId: string) => void
@@ -71,6 +72,7 @@ export function ModuleView({
   onGenerateAllTasks,
   onGenerateAllFlashcards,
   onStartFlashcardStudy,
+  onStartTaskSequence,
   onEditModule,
   onStartExamMode,
 }: ModuleViewProps) {
@@ -173,6 +175,7 @@ export function ModuleView({
               scripts={scripts}
               flashcards={flashcards}
               onSolveTask={onSolveTask}
+              onStartTaskSequence={onStartTaskSequence}
               onStartFlashcardStudy={onStartFlashcardStudy}
               onGenerateAllTasks={onGenerateAllTasks}
             />
