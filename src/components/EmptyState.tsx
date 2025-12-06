@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/card'
-import { Plus, Folder } from '@phosphor-icons/react'
+import { Plus, Folder, UploadSimple } from '@phosphor-icons/react'
 
 interface EmptyStateProps {
   title: string
@@ -7,6 +7,8 @@ interface EmptyStateProps {
   actionLabel: string
   onAction: () => void
   icon?: 'folder' | 'plus'
+  secondaryActionLabel?: string
+  onSecondaryAction?: () => void
 }
 
 export function EmptyState({
@@ -15,6 +17,8 @@ export function EmptyState({
   actionLabel,
   onAction,
   icon = 'folder',
+  secondaryActionLabel,
+  onSecondaryAction,
 }: EmptyStateProps) {
   const Icon = icon === 'folder' ? Folder : Plus
 
@@ -27,12 +31,23 @@ export function EmptyState({
       <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
         {description}
       </p>
-      <button
-        onClick={onAction}
-        className="text-primary hover:underline font-medium text-sm"
-      >
-        {actionLabel}
-      </button>
+      <div className="flex flex-col gap-3 items-center">
+        <button
+          onClick={onAction}
+          className="text-primary hover:underline font-medium text-sm"
+        >
+          {actionLabel}
+        </button>
+        {secondaryActionLabel && onSecondaryAction && (
+          <button
+            onClick={onSecondaryAction}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm transition-colors"
+          >
+            <UploadSimple size={16} />
+            {secondaryActionLabel}
+          </button>
+        )}
+      </div>
     </Card>
   )
 }

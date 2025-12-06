@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useModules, useScripts, useNotes, useTasks, useFlashcards, migrateFromServerIfNeeded } from './hooks/use-database'
-import { storageReady } from './lib/storage'
+import { storageReady, downloadExportFile, importData } from './lib/storage'
 import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
 import { ModuleCard } from './components/ModuleCard'
 import { CreateModuleDialog } from './components/CreateModuleDialog'
@@ -21,7 +21,7 @@ import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './componen
 import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { Button } from './components/ui/button'
-import { Plus, ChartLine, Sparkle, CurrencyDollar } from '@phosphor-icons/react'
+import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -149,6 +149,49 @@ function App() {
   
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
   const [storageInitialized, setStorageInitialized] = useState(false)
+  
+  // Ref für versteckten File-Input (Import)
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  // Export-Handler
+  const handleExportData = async () => {
+    try {
+      await downloadExportFile()
+      toast.success('Backup erfolgreich erstellt!')
+    } catch (error) {
+      console.error('[Export] Failed:', error)
+      toast.error('Export fehlgeschlagen')
+    }
+  }
+
+  // Import-Handler
+  const handleImportData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const result = await importData(file, 'replace')
+      if (result.success) {
+        toast.success(result.message)
+        // Seite neu laden um die importierten Daten anzuzeigen
+        window.location.reload()
+      } else {
+        toast.error(result.message)
+      }
+    } catch (error) {
+      console.error('[Import] Failed:', error)
+      toast.error('Import fehlgeschlagen')
+    }
+    
+    // Input zurücksetzen
+    if (importInputRef.current) {
+      importInputRef.current.value = ''
+    }
+  }
+
+  const triggerImportDialog = () => {
+    importInputRef.current?.click()
+  }
 
   // Einmalige Migration beim App-Start
   useEffect(() => {
@@ -1889,6 +1932,12 @@ Gib deine Antwort als JSON zurück:
                   <CurrencyDollar size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Kosten</span>
                 </Button>
+                {modules && modules.length > 0 && (
+                  <Button variant="outline" onClick={handleExportData} size="sm" className="flex-1 sm:flex-none" title="Alle Daten exportieren">
+                    <DownloadSimple size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                    <span className="hidden sm:inline">Backup</span>
+                  </Button>
+                )}
                 <Button 
                   onClick={() => setCreateDialogOpen(true)} 
                   size="sm" 
@@ -1914,6 +1963,8 @@ Gib deine Antwort als JSON zurück:
                   description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
                   actionLabel="Erstes Modul erstellen"
                   onAction={() => setCreateDialogOpen(true)}
+                  secondaryActionLabel="Backup importieren"
+                  onSecondaryAction={triggerImportDialog}
                 />
               </>
             ) : (
@@ -1965,6 +2016,15 @@ Gib deine Antwort als JSON zurück:
             tasks: tasks?.filter(t => t.moduleId === moduleToEdit.id).length || 0,
             flashcards: flashcards?.filter(f => f.moduleId === moduleToEdit.id).length || 0,
           } : undefined}
+        />
+
+        {/* Versteckter File-Input für Import */}
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImportData}
+          className="hidden"
         />
 
         {/* Onboarding Tutorial für neue Benutzer */}

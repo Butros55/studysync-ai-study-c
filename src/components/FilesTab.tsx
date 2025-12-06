@@ -478,21 +478,21 @@ export function FilesTab({
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {/* Alle auswählen Button */}
+                        {/* Alle auswählen */}
                         <div className="flex items-center justify-between py-2 border-b mb-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => toggleSelectAllInCategory(category, e)}
-                            className="text-muted-foreground hover:text-foreground"
+                            onKeyDown={(e) => e.key === 'Enter' && toggleSelectAllInCategory(category, e as unknown as React.MouseEvent)}
+                            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
                           >
                             <Checkbox
                               checked={allSelectedInCategory}
-                              className="mr-2"
                               onClick={(e) => e.stopPropagation()}
                             />
-                            Alle auswählen ({categoryScripts.length})
-                          </Button>
+                            <span>Alle auswählen ({categoryScripts.length})</span>
+                          </div>
                         </div>
                         {categoryScripts.map((script) => {
                           const FileIcon = getFileIcon(script.fileType)
@@ -510,7 +510,7 @@ export function FilesTab({
                             >
                               <Checkbox
                                 checked={isSelected}
-                                onCheckedChange={() => toggleSelection(script.id)}
+                                onCheckedChange={() => toggleSelect(script.id)}
                               />
                               <FileIcon className="w-5 h-5 text-muted-foreground shrink-0" />
                               <div className="flex-1 min-w-0">
@@ -594,17 +594,14 @@ export function FilesTab({
 
       {/* Upload-Dialog */}
       <Dialog open={uploadDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="max-w-lg">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">
+        <DialogContent className="max-w-lg" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>
               {uploadCategory && CATEGORY_CONFIG[uploadCategory]
                 ? `${CATEGORY_CONFIG[uploadCategory].pluralLabel} hochladen`
                 : 'Dateien hochladen'}
-            </h2>
-            <Button variant="ghost" size="icon" onClick={() => handleDialogClose(false)}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+            </DialogTitle>
+          </DialogHeader>
 
           {/* Drag & Drop Zone */}
           <div

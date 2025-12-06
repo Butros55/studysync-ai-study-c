@@ -559,3 +559,134 @@ export async function removeFromCollection<T extends { id: string }>(
   await setCollection(key, filtered)
   return true
 }
+
+// ============================================================================
+// Export/Import All Data
+// ============================================================================
+
+export interface StudySyncExportData {
+  version: string
+  exportedAt: string
+  data: {
+    modules: unknown[]
+    scripts: unknown[]
+    notes: unknown[]
+    tasks: unknown[]
+    flashcards: unknown[]
+    moduleTagRegistries?: unknown[]
+  }
+}
+
+const EXPORT_VERSION = '1.0.0'
+const COLLECTION_KEYS = ['modules', 'scripts', 'notes', 'tasks', 'flashcards', 'module_tag_registries'] as const
+
+/**
+ * Exportiere alle Daten als JSON
+ */
+export async function exportAllData(): Promise<StudySyncExportData> {
+  await storageReady
+
+  const modules = await getCollection('modules')
+  const scripts = await getCollection('scripts')
+  const notes = await getCollection('notes')
+  const tasks = await getCollection('tasks')
+  const flashcards = await getCollection('flashcards')
+  const moduleTagRegistries = await getCollection('module_tag_registries')
+
+  return {
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    data: {
+      modules,
+      scripts,
+      notes,
+      tasks,
+      flashcards,
+      moduleTagRegistries,
+    },
+  }
+}
+
+/**
+ * Exportiere alle Daten und lade als JSON-Datei herunter
+ */
+export async function downloadExportFile(): Promise<void> {
+  const exportData = await exportAllData()
+  const jsonString = JSON.stringify(exportData, null, 2)
+  const blob = new Blob([jsonString], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `studysync-backup-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/**
+ * Importiere Daten aus einer JSON-Datei
+ * @param file Die zu importierende JSON-Datei
+ * @param mode 'replace' löscht alle bestehenden Daten, 'merge' fügt hinzu
+ */
+export async function importData(
+  file: File,
+  mode: 'replace' | 'merge' = 'replace'
+): Promise<{ success: boolean; message: string; counts?: Record<string, number> }> {
+  await storageReady
+
+  try {
+    const text = await file.text()
+    const importData: StudySyncExportData = JSON.parse(text)
+
+    // Validiere die Datenstruktur
+    if (!importData.version || !importData.data) {
+      return { success: false, message: 'Ungültiges Dateiformat: Version oder Daten fehlen' }
+    }
+
+    if (!importData.data.modules || !Array.isArray(importData.data.modules)) {
+      return { success: false, message: 'Ungültiges Dateiformat: Module fehlen oder sind kein Array' }
+    }
+
+    const counts: Record<string, number> = {}
+
+    if (mode === 'replace') {
+      // Lösche alle bestehenden Daten
+      for (const key of COLLECTION_KEYS) {
+        await setCollection(key, [])
+      }
+    }
+
+    // Importiere jede Collection
+    for (const [key, items] of Object.entries(importData.data)) {
+      if (Array.isArray(items) && items.length > 0) {
+        if (mode === 'merge') {
+          const existing = await getCollection(key)
+          const existingIds = new Set(existing.map((item: { id?: string }) => item.id))
+          const newItems = items.filter((item: { id?: string }) => !existingIds.has(item.id))
+          await setCollection(key, [...existing, ...newItems])
+          counts[key] = newItems.length
+        } else {
+          await setCollection(key, items)
+          counts[key] = items.length
+        }
+      } else {
+        counts[key] = 0
+      }
+    }
+
+    const totalItems = Object.values(counts).reduce((sum, count) => sum + count, 0)
+    return {
+      success: true,
+      message: `Import erfolgreich: ${totalItems} Elemente importiert`,
+      counts,
+    }
+  } catch (error) {
+    console.error('[Storage] Import failed:', error)
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Import fehlgeschlagen',
+    }
+  }
+}
