@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Script } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,8 +14,10 @@ import {
 import { FileText, Sparkle, Trash, Plus, UploadSimple, FilePdf, Eye } from '@phosphor-icons/react'
 import { formatDate } from '@/lib/utils-app'
 import { toast } from 'sonner'
-import { parseFile, isValidFileType, getFileExtension, fileToDataURL } from '@/lib/file-parser'
+import { parseFile, getFileExtension, fileToDataURL } from '@/lib/file-parser'
 import { ScriptPreviewDialog } from './ScriptPreviewDialog'
+import { useBulkSelection } from '@/hooks/use-bulk-selection'
+import { useFileUpload } from '@/hooks/use-file-upload'
 
 interface ScriptsTabProps {
   scripts: Script[]
@@ -39,84 +41,34 @@ export function ScriptsTab({
   onGenerateAllTasks,
 }: ScriptsTabProps) {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const [selectedScripts, setSelectedScripts] = useState<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    setSelectedScripts((prev) => {
-      const valid = new Set<string>()
-      scripts.forEach((s) => {
-        if (prev.has(s.id)) valid.add(s.id)
-      })
-      return valid
-    })
-  }, [scripts])
+  // Use custom hooks for file upload and bulk selection
+  const {
+    selectedFiles,
+    isDragging,
+    handleFileSelect,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    removeFile,
+    clearFiles,
+  } = useFileUpload()
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const validFiles: File[] = []
-    const invalidFiles: string[] = []
-
-    files.forEach((file) => {
-      if (isValidFileType(file.name)) {
-        validFiles.push(file)
-      } else {
-        invalidFiles.push(file.name)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(`Ungueltige Dateien uebersprungen: ${invalidFiles.join(', ')}`)
-    }
-
-    if (validFiles.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...validFiles])
-    }
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files)
-    const validFiles: File[] = []
-    const invalidFiles: string[] = []
-
-    files.forEach((file) => {
-      if (isValidFileType(file.name)) {
-        validFiles.push(file)
-      } else {
-        invalidFiles.push(file.name)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(`Ungueltige Dateien uebersprungen: ${invalidFiles.join(', ')}`)
-    }
-
-    if (validFiles.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...validFiles])
-    }
-  }
-
-  const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-  }
+  const {
+    selectedIds: selectedScripts,
+    hasSelection,
+    allSelected,
+    toggleSelection: toggleScriptSelection,
+    toggleSelectAll,
+    clearSelection,
+  } = useBulkSelection({
+    items: scripts,
+    getId: (script) => script.id,
+  })
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return
@@ -138,7 +90,7 @@ export function ScriptsTab({
         }
       }
       
-      setSelectedFiles([])
+      clearFiles()
       setUploadDialogOpen(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -152,7 +104,7 @@ export function ScriptsTab({
     if (!isUploading) {
       setUploadDialogOpen(open)
       if (!open) {
-        setSelectedFiles([])
+        clearFiles()
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
@@ -160,45 +112,19 @@ export function ScriptsTab({
     }
   }
 
-  const toggleScriptSelection = (id: string) => {
-    setSelectedScripts((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    setSelectedScripts((prev) => {
-      const allSelected = prev.size === scripts.length && scripts.length > 0
-      return allSelected ? new Set() : new Set(scripts.map((s) => s.id))
-    })
-  }
-
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedScripts)
     if (ids.length === 0) return
     if (!confirm(`Sollen ${ids.length} Skripte geloescht werden?`)) return
     await onBulkDeleteScripts(ids)
-    setSelectedScripts(new Set())
+    clearSelection()
   }
 
   const handleDeleteSingle = async (id: string) => {
     if (!confirm('Dieses Skript geloescht werden?')) return
     await onDeleteScript(id)
-    setSelectedScripts((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
+    // Selection is automatically cleaned up by the hook
   }
-
-  const hasSelection = selectedScripts.size > 0
-  const allSelected = scripts.length > 0 && selectedScripts.size === scripts.length
 
   return (
     <div className="space-y-6">

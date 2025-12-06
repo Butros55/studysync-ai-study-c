@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Task } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Brain, CheckCircle, Pencil, Trash } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
+import { useBulkSelection } from '@/hooks/use-bulk-selection'
 
 interface TasksTabProps {
   tasks: Task[]
@@ -16,17 +17,17 @@ interface TasksTabProps {
 }
 
 export function TasksTab({ tasks, onSolveTask, onDeleteTask, onBulkDeleteTasks }: TasksTabProps) {
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    setSelectedTasks((prev) => {
-      const valid = new Set<string>()
-      tasks.forEach((t) => {
-        if (prev.has(t.id)) valid.add(t.id)
-      })
-      return valid
-    })
-  }, [tasks])
+  const {
+    selectedIds: selectedTasks,
+    hasSelection,
+    allSelected,
+    toggleSelection: toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+  } = useBulkSelection({
+    items: tasks,
+    getId: (task) => task.id,
+  })
 
   const getDifficultyColor = (difficulty: Task['difficulty']) => {
     switch (difficulty) {
@@ -53,31 +54,13 @@ export function TasksTab({ tasks, onSolveTask, onDeleteTask, onBulkDeleteTasks }
   const incompleteTasks = tasks.filter((t) => !t.completed)
   const completedTasks = tasks.filter((t) => t.completed)
 
-  const toggleSelect = (id: string) => {
-    setSelectedTasks((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    setSelectedTasks((prev) => {
-      const allSelected = prev.size === tasks.length && tasks.length > 0
-      return allSelected ? new Set() : new Set(tasks.map((t) => t.id))
-    })
-  }
-
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedTasks)
     if (ids.length === 0) return
     if (!confirm(`Sollen ${ids.length} Aufgaben geloescht werden?`)) return
     await onBulkDeleteTasks(ids)
-    setSelectedTasks(new Set())
+    clearSelection()
   }
-
-  const hasSelection = selectedTasks.size > 0
-  const allSelected = tasks.length > 0 && selectedTasks.size === tasks.length
 
   return (
     <div className="space-y-6">

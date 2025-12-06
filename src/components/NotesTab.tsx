@@ -13,6 +13,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { useBulkSelection } from '@/hooks/use-bulk-selection'
 
 interface NotesTabProps {
   notes: StudyNote[]
@@ -22,20 +23,21 @@ interface NotesTabProps {
 }
 
 export function NotesTab({ notes, scripts, onDeleteNote, onBulkDeleteNotes }: NotesTabProps) {
-  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set())
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
   const [twoColumnLayout, setTwoColumnLayout] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  useEffect(() => {
-    setSelectedNotes((prev) => {
-      const valid = new Set<string>()
-      notes.forEach((n) => {
-        if (prev.has(n.id)) valid.add(n.id)
-      })
-      return valid
-    })
-  }, [notes])
+  const {
+    selectedIds: selectedNotes,
+    hasSelection,
+    allSelected,
+    toggleSelection: toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+  } = useBulkSelection({
+    items: notes,
+    getId: (note) => note.id,
+  })
 
   // Automatisch erste Notiz expandieren
   useEffect(() => {
@@ -49,26 +51,11 @@ export function NotesTab({ notes, scripts, onDeleteNote, onBulkDeleteNotes }: No
     return script?.name || 'Unbekanntes Skript'
   }
 
-  const toggleSelect = (id: string) => {
-    setSelectedNotes((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
   const toggleExpand = (id: string) => {
     setExpandedNotes((prev) => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    setSelectedNotes((prev) => {
-      const allSelected = prev.size === notes.length && notes.length > 0
-      return allSelected ? new Set() : new Set(notes.map((n) => n.id))
     })
   }
 
@@ -85,7 +72,7 @@ export function NotesTab({ notes, scripts, onDeleteNote, onBulkDeleteNotes }: No
     if (ids.length === 0) return
     if (!confirm(`Sollen ${ids.length} Notizen gelöscht werden?`)) return
     await onBulkDeleteNotes(ids)
-    setSelectedNotes(new Set())
+    clearSelection()
   }
 
   const copyToClipboard = async (noteId: string, content: string) => {
@@ -114,9 +101,6 @@ export function NotesTab({ notes, scripts, onDeleteNote, onBulkDeleteNotes }: No
     URL.revokeObjectURL(url)
     toast.success('Notizen heruntergeladen')
   }
-
-  const hasSelection = selectedNotes.size > 0
-  const allSelected = notes.length > 0 && selectedNotes.size === notes.length
 
   // Sortiere Notizen nach Datum (neueste zuerst)
   const sortedNotes = useMemo(() => {
