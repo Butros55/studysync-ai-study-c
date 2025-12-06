@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Script, FileCategory } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -183,6 +183,8 @@ export function FilesTab({
     clearFiles,
   } = useFileUpload()
 
+  const getScriptId = useCallback((script: Script) => script.id, [])
+
   const {
     selectedIds,
     hasSelection: hasSelectedFiles,
@@ -191,7 +193,7 @@ export function FilesTab({
     clearSelection,
   } = useBulkSelection({
     items: scripts,
-    getId: (script) => script.id,
+    getId: getScriptId,
   })
 
   // Öffne Upload-Dialog für eine Kategorie
