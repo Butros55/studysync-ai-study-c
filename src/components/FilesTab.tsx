@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Script, FileCategory } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +27,6 @@ import {
 import {
   Upload,
   File,
-  FilePdf,
   FileText,
   Image,
   DotsThreeVertical,
@@ -43,7 +42,6 @@ import {
   Plus,
   FolderOpen,
   X,
-  UploadSimple,
   CheckSquareOffset,
   MagnifyingGlass,
 } from '@phosphor-icons/react'
@@ -142,36 +140,59 @@ export function FilesTab({
   // Get moduleId from first script
   const moduleId = scripts[0]?.moduleId ?? ''
   
-  // Load analysis records when moduleId changes
+  const pollingRef = useRef<number | null>(null)
+
+  // Load analysis records when moduleId or scripts change
   useEffect(() => {
     if (!moduleId) return
-    
-    let mounted = true
+
+    let cancelled = false
+
     const loadRecords = async () => {
       try {
         const records = await listDocumentAnalyses(moduleId)
-        if (mounted) {
-          const recordMap = new Map<string, DocumentAnalysisRecord>()
-          for (const record of records) {
-            recordMap.set(record.documentId, record)
-          }
-          setAnalysisRecords(recordMap)
+        if (cancelled) return
+
+        const recordMap = new Map<string, DocumentAnalysisRecord>()
+        for (const record of records) {
+          recordMap.set(record.documentId, record)
         }
+
+        setAnalysisRecords(prev => {
+          if (prev.size === recordMap.size) {
+            let isSame = true
+            for (const [id, record] of recordMap) {
+              const existing = prev.get(id)
+              if (!existing || existing.status !== record.status || existing.documentId !== record.documentId) {
+                isSame = false
+                break
+              }
+            }
+            if (isSame) return prev
+          }
+
+          console.debug('[FilesTab] Loaded', recordMap.size, 'document analyses')
+          return recordMap
+        })
       } catch (e) {
         console.warn('[FilesTab] Failed to load analysis records:', e)
       }
     }
-    
+
     loadRecords()
-    
-    // Refresh periodically to catch updates
-    const interval = setInterval(loadRecords, 5000)
-    
-    return () => {
-      mounted = false
-      clearInterval(interval)
+
+    if (!pollingRef.current) {
+      pollingRef.current = window.setInterval(loadRecords, 5000)
     }
-  }, [moduleId])
+
+    return () => {
+      cancelled = true
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
+  }, [moduleId, scripts.length])
 
   // Use custom hooks for file upload and bulk selection
   const {
@@ -185,6 +206,8 @@ export function FilesTab({
     clearFiles,
   } = useFileUpload()
 
+  const getScriptId = useCallback((script: Script) => script.id, [])
+
   const {
     selectedIds,
     hasSelection: hasSelectedFiles,
@@ -193,7 +216,7 @@ export function FilesTab({
     clearSelection,
   } = useBulkSelection({
     items: scripts,
-    getId: (script) => script.id,
+    getId: getScriptId,
   })
 
   // Öffne Upload-Dialog für eine Kategorie
@@ -332,73 +355,6 @@ export function FilesTab({
         multiple
         onChange={handleFileSelect}
       />
-      
-      {/* Upload Dialog mit Drag & Drop */}
-      <Dialog open={uploadDialogOpen} onOpenChange={handleDialogClose}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {(() => {
-                const Icon = CATEGORY_CONFIG[uploadCategory].icon
-                return <Icon className={cn('w-5 h-5', CATEGORY_CONFIG[uploadCategory].color)} weight="duotone" />
-              })()}
-              {CATEGORY_CONFIG[uploadCategory].pluralLabel} hochladen
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Drag & Drop Zone */}
-          <div
-            className={cn(
-              'border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer',
-              isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
-            )}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <UploadSimple className="w-10 h-10 mx-auto mb-3 text-muted-foreground" weight="duotone" />
-            <p className="text-sm font-medium">
-              Dateien hier ablegen oder klicken
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              PDF, PPTX, TXT, MD oder Bilder
-            </p>
-          </div>
-
-          {/* Ausgewählte Dateien */}
-          {selectedFiles.length > 0 && (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              <p className="text-sm font-medium">{selectedFiles.length} Datei(en) ausgewählt:</p>
-              {selectedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FilePdf className="w-4 h-4 shrink-0 text-muted-foreground" />
-                    <span className="text-sm truncate">{file.name}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => removeFile(index)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => handleDialogClose(false)} disabled={isUploading}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleBulkUpload} disabled={selectedFiles.length === 0 || isUploading}>
-              {isUploading ? 'Lädt hoch...' : `${selectedFiles.length} Datei(en) hochladen`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
       {/* Header mit Bulk-Aktionen */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -692,9 +648,7 @@ export function FilesTab({
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 shrink-0"
-                    onClick={() => {
-                      setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-                    }}
+                    onClick={() => removeFile(index)}
                   >
                     <X className="w-3 h-3" />
                   </Button>
