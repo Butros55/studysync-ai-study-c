@@ -7,6 +7,28 @@ interface UseFileUploadOptions {
 }
 
 /**
+ * Process files and separate valid from invalid ones
+ */
+function processFiles(files: File[]): { validFiles: File[], invalidFiles: string[] } {
+  const validFiles: File[] = []
+  const invalidFiles: string[] = []
+
+  files.forEach((file) => {
+    if (isValidFileType(file.name)) {
+      validFiles.push(file)
+    } else {
+      invalidFiles.push(file.name)
+    }
+  })
+
+  if (invalidFiles.length > 0) {
+    toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
+  }
+
+  return { validFiles, invalidFiles }
+}
+
+/**
  * A reusable hook for managing file upload with drag-and-drop support
  */
 export function useFileUpload(options: UseFileUploadOptions = {}) {
@@ -15,20 +37,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    const validFiles: File[] = []
-    const invalidFiles: string[] = []
-
-    files.forEach((file) => {
-      if (isValidFileType(file.name)) {
-        validFiles.push(file)
-      } else {
-        invalidFiles.push(file.name)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
-    }
+    const { validFiles } = processFiles(files)
 
     if (validFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...validFiles])
@@ -51,20 +60,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     setIsDragging(false)
 
     const files = Array.from(e.dataTransfer.files)
-    const validFiles: File[] = []
-    const invalidFiles: string[] = []
-
-    files.forEach((file) => {
-      if (isValidFileType(file.name)) {
-        validFiles.push(file)
-      } else {
-        invalidFiles.push(file.name)
-      }
-    })
-
-    if (invalidFiles.length > 0) {
-      toast.error(`Ungültige Dateien übersprungen: ${invalidFiles.join(', ')}`)
-    }
+    const { validFiles } = processFiles(files)
 
     if (validFiles.length > 0) {
       setSelectedFiles((prev) => [...prev, ...validFiles])

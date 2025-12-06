@@ -54,6 +54,20 @@ export function useBulkSelection<T>({ items, getId }: UseBulkSelectionOptions<T>
     return selectedIds.has(id)
   }, [selectedIds])
 
+  const toggleMultiple = useCallback((ids: string[], shouldSelect: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => {
+        if (shouldSelect) {
+          next.add(id)
+        } else {
+          next.delete(id)
+        }
+      })
+      return next
+    })
+  }, [])
+
   const hasSelection = selectedIds.size > 0
   const allSelected = items.length > 0 && selectedIds.size === items.length
   const selectedItems = items.filter((item) => selectedIds.has(getId(item)))
@@ -65,6 +79,7 @@ export function useBulkSelection<T>({ items, getId }: UseBulkSelectionOptions<T>
     allSelected,
     toggleSelection,
     toggleSelectAll,
+    toggleMultiple,
     clearSelection,
     selectAll,
     isSelected,

@@ -145,6 +145,7 @@ export function FilesTab({
     selectedIds,
     hasSelection: hasSelectedFiles,
     toggleSelection: toggleSelect,
+    toggleMultiple,
     clearSelection,
   } = useBulkSelection({
     items: scripts,
@@ -254,14 +255,8 @@ export function FilesTab({
     const categoryIds = categoryScripts.map(s => s.id)
     const allSelected = categoryIds.every(id => selectedIds.has(id))
 
-    // Use toggleSelection from hook for each ID
-    categoryIds.forEach(id => {
-      const shouldBeSelected = !allSelected
-      const isCurrentlySelected = selectedIds.has(id)
-      if (shouldBeSelected !== isCurrentlySelected) {
-        toggleSelect(id)
-      }
-    })
+    // Use toggleMultiple for efficient bulk operation
+    toggleMultiple(categoryIds, !allSelected)
   }
 
   // Prüfe ob alle in einer Kategorie ausgewählt sind
