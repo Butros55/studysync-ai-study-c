@@ -214,6 +214,20 @@ function normalizeContent(content: string): string {
     }
   )
   
+  // SCHRITT 6b: Konvertiere Subskripte zu LaTeX
+  // z.B. "10110110_2" -> "$10110110_2$" (binäre Notation)
+  // Unterstützt: number_number, letter_number, word_2 etc.
+  processed = processed.replace(
+    /(?<!\$)([A-Za-z0-9]+)_([0-9]+)(?!\$)/g,
+    (match, base, subscript, offset) => {
+      // Prüfe ob bereits in $...$
+      const textBefore = processed.substring(Math.max(0, offset - 100), offset)
+      const dollarCount = (textBefore.match(/\$/g) || []).length
+      if (dollarCount % 2 !== 0) return match // Bereits in Math-Mode
+      return `$${base}_{${subscript}}$`
+    }
+  )
+  
   // SCHRITT 7: Bereinige doppelte $ Zeichen
   processed = processed.replace(/\$\s*\$/g, '')
   processed = processed.replace(/\$\$\$/g, '$$')

@@ -2,9 +2,7 @@ import { useState } from 'react'
 import { Module, Script, ExamSession } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
@@ -262,9 +260,9 @@ export function ExamSetup({
             </Card>
           )}
 
-          {/* Prüfungsdauer */}
-          <Card className="mb-6">
-            <CardHeader>
+          {/* Prüfungsdauer - Modernisiert */}
+          <Card className="mb-6 overflow-hidden">
+            <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock size={18} />
                 Prüfungsdauer
@@ -274,66 +272,101 @@ export function ExamSetup({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <RadioGroup
-                value={String(duration)}
-                onValueChange={(v) => setDuration(Number(v))}
-                className="grid grid-cols-3 gap-4"
-              >
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {[30, 45, 60, 90, 120].map((mins) => (
-                  <div key={mins}>
-                    <RadioGroupItem
-                      value={String(mins)}
-                      id={`duration-${mins}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`duration-${mins}`}
-                      className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary cursor-pointer transition-colors"
-                    >
-                      <span className="text-2xl font-bold">{mins}</span>
-                      <span className="text-xs text-muted-foreground">Minuten</span>
-                    </Label>
-                  </div>
+                  <button
+                    key={mins}
+                    onClick={() => setDuration(mins)}
+                    className={`relative flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all duration-200 ${
+                      duration === mins
+                        ? 'border-primary bg-primary/5 shadow-sm scale-[1.02]'
+                        : 'border-muted hover:border-muted-foreground/30 hover:bg-muted/50'
+                    }`}
+                  >
+                    {duration === mins && (
+                      <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    )}
+                    <span className="text-2xl font-bold">{mins}</span>
+                    <span className="text-xs text-muted-foreground">Minuten</span>
+                  </button>
                 ))}
-              </RadioGroup>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Aufgabenanzahl */}
-          <Card className="mb-6">
-            <CardHeader>
+          {/* Aufgabenanzahl - Modernisiert */}
+          <Card className="mb-6 overflow-hidden">
+            <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">
                 <ClipboardText size={18} />
                 Aufgabenanzahl
               </CardTitle>
               <CardDescription>
-                Automatisch basierend auf Dauer oder feste Anzahl
+                Wähle zwischen automatischer oder fester Anzahl
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <RadioGroup
-                value={taskCountMode}
-                onValueChange={(v) => setTaskCountMode(v as 'auto' | 'fixed')}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="auto" id="auto" />
-                  <Label htmlFor="auto" className="cursor-pointer">
-                    Automatisch ({autoTaskCount} Aufgaben für {duration} Min.)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="fixed" id="fixed" />
-                  <Label htmlFor="fixed" className="cursor-pointer">
-                    Feste Anzahl
-                  </Label>
-                </div>
-              </RadioGroup>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setTaskCountMode('auto')}
+                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                    taskCountMode === 'auto'
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-muted hover:border-muted-foreground/30 hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🤖</span>
+                    {taskCountMode === 'auto' && (
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </div>
+                  <div className="font-medium text-sm">Automatisch</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {autoTaskCount} Aufgaben für {duration} Min.
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setTaskCountMode('fixed')}
+                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                    taskCountMode === 'fixed'
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-muted hover:border-muted-foreground/30 hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🎯</span>
+                    {taskCountMode === 'fixed' && (
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    )}
+                  </div>
+                  <div className="font-medium text-sm">Feste Anzahl</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Du bestimmst die Menge
+                  </div>
+                </button>
+              </div>
 
               {taskCountMode === 'fixed' && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Anzahl Aufgaben</span>
-                    <span className="font-medium">{fixedTaskCount}</span>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Anzahl Aufgaben</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setFixedTaskCount(Math.max(3, fixedTaskCount - 1))}
+                        className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-bold text-lg">{fixedTaskCount}</span>
+                      <button
+                        onClick={() => setFixedTaskCount(Math.min(15, fixedTaskCount + 1))}
+                        className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                   <Slider
                     value={[fixedTaskCount]}
@@ -341,92 +374,131 @@ export function ExamSetup({
                     min={3}
                     max={15}
                     step={1}
+                    className="[&>span:first-child]:bg-primary"
                   />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>3 (kurz)</span>
+                    <span>15 (ausführlich)</span>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Schwierigkeitsmix */}
-          <Card className="mb-6">
-            <CardHeader>
+          {/* Schwierigkeitsmix - Modernisiert */}
+          <Card className="mb-6 overflow-hidden">
+            <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">
                 <ChartBar size={18} />
                 Schwierigkeitsmix
               </CardTitle>
               <CardDescription>
-                Verteilung der Schwierigkeitsstufen (Standard: 40% / 40% / 20%)
+                Verteilung der Schwierigkeitsstufen anpassen
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
-                    Einfach
-                  </span>
-                  <span className="font-medium">{difficultyMix.easy}%</span>
-                </div>
-                <Slider
-                  value={[difficultyMix.easy]}
-                  onValueChange={([v]) => handleDifficultyChange('easy', v)}
-                  min={0}
-                  max={100}
-                  step={5}
-                  className="[&>span:first-child]:bg-green-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    Mittel
-                  </span>
-                  <span className="font-medium">{difficultyMix.medium}%</span>
-                </div>
-                <Slider
-                  value={[difficultyMix.medium]}
-                  onValueChange={([v]) => handleDifficultyChange('medium', v)}
-                  min={0}
-                  max={100}
-                  step={5}
-                  className="[&>span:first-child]:bg-yellow-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500" />
-                    Schwer
-                  </span>
-                  <span className="font-medium">{difficultyMix.hard}%</span>
-                </div>
-                <Slider
-                  value={[difficultyMix.hard]}
-                  onValueChange={([v]) => handleDifficultyChange('hard', v)}
-                  min={0}
-                  max={100}
-                  step={5}
-                  className="[&>span:first-child]:bg-red-500"
-                />
-              </div>
-
-              {/* Vorschau */}
-              <div className="flex h-3 rounded-full overflow-hidden">
+            <CardContent className="space-y-5">
+              {/* Interaktive Visualisierung */}
+              <div className="relative h-16 rounded-xl overflow-hidden bg-muted/30 flex">
                 <div
-                  className="bg-green-500 transition-all"
+                  className="bg-gradient-to-br from-emerald-400 to-emerald-500 transition-all duration-300 flex items-center justify-center text-white font-medium text-sm"
                   style={{ width: `${difficultyMix.easy}%` }}
-                />
+                >
+                  {difficultyMix.easy >= 15 && `${difficultyMix.easy}%`}
+                </div>
                 <div
-                  className="bg-yellow-500 transition-all"
+                  className="bg-gradient-to-br from-amber-400 to-amber-500 transition-all duration-300 flex items-center justify-center text-white font-medium text-sm"
                   style={{ width: `${difficultyMix.medium}%` }}
-                />
+                >
+                  {difficultyMix.medium >= 15 && `${difficultyMix.medium}%`}
+                </div>
                 <div
-                  className="bg-red-500 transition-all"
+                  className="bg-gradient-to-br from-rose-400 to-rose-500 transition-all duration-300 flex items-center justify-center text-white font-medium text-sm"
                   style={{ width: `${difficultyMix.hard}%` }}
-                />
+                >
+                  {difficultyMix.hard >= 15 && `${difficultyMix.hard}%`}
+                </div>
+              </div>
+
+              {/* Slider Controls */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 min-w-[100px]">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500" />
+                    <span className="text-sm font-medium">Einfach</span>
+                  </div>
+                  <Slider
+                    value={[difficultyMix.easy]}
+                    onValueChange={([v]) => handleDifficultyChange('easy', v)}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="flex-1 [&>span:first-child]:bg-emerald-500 [&_[role=slider]]:border-emerald-500"
+                  />
+                  <span className="w-12 text-right text-sm font-medium text-emerald-600">{difficultyMix.easy}%</span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 min-w-[100px]">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-amber-400 to-amber-500" />
+                    <span className="text-sm font-medium">Mittel</span>
+                  </div>
+                  <Slider
+                    value={[difficultyMix.medium]}
+                    onValueChange={([v]) => handleDifficultyChange('medium', v)}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="flex-1 [&>span:first-child]:bg-amber-500 [&_[role=slider]]:border-amber-500"
+                  />
+                  <span className="w-12 text-right text-sm font-medium text-amber-600">{difficultyMix.medium}%</span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 min-w-[100px]">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-rose-400 to-rose-500" />
+                    <span className="text-sm font-medium">Schwer</span>
+                  </div>
+                  <Slider
+                    value={[difficultyMix.hard]}
+                    onValueChange={([v]) => handleDifficultyChange('hard', v)}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="flex-1 [&>span:first-child]:bg-rose-500 [&_[role=slider]]:border-rose-500"
+                  />
+                  <span className="w-12 text-right text-sm font-medium text-rose-600">{difficultyMix.hard}%</span>
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="pt-3 border-t">
+                <div className="text-xs text-muted-foreground mb-2">Schnellauswahl:</div>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setDifficultyMix({ easy: 40, medium: 40, hard: 20 })}
+                    className="px-3 py-1.5 text-xs rounded-full border hover:bg-muted transition-colors"
+                  >
+                    Ausgewogen
+                  </button>
+                  <button
+                    onClick={() => setDifficultyMix({ easy: 60, medium: 30, hard: 10 })}
+                    className="px-3 py-1.5 text-xs rounded-full border hover:bg-muted transition-colors"
+                  >
+                    Anfänger
+                  </button>
+                  <button
+                    onClick={() => setDifficultyMix({ easy: 20, medium: 40, hard: 40 })}
+                    className="px-3 py-1.5 text-xs rounded-full border hover:bg-muted transition-colors"
+                  >
+                    Fortgeschritten
+                  </button>
+                  <button
+                    onClick={() => setDifficultyMix({ easy: 10, medium: 30, hard: 60 })}
+                    className="px-3 py-1.5 text-xs rounded-full border hover:bg-muted transition-colors"
+                  >
+                    Herausfordernd
+                  </button>
+                </div>
               </div>
             </CardContent>
           </Card>

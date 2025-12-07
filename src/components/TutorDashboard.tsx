@@ -44,7 +44,6 @@ interface TutorDashboardProps {
   tasks: Task[]
   scripts?: { id: string; moduleId: string; name: string }[]
   onSolveTask: (task: Task) => void
-  onStartTaskSequence?: (tasks: Task[], startTaskId?: string) => void
   onSelectModule: (moduleId: string) => void
   onEditModule?: (module: Module) => void
   onGenerateTasks?: (moduleId: string, scriptIds: string[]) => void
@@ -65,7 +64,6 @@ export function TutorDashboard({
   tasks,
   scripts = [],
   onSolveTask,
-  onStartTaskSequence,
   onSelectModule,
   onEditModule,
   onGenerateTasks,
@@ -212,12 +210,6 @@ export function TutorDashboard({
     )
   }
 
-  const getTaskPreview = (task: Task) => {
-    if (task.title?.trim()) return task.title
-    const firstContentLine = task.question.split('\n').find(line => line.trim().length > 0)
-    return firstContentLine || task.question
-  }
-
   // Sortiere Module nach Prüfungsdatum (nächste zuerst)
   const sortedModules = [...modules].sort((a, b) => {
     const daysA = getDaysUntilExam(a.examDate)
@@ -252,82 +244,79 @@ export function TutorDashboard({
             <Card key={module.id} className="overflow-hidden">
               {/* Modul-Header */}
               <div 
-                className="p-3 sm:p-4 flex items-start gap-2 sm:gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
                 onClick={() => toggleModule(module.id)}
               >
                 <div 
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-white shrink-0"
+                  className="w-12 h-12 rounded-lg flex items-center justify-center text-white shrink-0"
                   style={{ backgroundColor: module.color }}
                 >
-                  <span className="font-semibold text-base sm:text-lg">
+                  <span className="font-semibold text-lg">
                     {module.code.substring(0, 2).toUpperCase()}
                   </span>
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start sm:items-center gap-1 sm:gap-2 mb-1 flex-wrap">
-                    <h3 className="font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">{module.name}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold truncate">{module.name}</h3>
                     {daysUntilExam !== null && daysUntilExam <= 7 && (
                       <Badge variant="destructive" className="text-[10px] shrink-0">
                         <Clock size={10} className="mr-1" />
-                        {daysUntilExam}d
+                        {daysUntilExam} Tage
                       </Badge>
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Calendar size={12} className="sm:w-[14px] sm:h-[14px]" />
-                      <span className="hidden sm:inline">{formatExamDate(module.examDate)}</span>
-                      <span className="sm:hidden">{daysUntilExam !== null ? `${daysUntilExam}d` : '–'}</span>
+                      <Calendar size={14} />
+                      {formatExamDate(module.examDate)}
                     </span>
-                    <span className="hidden sm:inline">·</span>
-                    <span>{completedTasks}/{moduleTasks.length}</span>
+                    <span>·</span>
+                    <span>{completedTasks}/{moduleTasks.length} erledigt</span>
                   </div>
 
                   {/* Kompakter Fortschrittsbalken */}
-                  <div className="mt-1.5 sm:mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <Progress value={progress * 100} className="h-1.5 flex-1" />
                     <span className="text-xs text-muted-foreground">{Math.round(progress * 100)}%</span>
                   </div>
 
-                  {/* Schwache Themen kompakt - nur auf Desktop */}
+                  {/* Schwache Themen kompakt */}
                   {weakTopics.length > 0 && (
-                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-yellow-600 mt-2">
+                    <div className="flex items-center gap-1.5 text-xs text-yellow-600 mt-2">
                       <Warning size={12} />
                       <span>Schwach: {weakTopics.slice(0, 2).join(', ')}{weakTopics.length > 2 && ` +${weakTopics.length - 2}`}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {onEditModule && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 sm:h-8 sm:w-8"
+                      className="h-8 w-8"
                       onClick={(e) => {
                         e.stopPropagation()
                         onEditModule(module)
                       }}
                     >
-                      <PencilSimple size={14} className="sm:w-4 sm:h-4" />
+                      <PencilSimple size={16} />
                     </Button>
                   )}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 px-2 sm:h-8 sm:px-3 text-xs sm:text-sm"
                     onClick={(e) => {
                       e.stopPropagation()
                       onSelectModule(module.id)
                     }}
                   >
-                    <span className="hidden sm:inline">Öffnen</span>
-                    <ArrowRight size={14} className="sm:hidden" />
+                    Öffnen
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                    {isExpanded ? <CaretUp size={14} className="sm:w-4 sm:h-4" /> : <CaretDown size={14} className="sm:w-4 sm:h-4" />}
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    {isExpanded ? <CaretUp size={16} /> : <CaretDown size={16} />}
                   </Button>
                 </div>
               </div>
@@ -350,24 +339,9 @@ export function TutorDashboard({
                       
                       <div className="grid gap-3 sm:grid-cols-2">
                         {taskBlocks.map((block, blockIdx) => (
-                          <Card
-                            key={`${module.id}-block-${blockIdx}`}
+                          <Card 
+                            key={`${module.id}-block-${blockIdx}`} 
                             className={`p-3 border-l-4 ${block.color}`}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              const sequence = block.tasks
-                              const startTask = sequence.find(t => !t.completed) || sequence[0]
-                              onStartTaskSequence?.(sequence, startTask?.id)
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault()
-                                const sequence = block.tasks
-                                const startTask = sequence.find(t => !t.completed) || sequence[0]
-                                onStartTaskSequence?.(sequence, startTask?.id)
-                              }
-                            }}
                           >
                             <div className="flex items-center gap-2 mb-2">
                               {block.icon}
@@ -376,11 +350,11 @@ export function TutorDashboard({
                                 {block.tasks.length} Aufgaben
                               </Badge>
                             </div>
-                              <p className="text-xs text-muted-foreground mb-2">{block.description}</p>
-
+                            <p className="text-xs text-muted-foreground mb-2">{block.description}</p>
+                            
                             <div className="space-y-1.5">
                               {block.tasks.slice(0, 3).map(task => (
-                                <div
+                                <div 
                                   key={task.id}
                                   className="flex items-center gap-2 p-2 rounded-md bg-background/50 hover:bg-background cursor-pointer group text-xs"
                                   onClick={(e) => {
@@ -389,15 +363,10 @@ export function TutorDashboard({
                                   }}
                                 >
                                   <div className="flex-1 min-w-0 truncate font-medium">
-                                    <MarkdownRenderer
-                                      content={getTaskPreview(task)}
-                                      compact
-                                      truncateLines={1}
-                                      className="text-xs font-medium"
-                                    />
+                                    {task.title || task.question.substring(0, 50)}...
                                   </div>
                                   {getDifficultyBadge(task.difficulty)}
-                                  <ArrowRight
+                                  <ArrowRight 
                                     size={12} 
                                     className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
                                   />

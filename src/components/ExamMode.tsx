@@ -21,21 +21,50 @@ import {
 } from '@/lib/exam-storage'
 import { toast } from 'sonner'
 
+// Globaler State-Typ für Exam-Generierung (wird in App.tsx verwendet)
+export interface ExamGenerationState {
+  moduleId: string
+  moduleName: string
+  phase: 'preparing' | 'ready'
+  progress: number
+  isComplete: boolean
+  session: ExamSession | null
+}
+
 interface ExamModeProps {
   module: Module
   scripts: Script[]
   onBack: () => void
   /** Formelsammlungen für die Prüfung */
   formulaSheets?: Script[]
+  /** Globaler Generierungs-State (wird von App.tsx verwaltet) */
+  generationState?: ExamGenerationState | null
+  /** Callback um den Generierungs-State zu aktualisieren */
+  onGenerationStateChange?: (state: ExamGenerationState | null) => void
+  /** Callback wenn minimiert wird - User geht zurück zur vorherigen View */
+  onMinimizeToBackground?: () => void
 }
 
-type ExamPhase = 'setup' | 'preparing' | 'in-progress' | 'results'
+type ExamPhase = 'setup' | 'preparing' | 'ready' | 'in-progress' | 'results'
 
-export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamModeProps) {
-  const [phase, setPhase] = useState<ExamPhase>('setup')
-  const [session, setSession] = useState<ExamSession | null>(null)
+export function ExamMode({ 
+  module, 
+  scripts, 
+  onBack, 
+  formulaSheets = [],
+  generationState,
+  onGenerationStateChange,
+  onMinimizeToBackground,
+}: ExamModeProps) {
+  // Initialisiere Phase basierend auf externem State (falls vorhanden)
+  const initialPhase: ExamPhase = generationState?.moduleId === module.id 
+    ? generationState.phase 
+    : 'setup'
+  
+  const [phase, setPhase] = useState<ExamPhase>(initialPhase)
+  const [session, setSession] = useState<ExamSession | null>(generationState?.session || null)
   const [results, setResults] = useState<ExamResults | null>(null)
-  const [preparationProgress, setPreparationProgress] = useState(0)
+  const [preparationProgress, setPreparationProgress] = useState(generationState?.progress || 0)
   const [preparationStep, setPreparationStep] = useState<'style' | 'generating' | 'finalizing'>('style')
   const [generatedCount, setGeneratedCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
@@ -44,6 +73,38 @@ export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamMo
 
   const { standardModel } = useLLMModel()
   const { mode: preferredInputMode } = usePreferredInputMode()
+
+  // Sync mit externem generationState wenn wir wieder geöffnet werden
+  useEffect(() => {
+    if (generationState?.moduleId === module.id) {
+      if (generationState.phase === 'preparing' || generationState.phase === 'ready') {
+        setPhase(generationState.phase)
+        setPreparationProgress(generationState.progress)
+        if (generationState.session) {
+          setSession(generationState.session)
+        }
+      }
+    }
+  }, [generationState, module.id])
+
+  // Update externen State wenn sich lokaler State ändert
+  useEffect(() => {
+    if (phase === 'preparing' || phase === 'ready') {
+      onGenerationStateChange?.({
+        moduleId: module.id,
+        moduleName: module.name,
+        phase,
+        progress: preparationProgress,
+        isComplete: phase === 'ready',
+        session,
+      })
+    } else {
+      // Wenn wir in-progress oder results sind, lösche den externen State
+      if (phase === 'in-progress') {
+        onGenerationStateChange?.(null)
+      }
+    }
+  }, [phase, preparationProgress, session, module.id, module.name, onGenerationStateChange])
 
   // Check for paused exam on mount
   useEffect(() => {
@@ -132,18 +193,31 @@ export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamMo
       setSession(newSession)
       setPreparationProgress(100)
       
-      // Kurze Verzögerung für UX
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      setPhase('in-progress')
-      toast.success('Prüfung gestartet! Viel Erfolg!')
+      // Wechsel zu 'ready' Phase statt sofort zu starten
+      setPhase('ready')
+      toast.success('Prüfung wurde generiert!')
 
     } catch (error) {
       console.error('Fehler bei Prüfungsvorbereitung:', error)
       toast.error('Fehler bei der Prüfungsvorbereitung. Bitte versuche es erneut.')
       setPhase('setup')
+      onGenerationStateChange?.(null)
     }
-  }, [categorizedScripts, module.id, standardModel])
+  }, [categorizedScripts, module.id, standardModel, onGenerationStateChange])
+
+  // Tatsächlicher Start der Prüfung
+  const handleActualStart = useCallback(() => {
+    if (!session) return
+    setPhase('in-progress')
+    onGenerationStateChange?.(null) // Generierung abgeschlossen, Widget verstecken
+    toast.success('Prüfung gestartet! Viel Erfolg!')
+  }, [session, onGenerationStateChange])
+
+  // Minimieren Handler - User geht zurück zur vorherigen View
+  const handleMinimize = useCallback(() => {
+    // Rufe den Callback auf, damit App.tsx den User zurückbringt
+    onMinimizeToBackground?.()
+  }, [onMinimizeToBackground])
 
   // Aktualisiere Task-Antwort
   const handleUpdateTask = useCallback((taskId: string, updates: Partial<ExamTask>) => {
@@ -406,6 +480,7 @@ export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamMo
       )
 
     case 'preparing':
+      // Zeige den Ladescreen
       return (
         <ExamPreparation
           module={module}
@@ -413,6 +488,23 @@ export function ExamMode({ module, scripts, onBack, formulaSheets = [] }: ExamMo
           currentStep={preparationStep}
           generatedCount={generatedCount}
           totalCount={totalCount}
+          isComplete={false}
+          onMinimize={handleMinimize}
+        />
+      )
+
+    case 'ready':
+      // Prüfung ist generiert, warte auf manuellen Start
+      return (
+        <ExamPreparation
+          module={module}
+          progress={100}
+          currentStep="finalizing"
+          generatedCount={totalCount}
+          totalCount={totalCount}
+          isComplete={true}
+          onStart={handleActualStart}
+          onMinimize={handleMinimize}
         />
       )
 

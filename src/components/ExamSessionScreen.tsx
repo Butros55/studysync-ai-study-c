@@ -479,8 +479,8 @@ export function ExamSessionScreen({
           </Collapsible>
 
           {/* Antwort-Bereich */}
-          <Card>
-            <CardContent className="p-4">
+          <Card className="flex-1 flex flex-col min-h-[400px]">
+            <CardContent className="p-4 flex-1 flex flex-col">
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="font-medium text-sm">Deine Antwort</h3>
                 {/* Only show tabs if preference is 'draw' or not set */}
@@ -506,18 +506,20 @@ export function ExamSessionScreen({
                 )}
               </div>
 
-              <AnimatePresence mode="wait">
-                {/* Only render canvas if inputMode is 'draw' AND preference allows drawing */}
-                {inputMode === 'draw' && showInputModeTabs ? (
-                  <motion.div
-                    key="draw"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <AdvancedDrawingCanvas
-                      onContentChange={setHasCanvasContent}
-                      clearTrigger={clearCanvasTrigger}
+              <div className="flex-1 min-h-0">
+                <AnimatePresence mode="wait">
+                  {/* Only render canvas if inputMode is 'draw' AND preference allows drawing */}
+                  {inputMode === 'draw' && showInputModeTabs ? (
+                    <motion.div
+                      key="draw"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="h-full"
+                    >
+                      <AdvancedDrawingCanvas
+                        onContentChange={setHasCanvasContent}
+                        clearTrigger={clearCanvasTrigger}
                       onCanvasDataUrl={(url) => {
                         setCanvasDataUrl(url)
                         if (url) {
@@ -539,16 +541,18 @@ export function ExamSessionScreen({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
+                    className="h-full"
                   >
                     <Textarea
                       value={textAnswer}
                       onChange={(e) => setTextAnswer(e.target.value)}
                       placeholder="Schreibe deine Antwort hier..."
-                      className="min-h-[250px] sm:min-h-[300px] font-mono resize-none text-sm"
+                      className="min-h-[250px] sm:min-h-[300px] h-full font-mono resize-none text-sm"
                     />
                   </motion.div>
                 )}
-              </AnimatePresence>
+                </AnimatePresence>
+              </div>
 
               {/* Action Buttons */}
               <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t">

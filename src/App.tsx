@@ -16,7 +16,8 @@ import { CostTrackingDashboard } from './components/CostTrackingDashboard'
 import { DebugModeToggle } from './components/DebugModeToggle'
 import { LocalStorageIndicator } from './components/LocalStorageIndicator'
 import { TutorDashboard } from './components/TutorDashboard'
-import { ExamMode } from './components/ExamMode'
+import { ExamMode, type ExamGenerationState } from './components/ExamMode'
+import { ExamPreparationMinimized } from './components/ExamPreparation'
 import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
 import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
@@ -149,6 +150,9 @@ function App() {
   
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
   const [storageInitialized, setStorageInitialized] = useState(false)
+  
+  // Globaler State für Exam-Generierung (damit das Widget überall sichtbar ist)
+  const [examGenerationState, setExamGenerationState] = useState<ExamGenerationState | null>(null)
   
   // Ref für versteckten File-Input (Import)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -1712,6 +1716,16 @@ Gib deine Antwort als JSON zurück:
           onClose={() => setActiveFlashcards(null)}
           onReview={handleReviewFlashcard}
         />
+        {examGenerationState && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => {
+              setActiveFlashcards(null)
+              setShowExamMode(true)
+            }}
+          />
+        )}
       </>
     )
   }
@@ -1734,6 +1748,16 @@ Gib deine Antwort als JSON zurück:
           onSubmit={handleQuizSubmit}
           feedback={taskFeedback || undefined}
         />
+        {examGenerationState && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => {
+              setShowQuizMode(false)
+              setShowExamMode(true)
+            }}
+          />
+        )}
       </>
     )
   }
@@ -1750,7 +1774,18 @@ Gib deine Antwort als JSON zurück:
           module={selectedModule}
           scripts={moduleScripts}
           formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
-          onBack={() => setShowExamMode(false)}
+          onBack={() => {
+            // Wenn gerade generiert wird, nicht den State löschen
+            if (examGenerationState?.phase === 'preparing' || examGenerationState?.phase === 'ready') {
+              setShowExamMode(false)
+            } else {
+              setShowExamMode(false)
+              setExamGenerationState(null)
+            }
+          }}
+          generationState={examGenerationState}
+          onGenerationStateChange={setExamGenerationState}
+          onMinimizeToBackground={() => setShowExamMode(false)}
         />
       </>
     )
@@ -1786,6 +1821,19 @@ Gib deine Antwort als JSON zurück:
           }}
           formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
         />
+        {examGenerationState && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => {
+              setActiveTask(null)
+              setTaskFeedback(null)
+              setTaskSequence(null)
+              setActiveSequenceIndex(null)
+              setShowExamMode(true)
+            }}
+          />
+        )}
       </>
     )
   }
@@ -1807,6 +1855,16 @@ Gib deine Antwort als JSON zurück:
           onBack={() => setShowStatistics(false)}
           selectedModuleId={selectedModuleId || undefined}
         />
+        {examGenerationState && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => {
+              setShowStatistics(false)
+              setShowExamMode(true)
+            }}
+          />
+        )}
       </>
     )
   }
@@ -1820,6 +1878,16 @@ Gib deine Antwort als JSON zurück:
           onClearAll={() => setPipelineTasks([])}
         />
         <CostTrackingDashboard onBack={() => setShowCostTracking(false)} />
+        {examGenerationState && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => {
+              setShowCostTracking(false)
+              setShowExamMode(true)
+            }}
+          />
+        )}
       </>
     )
   }
@@ -1876,6 +1944,13 @@ Gib deine Antwort als JSON zurück:
             flashcards: flashcards?.filter(f => f.moduleId === moduleToEdit.id).length || 0,
           } : undefined}
         />
+        {examGenerationState && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => setShowExamMode(true)}
+          />
+        )}
       </>
     )
   }
@@ -2032,6 +2107,15 @@ Gib deine Antwort als JSON zurück:
           <OnboardingTutorial 
             onComplete={completeOnboarding}
             onCreateModule={() => setCreateDialogOpen(true)}
+          />
+        )}
+        
+        {/* Globales Exam-Generation Widget - immer sichtbar während einer Generierung */}
+        {examGenerationState && !showExamMode && (
+          <ExamPreparationMinimized
+            progress={examGenerationState.progress}
+            isComplete={examGenerationState.isComplete}
+            onClick={() => setShowExamMode(true)}
           />
         )}
       </div>
