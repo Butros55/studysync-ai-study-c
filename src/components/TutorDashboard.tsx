@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { Progress } from '@/components/ui/progress'
+import { extractTaskTags } from '@/lib/tag-utils'
 import { 
   Collapsible,
   CollapsibleContent,
@@ -356,20 +357,34 @@ export function TutorDashboard({
                               {block.tasks.slice(0, 3).map(task => (
                                 <div 
                                   key={task.id}
-                                  className="flex items-center gap-2 p-2 rounded-md bg-background/50 hover:bg-background cursor-pointer group text-xs"
+                                  className="flex items-start gap-2 p-2 rounded-md bg-background/50 hover:bg-background cursor-pointer group text-xs"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     onSolveTask(task)
                                   }}
                                 >
-                                  <div className="flex-1 min-w-0 truncate font-medium">
-                                    {task.title || task.question.substring(0, 50)}...
+                                  <div className="flex-1 min-w-0">
+                                    <MarkdownRenderer
+                                      content={task.title || task.question}
+                                      compact
+                                      truncateLines={2}
+                                      className="font-medium text-xs sm:text-sm"
+                                    />
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {extractTaskTags(task).map((tag) => (
+                                        <Badge key={`${task.id}-${tag.key}`} variant="outline" className="text-[10px]">
+                                          {tag.label}
+                                        </Badge>
+                                      ))}
+                                    </div>
                                   </div>
-                                  {getDifficultyBadge(task.difficulty)}
-                                  <ArrowRight 
-                                    size={12} 
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" 
-                                  />
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {getDifficultyBadge(task.difficulty)}
+                                    <ArrowRight 
+                                      size={12} 
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity" 
+                                    />
+                                  </div>
                                 </div>
                               ))}
                               {block.tasks.length > 3 && (

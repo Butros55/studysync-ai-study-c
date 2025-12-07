@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   CalendarBlank,
   Lightning,
@@ -20,9 +22,11 @@ import {
   Fire,
   ChartBar,
   ArrowsClockwise,
+  UsersThree,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
-import { formatExamDate, getDaysUntilExam } from '@/lib/recommendations'
+import { formatExamDate, getDaysUntilExam, getConsolidatedTopicStats } from '@/lib/recommendations'
+import { extractTaskTags } from '@/lib/tag-utils'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 interface ModuleDashboardProps {
@@ -37,46 +41,52 @@ interface ModuleDashboardProps {
   onBlockComplete?: (blockId: string) => void
   onGenerateAllTasks?: () => void
   isGenerating?: boolean
+  onStartStudyRoom?: (params: { moduleId: string; topic?: string; nickname: string }) => void
+  onJoinStudyRoom?: (params: { code: string; nickname: string }) => void
+  studyRoomBusy?: boolean
+  defaultNickname?: string
 }
 
 // Hilfsfunktion: Generiere Lernblöcke aus Aufgaben
-function generateLearningBlocks(tasks: Task[], scripts: Script[]): ModuleLearningBlock[] {
-  // Gruppiere nach Tags/Topics
-  const topicGroups = new Map<string, Task[]>()
-  
-  for (const task of tasks) {
-    const topic = task.topic || task.tags?.[0] || 'Allgemein'
-    if (!topicGroups.has(topic)) {
-      topicGroups.set(topic, [])
-    }
-    topicGroups.get(topic)!.push(task)
-  }
-  
+function generateLearningBlocks(tasks: Task[]): ModuleLearningBlock[] {
+  const blocksByTag = new Map<string, { label: string; tasks: Task[] }>()
+
+  tasks.forEach((task) => {
+    const taskTags = extractTaskTags(task)
+
+    taskTags.forEach(({ key, label }) => {
+      if (!blocksByTag.has(key)) {
+        blocksByTag.set(key, { label, tasks: [] })
+      }
+      blocksByTag.get(key)!.tasks.push(task)
+    })
+  })
+
   const blocks: ModuleLearningBlock[] = []
   let order = 0
-  
-  topicGroups.forEach((topicTasks, topic) => {
-    // Sortiere nach Schwierigkeit
-    const sortedTasks = [...topicTasks].sort((a, b) => {
+
+  blocksByTag.forEach(({ label, tasks: tagTasks }, key) => {
+    const sortedTasks = [...tagTasks].sort((a, b) => {
       const diffOrder = { easy: 0, medium: 1, hard: 2 }
       return diffOrder[a.difficulty] - diffOrder[b.difficulty]
     })
-    
-    const requiredTasks: TaskRef[] = sortedTasks.map(t => ({
+
+    const requiredTasks: TaskRef[] = sortedTasks.map((t) => ({
       id: t.id,
-      title: t.title || t.question.substring(0, 50) + '...',
+      title: t.title || `${t.question.substring(0, 50)}...`,
       difficulty: t.difficulty,
       topic: t.topic,
     }))
-    
-    const completedTasks = sortedTasks.filter(t => t.completed).map(t => t.id)
+
+    const completedTasks = sortedTasks.filter((t) => t.completed).map((t) => t.id)
     const isCompleted = completedTasks.length === requiredTasks.length && requiredTasks.length > 0
-    
+    const safeId = key.replace(/[^a-z0-9]+/g, '-') || 'tag'
+
     blocks.push({
-      id: `block-${topic.toLowerCase().replace(/\s+/g, '-')}`,
-      title: topic,
-      description: `${requiredTasks.length} Aufgaben zu ${topic}`,
-      topics: [topic],
+      id: `block-${safeId}`,
+      title: label,
+      description: `${requiredTasks.length} Aufgaben zu ${label}`,
+      topics: [label],
       requiredTasks,
       completedTasks,
       completed: isCompleted,
@@ -84,7 +94,7 @@ function generateLearningBlocks(tasks: Task[], scripts: Script[]): ModuleLearnin
       order: order++,
     })
   })
-  
+
   return blocks.sort((a, b) => a.order - b.order)
 }
 
@@ -134,12 +144,24 @@ export function ModuleDashboard({
   onBlockComplete,
   onGenerateAllTasks,
   isGenerating = false,
+  onStartStudyRoom,
+  onJoinStudyRoom,
+  studyRoomBusy = false,
+  defaultNickname,
 }: ModuleDashboardProps) {
   const [showBlockCompleteOverlay, setShowBlockCompleteOverlay] = useState<string | null>(null)
+  const [studyRoomNickname, setStudyRoomNickname] = useState(defaultNickname || '')
+  const [studyRoomTopic, setStudyRoomTopic] = useState('')
+  const [studyRoomCode, setStudyRoomCode] = useState('')
+  const [studyRoomExpanded, setStudyRoomExpanded] = useState(false)
   
   // Berechnungen
-  const learningBlocks = useMemo(() => generateLearningBlocks(tasks, scripts), [tasks, scripts])
-  const topicStats = useMemo(() => calculateTopicStats(tasks), [tasks])
+  const learningBlocks = useMemo(() => generateLearningBlocks(tasks), [tasks])
+  const topicStats = useMemo(() => {
+    const consolidated = getConsolidatedTopicStats(module.id)
+    if (consolidated.length > 0) return consolidated
+    return calculateTopicStats(tasks)
+  }, [module.id, tasks])
   
   // Fortschritt
   const completedTasks = tasks.filter(t => t.completed).length
@@ -154,10 +176,12 @@ export function ModuleDashboard({
   
   // Lange nicht geübte Themen (> 7 Tage)
   const staleTopics = topicStats.filter(s => {
-    if (!s.lastPracticed) return true
+    if (!s.lastPracticed) return false
     const daysSince = Math.floor((Date.now() - new Date(s.lastPracticed).getTime()) / (1000 * 60 * 60 * 24))
     return daysSince > 7
   })
+  const neverPracticedTopics = topicStats.filter((s) => !s.lastPracticed)
+  const nextIncompleteTask = tasks.find((t) => !t.completed)
   
   // Prüfungstermin
   const daysUntilExam = module.examDate ? getDaysUntilExam(module.examDate) : null
@@ -292,6 +316,85 @@ export function ModuleDashboard({
         </Card>
       </div>
 
+      {/* Lerngruppe / StudyRoom */}
+      <Card>
+        <CardHeader
+          className="cursor-pointer"
+          onClick={() => setStudyRoomExpanded((prev) => !prev)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UsersThree className="w-5 h-5" />
+              <div>
+                <CardTitle className="text-base">Lerngruppe</CardTitle>
+                <CardDescription>Gemeinsam lernen & challengen</CardDescription>
+              </div>
+            </div>
+            <Badge variant="outline">{studyRoomExpanded ? 'Schließen' : 'Öffnen'}</Badge>
+          </div>
+        </CardHeader>
+        {studyRoomExpanded && (
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="study-nickname">Nickname</Label>
+              <Input
+                id="study-nickname"
+                value={studyRoomNickname}
+                onChange={(e) => setStudyRoomNickname(e.target.value)}
+                placeholder="Dein Anzeigename im Raum"
+              />
+              <Label htmlFor="study-topic" className="text-sm text-muted-foreground">
+                Optionales Thema/Tag
+              </Label>
+              <Input
+                id="study-topic"
+                value={studyRoomTopic}
+                onChange={(e) => setStudyRoomTopic(e.target.value)}
+                placeholder="z.B. Analysis, Kostenrechnung"
+              />
+              <Button
+                className="w-full"
+                disabled={!onStartStudyRoom || studyRoomBusy}
+                onClick={() =>
+                  onStartStudyRoom?.({
+                    moduleId: module.id,
+                    topic: studyRoomTopic || undefined,
+                    nickname: studyRoomNickname || defaultNickname || 'Gast',
+                  })
+                }
+              >
+                Lerngruppe starten (Host)
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="study-code">Room-Code</Label>
+              <Input
+                id="study-code"
+                value={studyRoomCode}
+                onChange={(e) => setStudyRoomCode(e.target.value.toUpperCase())}
+                placeholder="Z.B. ABC123"
+              />
+              <div className="text-xs text-muted-foreground">
+                Der Code besteht aus 6 Zeichen (A-Z, 0-9). Polling aktualisiert den Raum alle paar Sekunden.
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={!onJoinStudyRoom || !studyRoomCode || studyRoomBusy}
+                onClick={() =>
+                  onJoinStudyRoom?.({
+                    code: studyRoomCode,
+                    nickname: studyRoomNickname || defaultNickname || 'Gast',
+                  })
+                }
+              >
+                Lerngruppe beitreten
+              </Button>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Was du heute lernen solltest */}
       <Card>
         <CardHeader>
@@ -335,11 +438,13 @@ export function ModuleDashboard({
                         truncateLines={2}
                         className="font-medium text-sm"
                       />
-                      {task.topic && (
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {task.topic}
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {extractTaskTags(task).map((tag) => (
+                          <Badge key={`${task.id}-${tag.key}`} variant="secondary" className="text-[10px]">
+                            {tag.label}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <Button size="sm" onClick={() => onSolveTask(task)}>
@@ -409,7 +514,7 @@ export function ModuleDashboard({
         </Card>
 
         {/* Lange nicht geübt */}
-        <Card className={staleTopics.length > 0 ? 'border-orange-500/30' : ''}>
+        <Card className={staleTopics.length > 0 || neverPracticedTopics.length > 0 ? 'border-orange-500/30' : ''}>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Clock className="w-4 h-4 text-orange-500" />
@@ -429,6 +534,26 @@ export function ModuleDashboard({
                     </span>
                   </div>
                 ))}
+              </div>
+            ) : neverPracticedTopics.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Noch keine Uebungsdaten fuer:</p>
+                <div className="flex flex-wrap gap-1">
+                  {neverPracticedTopics.slice(0, 6).map((topic) => (
+                    <Badge key={topic.topic} variant="secondary" className="text-[11px]">
+                      {topic.topic}
+                    </Badge>
+                  ))}
+                </div>
+                {nextIncompleteTask && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onSolveTask(nextIncompleteTask)}
+                  >
+                    Erste Aufgabe starten
+                  </Button>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">

@@ -139,66 +139,81 @@ export function AdvancedDrawingCanvas({
   const resizeHandleRef = useRef<'nw' | 'ne' | 'sw' | 'se' | null>(null)
   const dragStartRef = useRef<Point | null>(null)
   const initialBoundsRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
+  const lastResizeScaleRef = useRef<{ x: number; y: number }>({ x: 1, y: 1 })
 
   // Temporärer Tool-Wechsel für Pen-Button-Eraser
   const originalToolRef = useRef<DrawingTool | null>(null)
   
   // Track previous task ID for change detection
   const previousTaskIdRef = useRef<string | undefined>(undefined)
+  const isAnimatingRef = useRef(false)
+  const animationFrameRef = useRef<number | null>(null)
+  const cancelAnimation = () => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    isAnimatingRef.current = false
+  }
 
+  // Disable animations for reliability
+  const animateErase = useCallback(async () => {
+    drawing.clearAll()
+    isAnimatingRef.current = false
+  }, [drawing])
+
+  const animateReplay = useCallback(async (strokesToReplay: typeof drawing.strokes) => {
+    drawing.loadStrokes(strokesToReplay || [])
+    isAnimatingRef.current = false
+  }, [drawing])
   // Handle task change: clear canvas, then load new strokes if any
   // This ensures proper per-task state management
   useEffect(() => {
     const taskId = task?.id
     const previousTaskId = previousTaskIdRef.current
     
-    // Check if task actually changed
-    if (taskId !== previousTaskId) {
-      console.log(`[DrawingCanvas] Task changed: ${previousTaskId} -> ${taskId}`)
-      
-      // Reset load flag FIRST
-      initialStrokesLoadedRef.current = false
-      
-      // Clear canvas for new task
-      drawing.clearAll()
-      drawing.resetView()
-      
-      // Update previous task ID
-      previousTaskIdRef.current = taskId
-      
-      // If new task has saved strokes, load them
-      if (initialStrokes && initialStrokes.length > 0) {
-        console.log(`[DrawingCanvas] Loading ${initialStrokes.length} saved strokes for task ${taskId}`)
-        drawing.loadStrokes(initialStrokes as any)
+    const loadStrokesWithAnimation = async () => {
+      if (taskId !== previousTaskId) {
+        cancelAnimation()
+        initialStrokesLoadedRef.current = false
+
+        await animateErase()
+        drawing.resetView()
+
+        previousTaskIdRef.current = taskId
+
+        if (initialStrokes && initialStrokes.length > 0) {
+          await animateReplay(initialStrokes as any)
+          initialStrokesLoadedRef.current = true
+          onContentChange(true)
+        } else {
+          drawing.clearAll()
+          initialStrokesLoadedRef.current = true
+          onContentChange(false)
+        }
+      } else if (
+        taskId === previousTaskId &&
+        initialStrokes &&
+        initialStrokes.length > 0 &&
+        !initialStrokesLoadedRef.current &&
+        drawing.strokes.length === 0
+      ) {
+        await animateReplay(initialStrokes as any)
         initialStrokesLoadedRef.current = true
         onContentChange(true)
       } else {
-        console.log(`[DrawingCanvas] No saved strokes for task ${taskId}, starting fresh`)
-        onContentChange(false)
+        // No animation needed, ensure flag reset
+        isAnimatingRef.current = false
       }
     }
-  }, [task?.id, initialStrokes, drawing, onContentChange])
-  
-  // Handle initial load when strokes become available after mount
-  // (e.g., when navigating back to a task)
-  useEffect(() => {
-    const taskId = task?.id
-    
-    // Only load if task didn't change but strokes became available
-    if (
-      taskId === previousTaskIdRef.current &&
-      initialStrokes && 
-      initialStrokes.length > 0 && 
-      !initialStrokesLoadedRef.current &&
-      drawing.strokes.length === 0
-    ) {
-      console.log(`[DrawingCanvas] Restoring ${initialStrokes.length} strokes for existing task ${taskId}`)
-      drawing.loadStrokes(initialStrokes as any)
-      initialStrokesLoadedRef.current = true
-      onContentChange(true)
-    }
-  }, [initialStrokes, drawing, onContentChange, task?.id])
 
+    loadStrokesWithAnimation()
+
+    return () => {
+      cancelAnimation()
+    }
+  }, [task?.id, initialStrokes, drawing, onContentChange, animateErase, animateReplay])
+  
   // Initialisiere Canvas-Größe
   const updateCanvasSize = useCallback(() => {
     const container = containerRef.current
@@ -214,15 +229,38 @@ export function AdvancedDrawingCanvas({
     return () => window.removeEventListener('resize', updateCanvasSize)
   }, [updateCanvasSize, isFullscreen])
 
-  // Strokes-Änderungen propagieren
+  // Strokes-Änderungen propagieren (debounced, nur wenn echte Änderung) - keine Saves während Animation
+  const prevSerializedStrokesRef = useRef<string>('')
+  const saveTimerRef = useRef<number | null>(null)
   useEffect(() => {
-    if (onStrokesChange && drawing.strokes.length > 0) {
-      onStrokesChange(drawing.strokes)
+    if (!onStrokesChange || isAnimatingRef.current) return
+    const serialized = JSON.stringify(drawing.strokes)
+    if (serialized === prevSerializedStrokesRef.current) return
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      prevSerializedStrokesRef.current = serialized
+      // Deep copy points to avoid mutation downstream
+      const cloned = drawing.strokes.map((s) => ({
+        ...s,
+        points: s.points.map((p) => ({ ...p })),
+      }))
+      onStrokesChange(cloned)
+    }, 200)
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current)
+      }
     }
   }, [drawing.strokes, onStrokesChange])
 
   // Clear bei clearTrigger
   useEffect(() => {
+    cancelAnimation()
     drawing.clearAll()
     drawing.resetView()
     onContentChange(false)
@@ -441,6 +479,8 @@ export function AdvancedDrawingCanvas({
 
   // Pointer Event Handlers
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isAnimatingRef.current) return
+    isAnimatingRef.current = false
     e.preventDefault()
     const canvas = canvasRef.current
     if (!canvas) return
@@ -504,6 +544,7 @@ export function AdvancedDrawingCanvas({
               resizeHandleRef.current = handle.pos
               dragStartRef.current = point
               initialBoundsRef.current = { ...boundingBox }
+              lastResizeScaleRef.current = { x: 1, y: 1 }
               return
             }
           }
@@ -582,6 +623,7 @@ export function AdvancedDrawingCanvas({
               resizeHandleRef.current = handle.pos
               dragStartRef.current = point
               initialBoundsRef.current = { ...boundingBox }
+              lastResizeScaleRef.current = { x: 1, y: 1 }
               return
             }
           }
@@ -618,6 +660,7 @@ export function AdvancedDrawingCanvas({
   }, [drawing, getCanvasCoordinates, getPinchDistance, getSelectionBoundingBox])
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isAnimatingRef.current) return
     e.preventDefault()
     
     const pointerInfo = activePointersRef.current.get(e.pointerId)
@@ -677,13 +720,14 @@ export function AdvancedDrawingCanvas({
             pivotY = bounds.y + bounds.height
           }
           
-          // Mindestgröße sicherstellen
-          scaleX = Math.max(0.1, scaleX)
-          scaleY = Math.max(0.1, scaleY)
+          // Mindestgröße sicherstellen und inkrementell skalieren, damit Werte nicht explodieren
+          const nextScaleX = Math.max(0.1, scaleX)
+          const nextScaleY = Math.max(0.1, scaleY)
+          const deltaX = nextScaleX / (lastResizeScaleRef.current.x || 1)
+          const deltaY = nextScaleY / (lastResizeScaleRef.current.y || 1)
           
-          drawing.scaleSelectedStrokes(scaleX, scaleY, pivotX, pivotY)
-          // Initial-Bounds aktualisieren für nächste Berechnung
-          initialBoundsRef.current = getSelectionBoundingBox() || initialBoundsRef.current
+          drawing.scaleSelectedStrokes(deltaX, deltaY, pivotX, pivotY)
+          lastResizeScaleRef.current = { x: nextScaleX, y: nextScaleY }
         } else if (isDraggingSelectionRef.current && dragStartRef.current) {
           // Selection verschieben
           const deltaX = point.x - dragStartRef.current.x
@@ -748,6 +792,7 @@ export function AdvancedDrawingCanvas({
   }, [drawing, getCanvasCoordinates, getPinchDistance])
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isAnimatingRef.current) return
     const canvas = canvasRef.current
     if (canvas && canvas.hasPointerCapture(e.pointerId)) {
       canvas.releasePointerCapture(e.pointerId)
@@ -780,6 +825,7 @@ export function AdvancedDrawingCanvas({
           resizeHandleRef.current = null
           dragStartRef.current = null
           initialBoundsRef.current = null
+          lastResizeScaleRef.current = { x: 1, y: 1 }
         } else if (isDraggingSelectionRef.current) {
           isDraggingSelectionRef.current = false
           dragStartRef.current = null
@@ -799,6 +845,7 @@ export function AdvancedDrawingCanvas({
           resizeHandleRef.current = null
           dragStartRef.current = null
           initialBoundsRef.current = null
+          lastResizeScaleRef.current = { x: 1, y: 1 }
         } else if (isDraggingSelectionRef.current) {
           isDraggingSelectionRef.current = false
           dragStartRef.current = null
@@ -832,7 +879,6 @@ export function AdvancedDrawingCanvas({
   // Wheel für Zoom
   const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault()
       const delta = e.deltaY > 0 ? 0.9 : 1.1
       const newScale = drawing.scale * delta
       
@@ -1083,11 +1129,13 @@ export function AdvancedDrawingCanvas({
 
   // Cursor basierend auf Tool
   const getCursor = () => {
+    const penCursor = 'url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 16 16%27><circle cx=%278%27 cy=%278%27 r=%275%27 fill=%27white%27 fill-opacity=%270.8%27 stroke=%27%23000%27 stroke-opacity=%270.25%27 stroke-width=%271%27 /></svg>") 8 8, crosshair'
+    const eraserCursor = 'url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2720%27 height=%2720%27 viewBox=%270 0 20 20%27><circle cx=%2710%27 cy=%2710%27 r=%276%27 fill=%27white%27 fill-opacity=%270.7%27 stroke=%27%23000%27 stroke-opacity=%270.3%27 stroke-width=%271.5%27 /></svg>") 10 10, crosshair'
     switch (drawing.tool) {
       case 'pen':
-        return 'crosshair'
+        return penCursor
       case 'eraser':
-        return 'cell'
+        return eraserCursor
       case 'select':
         return isDraggingSelectionRef.current ? 'grabbing' : 'default'
       default:

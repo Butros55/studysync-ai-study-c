@@ -11,6 +11,7 @@ import { TaskAttachments } from './TaskAttachments'
 import { SolutionPanel } from './SolutionPanel'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { FormulaSheetPanel } from './FormulaSheetPanel'
+import { Badge } from './ui/badge'
 import {
   CheckCircle,
   Lightbulb,
@@ -35,6 +36,19 @@ interface TaskSolverProps {
   onTaskUpdate?: (updates: Partial<Task>) => void
   /** Formelsammlungen aus dem aktuellen Modul */
   formulaSheets?: Script[]
+  /** Hide solution block (e.g. in StudyRoom challenge) */
+  hideSolution?: boolean
+  studyRoomHud?: {
+    roomCode: string
+    roundIndex: number
+    mode: 'collab' | 'challenge'
+    endsAt?: string
+    extensionVotes?: number
+    memberCount?: number
+    submittedCount?: number
+    phase?: string
+    lockCountdownStartAt?: string
+  }
 }
 
 // Prominentes Feedback-Overlay
@@ -159,6 +173,8 @@ export function TaskSolver({
   onNextTask,
   onTaskUpdate,
   formulaSheets = [],
+  hideSolution = false,
+  studyRoomHud,
 }: TaskSolverProps) {
   // Get user's preferred input mode
   const { mode: preferredInputMode, isLoading: isPreferenceLoading } = usePreferredInputMode()
@@ -171,6 +187,28 @@ export function TaskSolver({
   const [canvasDataUrl, setCanvasDataUrl] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFeedbackOverlay, setShowFeedbackOverlay] = useState(false)
+  const [hudRemaining, setHudRemaining] = useState<string>('00:00')
+  const [lockCountdown, setLockCountdown] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!studyRoomHud?.endsAt && !studyRoomHud?.lockCountdownStartAt) return
+    const interval = setInterval(() => {
+      if (studyRoomHud?.lockCountdownStartAt) {
+        const diff = 5000 - (Date.now() - new Date(studyRoomHud.lockCountdownStartAt).getTime())
+        setLockCountdown(diff > 0 ? Math.ceil(diff / 1000) : 0)
+      } else {
+        setLockCountdown(null)
+      }
+      if (studyRoomHud?.endsAt) {
+        const remainingMs = Math.max(0, new Date(studyRoomHud.endsAt).getTime() - Date.now())
+        const totalSeconds = Math.floor(remainingMs / 1000)
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0')
+        const seconds = String(totalSeconds % 60).padStart(2, '0')
+        setHudRemaining(`${minutes}:${seconds}`)
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [studyRoomHud?.endsAt, studyRoomHud?.lockCountdownStartAt])
   
   // Sync inputMode with user preference when it loads
   useEffect(() => {
@@ -274,6 +312,27 @@ export function TaskSolver({
           </div>
         </div>
       </div>
+
+      {studyRoomHud && (
+        <div className="border-b bg-card/60">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline">Room {studyRoomHud.roomCode}</Badge>
+            <Badge variant="secondary">Runde #{studyRoomHud.roundIndex} • {studyRoomHud.mode}</Badge>
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700">
+              Timer {hudRemaining}
+            </Badge>
+            <Badge variant="outline">
+              Submits {studyRoomHud.submittedCount || 0}/{studyRoomHud.memberCount || 0}
+            </Badge>
+            <Badge variant="outline">
+              Votes {studyRoomHud.extensionVotes || 0}/{studyRoomHud.memberCount || 0}
+            </Badge>
+            {lockCountdown !== null && (
+              <Badge variant="destructive">Endet in {lockCountdown}s (alle abgegeben)</Badge>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Collapsible Question Panel */}
       <TaskQuestionPanel task={task} isFullscreen={true} defaultExpanded={!feedback} />
@@ -447,8 +506,8 @@ export function TaskSolver({
               </div>
             </div>
 
-            {/* Musterlösung anzeigen - sowohl im Zeichnen- als auch Tippen-Modus verfügbar */}
-            {task.solution && (
+            {/* Musterlösung anzeigen - optional ausblendbar für StudyRoom */}
+            {!hideSolution && task.solution && (
               <SolutionPanel 
                 solution={task.solutionMarkdown || task.solution} 
                 compact 

@@ -107,64 +107,90 @@ export function useDrawingState() {
     })
   }, [saveToHistory])
 
-  // GoodNotes-Style Eraser: Löscht Punkte in einem Radius und splittet Strokes
+  // GoodNotes-Style Eraser: schneidet Stroke in Segmente anhand des Abstands zu einem Segment
   const eraseAtPoint = useCallback((point: Point, radius: number) => {
+    const lineRadius = radius
+    const distPoint = (a: Point, b: Point) => {
+      const dx = a.x - b.x
+      const dy = a.y - b.y
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+    const distToSegment = (c: Point, a: Point, b: Point) => {
+      const abx = b.x - a.x
+      const aby = b.y - a.y
+      const acx = c.x - a.x
+      const acy = c.y - a.y
+      const abLenSq = abx * abx + aby * aby
+      if (abLenSq === 0) return distPoint(c, a)
+      const t = Math.max(0, Math.min(1, (acx * abx + acy * aby) / abLenSq))
+      const projX = a.x + abx * t
+      const projY = a.y + aby * t
+      const dx = c.x - projX
+      const dy = c.y - projY
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
     setStrokes(prev => {
-      const newStrokes: Stroke[] = []
-      let changed = false
-      
+      const updated: Stroke[] = []
+      let anyChanged = false
+
       for (const stroke of prev) {
-        // Finde Punkte außerhalb des Radierers
         const segments: Point[][] = []
-        let currentSegment: Point[] = []
-        
-        for (const p of stroke.points) {
-          const dx = p.x - point.x
-          const dy = p.y - point.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-          
-          if (distance > radius + stroke.width / 2) {
-            // Punkt ist außerhalb des Radierers
-            currentSegment.push(p)
-          } else {
-            // Punkt wird gelöscht
-            changed = true
-            if (currentSegment.length >= 2) {
-              segments.push(currentSegment)
+        let current: Point[] = []
+        const eraseThreshold = lineRadius + stroke.width / 2
+        let strokeChanged = false
+
+        if (stroke.points.length === 0) continue
+        current.push(stroke.points[0])
+
+        for (let i = 0; i < stroke.points.length - 1; i++) {
+          const p1 = stroke.points[i]
+          const p2 = stroke.points[i + 1]
+          const hit =
+            distToSegment(point, p1, p2) <= eraseThreshold ||
+            distPoint(point, p2) <= eraseThreshold
+
+          if (hit) {
+            strokeChanged = true
+            if (current.length >= 2) segments.push(current)
+            current = []
+            // starte ein neues Segment nur, wenn das Endstck auáerhalb des Radierbereichs liegt
+            if (distPoint(point, p2) > eraseThreshold) {
+              current = [p2]
             }
-            currentSegment = []
+          } else {
+            current.push(p2)
           }
         }
-        
-        // Letztes Segment hinzufügen
-        if (currentSegment.length >= 2) {
-          segments.push(currentSegment)
+
+        if (current.length >= 2) {
+          segments.push(current)
         }
-        
-        // Erstelle neue Strokes aus den Segmenten
+
         if (segments.length === 0) {
-          // Stroke komplett gelöscht
+          if (strokeChanged) anyChanged = true
           continue
-        } else if (segments.length === 1 && segments[0].length === stroke.points.length) {
-          // Stroke unverändert
-          newStrokes.push(stroke)
-        } else {
-          // Stroke wurde gesplittet
-          for (const segment of segments) {
-            newStrokes.push({
+        }
+
+        if (strokeChanged) {
+          anyChanged = true
+          segments.forEach(seg => {
+            updated.push({
               ...stroke,
-              id: `${stroke.id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-              points: segment,
+              id: `${stroke.id}-${Math.random().toString(36).slice(2, 7)}`,
+              points: seg,
             })
-          }
+          })
+        } else {
+          updated.push(stroke)
         }
       }
-      
-      if (changed) {
-        saveToHistory(newStrokes)
+
+      if (anyChanged) {
+        saveToHistory(updated)
+        return updated
       }
-      
-      return changed ? newStrokes : prev
+      return prev
     })
   }, [saveToHistory])
 
@@ -228,17 +254,21 @@ export function useDrawingState() {
     pivotX: number, 
     pivotY: number
   ) => {
+    // clamp per-gesture scaling to avoid jumps/explosions
+    const clampedX = Math.min(2.5, Math.max(0.25, scaleX))
+    const clampedY = Math.min(2.5, Math.max(0.25, scaleY))
+    const widthFactor = Math.min(1.75, Math.max(0.6, (clampedX + clampedY) / 2))
+
     setStrokes(prev => prev.map(stroke => {
       if (selectedStrokeIds.has(stroke.id)) {
         return {
           ...stroke,
           points: stroke.points.map(p => ({
             ...p,
-            x: pivotX + (p.x - pivotX) * scaleX,
-            y: pivotY + (p.y - pivotY) * scaleY,
+            x: pivotX + (p.x - pivotX) * clampedX,
+            y: pivotY + (p.y - pivotY) * clampedY,
           })),
-          // Strichbreite proportional skalieren
-          width: stroke.width * Math.max(scaleX, scaleY),
+          width: Math.min(24, Math.max(0.5, stroke.width * widthFactor)),
         }
       }
       return stroke

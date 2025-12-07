@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Module, Script, StudyNote, Task, Flashcard, FileCategory } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -52,6 +52,10 @@ interface ModuleViewProps {
   onReanalyzeSelectedScripts?: (scriptIds: string[]) => void
   onGenerateNotesForSelected?: (scriptIds: string[]) => void
   onGenerateTasksForSelected?: (scriptIds: string[]) => void
+  onStartStudyRoom?: (params: { moduleId: string; topic?: string; nickname: string }) => void
+  onJoinStudyRoom?: (params: { code: string; nickname: string }) => void
+  studyRoomBusy?: boolean
+  studyRoomNickname?: string
 }
 
 export function ModuleView({
@@ -86,8 +90,37 @@ export function ModuleView({
   onReanalyzeSelectedScripts,
   onGenerateNotesForSelected,
   onGenerateTasksForSelected,
+  onStartStudyRoom,
+  onJoinStudyRoom,
+  studyRoomBusy,
+  studyRoomNickname,
 }: ModuleViewProps) {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`module-active-tab:${module.id}`)
+      return saved || 'dashboard'
+    } catch {
+      return 'dashboard'
+    }
+  })
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`module-active-tab:${module.id}`)
+      setActiveTab(saved || 'dashboard')
+    } catch {
+      setActiveTab('dashboard')
+    }
+  }, [module.id])
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    try {
+      localStorage.setItem(`module-active-tab:${module.id}`, value)
+    } catch {
+      // ignore persistence errors
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -150,7 +183,7 @@ export function ModuleView({
       {/* Hauptinhalt mit flex-1 für Sticky Footer */}
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4 sm:mb-6 w-full grid grid-cols-5 sm:w-auto sm:inline-flex h-auto">
             <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
               <House className="w-4 h-4 sm:mr-1.5" weight="duotone" />
@@ -189,6 +222,10 @@ export function ModuleView({
               onStartTaskSequence={onStartTaskSequence}
               onStartFlashcardStudy={onStartFlashcardStudy}
               onGenerateAllTasks={onGenerateAllTasks}
+              onStartStudyRoom={onStartStudyRoom}
+              onJoinStudyRoom={onJoinStudyRoom}
+              studyRoomBusy={studyRoomBusy}
+              defaultNickname={studyRoomNickname}
             />
           </TabsContent>
 
