@@ -52,6 +52,10 @@ interface ModuleViewProps {
   onReanalyzeSelectedScripts?: (scriptIds: string[]) => void
   onGenerateNotesForSelected?: (scriptIds: string[]) => void
   onGenerateTasksForSelected?: (scriptIds: string[]) => void
+  onStartStudyRoom?: (params: { moduleId: string; topic?: string; nickname: string }) => void
+  onJoinStudyRoom?: (params: { code: string; nickname: string }) => void
+  studyRoomBusy?: boolean
+  studyRoomNickname?: string
 }
 
 export function ModuleView({
@@ -86,6 +90,10 @@ export function ModuleView({
   onReanalyzeSelectedScripts,
   onGenerateNotesForSelected,
   onGenerateTasksForSelected,
+  onStartStudyRoom,
+  onJoinStudyRoom,
+  studyRoomBusy,
+  studyRoomNickname,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('dashboard')
 
@@ -189,6 +197,10 @@ export function ModuleView({
               onStartTaskSequence={onStartTaskSequence}
               onStartFlashcardStudy={onStartFlashcardStudy}
               onGenerateAllTasks={onGenerateAllTasks}
+              onStartStudyRoom={onStartStudyRoom}
+              onJoinStudyRoom={onJoinStudyRoom}
+              studyRoomBusy={studyRoomBusy}
+              defaultNickname={studyRoomNickname}
             />
           </TabsContent>
 

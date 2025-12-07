@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useModules, useScripts, useNotes, useTasks, useFlashcards, migrateFromServerIfNeeded } from './hooks/use-database'
 import { storageReady, downloadExportFile, importData } from './lib/storage'
-import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
+import { Module, Script, StudyNote, Task, Flashcard, StudyRoom } from './lib/types'
 import { ModuleCard } from './components/ModuleCard'
 import { CreateModuleDialog } from './components/CreateModuleDialog'
 import { EditModuleDialog } from './components/EditModuleDialog'
@@ -23,6 +23,7 @@ import { AIPreparation, AIPreparationMinimized, type AIActionType, type AIAction
 import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
 import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
+import { StudyRoomView } from './components/StudyRoomView'
 import { Button } from './components/ui/button'
 import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
@@ -40,6 +41,8 @@ import { buildGenerationContext, formatContextForPrompt } from './lib/generation
 import { getUserPreferencePreferredInputMode } from './lib/analysis-storage'
 import { runValidationPipeline } from './lib/task-validator'
 import { normalizeTags, getModuleAllowedTags, formatAllowedTagsForPrompt, migrateExistingTags } from './lib/tag-canonicalizer'
+import { createStudyRoomApi, joinStudyRoomApi, fetchStudyRoom, setReadyState, startStudyRound, voteForExtension, submitStudyRound, endStudyRound, leaveStudyRoom, limitAnswerPreview } from './lib/study-room-api'
+import { ensureStudyRoomIdentity, loadStudyRoomIdentity, updateStudyRoomNickname } from './lib/study-room-identity'
 import type { DocumentType } from './lib/analysis-types'
 
 // Key for tracking tag migration
@@ -169,6 +172,18 @@ function App() {
     items: AIActionItem[]
     isMinimized: boolean
   } | null>(null)
+  const [studyRoom, setStudyRoom] = useState<StudyRoom | null>(null)
+  const [studyRoomBusy, setStudyRoomBusy] = useState(false)
+  const [studyRoomError, setStudyRoomError] = useState<string | null>(null)
+  const [studyRoomIdentity, setStudyRoomIdentity] = useState(() => loadStudyRoomIdentity())
+  const [studyRoomSolveContext, setStudyRoomSolveContext] = useState<{
+    roomId: string
+    roundId: string
+    taskId: string
+    mode: 'collab' | 'challenge'
+    roomCode: string
+    roundIndex: number
+  } | null>(null)
   
   // Ref für das Modul/Scripts während einer laufenden Exam-Generierung
   // Damit die Generierung weiterläuft, auch wenn der User das Modul wechselt
@@ -215,6 +230,198 @@ function App() {
 
   const triggerImportDialog = () => {
     importInputRef.current?.click()
+  }
+
+  // =========================================
+  // StudyRoom (Lerngruppe) Helpers & Actions
+  // =========================================
+
+  const syncStudyRoomState = useCallback((room: StudyRoom | null) => {
+    setStudyRoom(room)
+  }, [])
+
+  const refreshStudyRoom = useCallback(
+    async (roomId?: string) => {
+      const targetRoomId = roomId || studyRoom?.id
+      if (!targetRoomId || !studyRoomIdentity?.userId) return
+      try {
+        const room = await fetchStudyRoom(targetRoomId, studyRoomIdentity.userId)
+        syncStudyRoomState(room)
+        setStudyRoomError(null)
+      } catch (error) {
+        console.error('[StudyRoom] Polling failed', error)
+        setStudyRoomError(error instanceof Error ? error.message : String(error))
+      }
+    },
+    [studyRoom?.id, studyRoomIdentity?.userId, syncStudyRoomState]
+  )
+
+  const handleCreateStudyRoom = async (params: { moduleId: string; topic?: string; nickname: string }) => {
+    const identity = ensureStudyRoomIdentity(params.nickname)
+    setStudyRoomIdentity(identity)
+    updateStudyRoomNickname(identity.nickname)
+    setStudyRoomBusy(true)
+    try {
+      const room = await createStudyRoomApi({
+        moduleId: params.moduleId,
+        topic: params.topic,
+        nickname: identity.nickname,
+        userId: identity.userId,
+      })
+      syncStudyRoomState(room)
+      setSelectedModuleId(params.moduleId)
+      setStudyRoomError(null)
+      toast.success('Lerngruppe erstellt')
+    } catch (error) {
+      console.error('[StudyRoom] create failed', error)
+      setStudyRoomError(error instanceof Error ? error.message : String(error))
+      toast.error('Lerngruppe konnte nicht erstellt werden')
+    } finally {
+      setStudyRoomBusy(false)
+    }
+  }
+
+  const handleJoinStudyRoom = async (params: { code: string; nickname: string }) => {
+    const identity = ensureStudyRoomIdentity(params.nickname)
+    setStudyRoomIdentity(identity)
+    updateStudyRoomNickname(identity.nickname)
+    setStudyRoomBusy(true)
+    try {
+      const room = await joinStudyRoomApi({
+        code: params.code,
+        nickname: identity.nickname,
+        userId: identity.userId,
+      })
+      syncStudyRoomState(room)
+      setSelectedModuleId(room.moduleId)
+      setStudyRoomError(null)
+      toast.success('Raum beigetreten')
+    } catch (error) {
+      console.error('[StudyRoom] join failed', error)
+      setStudyRoomError(error instanceof Error ? error.message : String(error))
+      toast.error('Beitritt fehlgeschlagen')
+    } finally {
+      setStudyRoomBusy(false)
+    }
+  }
+
+  const handleToggleReady = async (ready: boolean) => {
+    if (!studyRoom || !studyRoomIdentity) return
+    setStudyRoomBusy(true)
+    try {
+      const room = await setReadyState(studyRoom.id, { userId: studyRoomIdentity.userId, ready })
+      syncStudyRoomState(room)
+      setStudyRoomError(null)
+    } catch (error) {
+      console.error('[StudyRoom] ready toggle failed', error)
+      setStudyRoomError(error instanceof Error ? error.message : String(error))
+      toast.error('Ready-Status konnte nicht gesetzt werden')
+    } finally {
+      setStudyRoomBusy(false)
+    }
+  }
+
+  const handleStartStudyRound = async (mode: 'collab' | 'challenge') => {
+    if (!studyRoom || !studyRoomIdentity) return
+    setStudyRoomBusy(true)
+    try {
+      const { room, round } = await startStudyRound(studyRoom.id, {
+        hostId: studyRoom.host.userId,
+        mode,
+      })
+      syncStudyRoomState(room)
+      setStudyRoomError(null)
+      toast.success(`Runde gestartet (${mode})`)
+    } catch (error) {
+      console.error('[StudyRoom] start round failed', error)
+      setStudyRoomError(error instanceof Error ? error.message : String(error))
+      toast.error('Runde konnte nicht gestartet werden')
+    } finally {
+      setStudyRoomBusy(false)
+    }
+  }
+
+  const handleVoteForExtension = async () => {
+    if (!studyRoom || !studyRoomIdentity) return
+    try {
+      const room = await voteForExtension(studyRoom.id, { userId: studyRoomIdentity.userId })
+      syncStudyRoomState(room)
+      toast.success('Stimme für Verlängerung gezählt')
+    } catch (error) {
+      console.error('[StudyRoom] vote extension failed', error)
+      toast.error('Konnte Verlängerung nicht senden')
+    }
+  }
+
+  const handleEndStudyRound = async () => {
+    if (!studyRoom) return
+    setStudyRoomBusy(true)
+    try {
+      const { room, round } = await endStudyRound(studyRoom.id, { hostId: studyRoom.host.userId })
+      syncStudyRoomState(room)
+      toast.success('Runde beendet')
+    } catch (error) {
+      console.error('[StudyRoom] end round failed', error)
+      toast.error('Runde konnte nicht beendet werden')
+    } finally {
+      setStudyRoomBusy(false)
+    }
+  }
+
+  const handleLeaveStudyRoom = async () => {
+    if (!studyRoom || !studyRoomIdentity) {
+      setStudyRoom(null)
+      setStudyRoomSolveContext(null)
+      return
+    }
+
+    try {
+      await leaveStudyRoom(studyRoom.id, { userId: studyRoomIdentity.userId })
+    } catch (error) {
+      console.warn('[StudyRoom] leave failed (ignored)', error)
+    } finally {
+      setStudyRoom(null)
+      setStudyRoomSolveContext(null)
+      setStudyRoomError(null)
+      setActiveTask(null)
+      setTaskFeedback(null)
+    }
+  }
+
+  const openStudyRoomTask = () => {
+    if (!studyRoom?.currentRound) {
+      toast.info('Keine laufende Runde')
+      return
+    }
+
+    const roundTask = studyRoom.currentRound.task
+    const taskForSolver: Task = {
+      id: roundTask.id || studyRoom.currentRound.id,
+      moduleId: studyRoom.moduleId,
+      question: roundTask.question,
+      solution: roundTask.solution,
+      difficulty: roundTask.difficulty,
+      topic: roundTask.topic,
+      tags: roundTask.tags,
+      title: `Runde #${studyRoom.currentRound.roundIndex} (${studyRoom.code})`,
+      createdAt: studyRoom.currentRound.startedAt,
+      completed: false,
+      viewedSolution: false,
+    }
+
+    setSelectedModuleId(studyRoom.moduleId)
+    setTaskSequence(null)
+    setActiveSequenceIndex(null)
+    setActiveTask(taskForSolver)
+    setTaskFeedback(null)
+    setStudyRoomSolveContext({
+      roomId: studyRoom.id,
+      roundId: studyRoom.currentRound.id,
+      taskId: taskForSolver.id,
+      mode: studyRoom.currentRound.mode,
+      roomCode: studyRoom.code,
+      roundIndex: studyRoom.currentRound.roundIndex,
+    })
   }
 
   // Einmalige Migration beim App-Start
@@ -281,6 +488,20 @@ function App() {
       migrateTagsOnce()
     }
   }, [storageInitialized, tasks, updateTask])
+
+  useEffect(() => {
+    if (!studyRoom) return
+    const interval = setInterval(() => {
+      refreshStudyRoom(studyRoom.id)
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [studyRoom, refreshStudyRoom])
+
+  useEffect(() => {
+    if (studyRoomError) {
+      toast.error(`Lerngruppe: ${studyRoomError}`)
+    }
+  }, [studyRoomError])
 
   // Subscribe to analysis queue progress updates
   useEffect(() => {
@@ -1093,6 +1314,7 @@ ANTWORTE NUR MIT VALIDEM JSON:
   const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
     if (!activeTask) return
 
+    const isStudyRoomAttempt = !!studyRoomSolveContext && studyRoomSolveContext.taskId === activeTask.id
     const taskId = generateId()
     
     try {
@@ -1104,7 +1326,7 @@ ANTWORTE NUR MIT VALIDEM JSON:
         {
           id: taskId,
           type: 'task-submit',
-          name: 'Aufgabe wird überprüft',
+          name: 'Aufgabe wird geprueft',
           progress: 0,
           status: 'processing',
           timestamp: Date.now(),
@@ -1150,13 +1372,13 @@ ANTWORTE NUR MIT VALIDEM JSON:
                 ...t, 
                 status: 'error', 
                 error: 'Fehler beim Analysieren der Handschrift',
-                errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+                errorDetails: `Fehler: ${errorMessage}\\n\\nStack Trace:\\n${errorStack || 'Nicht verfuegbar'}`,
                 timestamp: Date.now()
               } : t
             )
           )
           
-          toast.error('Fehler beim Analysieren der Handschrift. Siehe Benachrichtigungen für Details.')
+          toast.error('Fehler beim Analysieren der Handschrift. Siehe Benachrichtigungen fuer Details.')
           throw transcriptionError
         }
       }
@@ -1165,21 +1387,21 @@ ANTWORTE NUR MIT VALIDEM JSON:
         current.map((t) => (t.id === taskId ? { ...t, progress: 50, name: 'Antwort wird bewertet' } : t))
       )
 
-      toast.loading('Überprüfe deine Antwort...', { id: 'task-submit' })
+      toast.loading('Pruefe deine Antwort...', { id: 'task-submit' })
       
       try {
         const evaluationPrompt = `Du bist ein Dozent, der die Antwort eines Studenten bewertet.
 
 Fragestellung: ${activeTask.question}
-Musterlösung: ${activeTask.solution}
+Musterloesung: ${activeTask.solution}
 Antwort des Studenten: ${userAnswer}
 
-Bewerte, ob die Antwort des Studenten korrekt ist. Sie müssen nicht wortwörtlich übereinstimmen, aber die Schlüsselkonzepte und die Endergebnisse sollten korrekt sein.
+Bewerte, ob die Antwort des Studenten korrekt ist. Sie muessen nicht wortwoertlich uebereinstimmen, aber die Schluesselkonzepte und die Endergebnisse sollten korrekt sein.
 
-Gib deine Antwort als JSON zurück:
+Gib deine Antwort als JSON zurueck:
 {
   "isCorrect": true/false,
-  "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
+  "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Loesung preiszugeben)
 }`
 
         const response = await llmWithRetry(evaluationPrompt, standardModel, true, 1, 'task-submit', activeTask.moduleId)
@@ -1196,12 +1418,24 @@ Gib deine Antwort als JSON zurück:
           transcription: isHandwritten ? transcription : undefined
         })
 
-        // Statistiken für das Tutor-Dashboard aktualisieren
         if (activeTask.topic) {
           updateTopicStats(activeTask.moduleId, activeTask.topic, evaluation.isCorrect)
         }
 
-        if (evaluation.isCorrect) {
+        if (isStudyRoomAttempt && studyRoom && studyRoomSolveContext) {
+          try {
+            const submissionResponse = await submitStudyRound(studyRoomSolveContext.roomId, {
+              userId: studyRoomIdentity.userId,
+              isCorrect: evaluation.isCorrect,
+              answerPreview: limitAnswerPreview(userAnswer),
+            })
+            syncStudyRoomState(submissionResponse.room)
+            toast.success('Abgabe im Lerngruppenraum gespeichert')
+          } catch (submitError) {
+            console.error('[StudyRoom] submit failed', submitError)
+            toast.error('Abgabe konnte nicht an den Raum gesendet werden')
+          }
+        } else if (evaluation.isCorrect) {
           await updateTask(activeTask.id, { completed: true, completedAt: new Date().toISOString() })
           toast.success('Richtige Antwort!')
         }
@@ -1218,17 +1452,17 @@ Gib deine Antwort als JSON zurück:
               ...t, 
               status: 'error', 
               error: 'Fehler beim Bewerten der Antwort',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\\n\\nStack Trace:\\n${errorStack || 'Nicht verfuegbar'}`,
               timestamp: Date.now()
             } : t
           )
         )
         
-        toast.error('Fehler beim Bewerten der Antwort. Siehe Benachrichtigungen für Details.')
+        toast.error('Fehler beim Bewerten der Antwort. Siehe Benachrichtigungen fuer Details.')
         throw evaluationError
       }
     } catch (error) {
-      console.error('Fehler bei Antwortüberprüfung:', error)
+      console.error('Fehler bei Antwortpruefung:', error)
       toast.dismiss('task-submit')
       
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1249,9 +1483,9 @@ Gib deine Antwort als JSON zurück:
                 ? 'API-Limit erreicht'
                 : error.message.includes('network') || error.message.includes('fetch')
                 ? 'Netzwerkfehler'
-                : 'Fehler bei der Aufgabenprüfung')
+                : 'Fehler bei der Aufgabenpruefung')
               : 'Unerwarteter Fehler',
-            errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+            errorDetails: `Fehler: ${errorMessage}\\n\\nStack Trace:\\n${errorStack || 'Nicht verfuegbar'}`,
             timestamp: Date.now()
           } : t
         )
@@ -1261,7 +1495,7 @@ Gib deine Antwort als JSON zurück:
         if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
           toast.error('API-Limit erreicht. Bitte warte einen Moment.')
         } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          toast.error('Netzwerkfehler. Bitte überprüfe deine Internetverbindung.')
+          toast.error('Netzwerkfehler. Bitte pruefe deine Internetverbindung.')
         } else {
           toast.error(`Fehler: ${error.message}`)
         }
@@ -1273,8 +1507,10 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
+
   const openTask = (task: Task, sequence?: Task[], startTaskId?: string) => {
     setSelectedModuleId(task.moduleId)
+    setStudyRoomSolveContext(null)
 
     if (sequence && sequence.length > 0) {
       const startIndex = startTaskId ? sequence.findIndex(t => t.id === startTaskId) : 0
@@ -2227,6 +2463,7 @@ Gib deine Antwort als JSON zurück:
     const hasNextTask =
       (taskSequence && taskSequence.some(t => !t.completed && t.id !== activeTask.id)) ||
       moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
+    const isStudyRoomTask = !!studyRoomSolveContext && studyRoomSolveContext.taskId === activeTask.id
 
     return (
       <>
@@ -2243,15 +2480,20 @@ Gib deine Antwort als JSON zurück:
             setTaskFeedback(null)
             setTaskSequence(null)
             setActiveSequenceIndex(null)
+            setStudyRoomSolveContext(null)
           }}
           onSubmit={handleSubmitTaskAnswer}
           feedback={taskFeedback || undefined}
-          onNextTask={hasNextTask ? handleNextTask : undefined}
-          onTaskUpdate={async (updates) => {
-            await updateTask(activeTask.id, updates)
-            // Aktualisiere auch den lokalen State
-            setActiveTask((current) => current ? { ...current, ...updates } : null)
-          }}
+          onNextTask={isStudyRoomTask ? undefined : hasNextTask ? handleNextTask : undefined}
+          onTaskUpdate={
+            isStudyRoomTask
+              ? undefined
+              : async (updates) => {
+                  await updateTask(activeTask.id, updates)
+                  // Aktualisiere auch den lokalen State
+                  setActiveTask((current) => (current ? { ...current, ...updates } : null))
+                }
+          }
           formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
         />
         {examGenerationState && (
@@ -2296,6 +2538,33 @@ Gib deine Antwort als JSON zurück:
           />
           )}
         </AnimatePresence>
+      </>
+    )
+  }
+
+  if (studyRoom) {
+    const roomModule = modules?.find((m) => m.id === studyRoom.moduleId)
+    return (
+      <>
+        {BackgroundExamGenerator}
+        <NotificationCenter
+          tasks={pipelineTasks}
+          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+          onClearAll={() => setPipelineTasks([])}
+        />
+        <StudyRoomView
+          room={studyRoom}
+          currentUserId={studyRoomIdentity.userId}
+          moduleName={roomModule?.name}
+          isSyncing={studyRoomBusy}
+          onLeave={handleLeaveStudyRoom}
+          onToggleReady={handleToggleReady}
+          onStartRound={handleStartStudyRound}
+          onVoteExtension={handleVoteForExtension}
+          onOpenTask={openStudyRoomTask}
+          onEndRound={handleEndStudyRound}
+          onRefresh={() => refreshStudyRoom(studyRoom.id)}
+        />
       </>
     )
   }
@@ -2455,6 +2724,10 @@ Gib deine Antwort als JSON zurück:
           onReanalyzeSelectedScripts={handleReanalyzeSelectedScripts}
           onGenerateNotesForSelected={handleGenerateNotesForSelected}
           onGenerateTasksForSelected={handleGenerateTasksForSelected}
+          onStartStudyRoom={handleCreateStudyRoom}
+          onJoinStudyRoom={handleJoinStudyRoom}
+          studyRoomBusy={studyRoomBusy}
+          studyRoomNickname={studyRoomIdentity.nickname}
         />
 
         {/* EditModuleDialog auch in ModuleView verfügbar */}

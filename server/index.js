@@ -10,6 +10,7 @@ import {
   tasksDB,
   flashcardsDB,
 } from "./database.js";
+import { roomsRouter } from "./rooms.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -45,6 +46,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "10mb" }));
+app.use("/api/rooms", roomsRouter);
 
 // Root-Route
 app.get("/", (req, res) => {

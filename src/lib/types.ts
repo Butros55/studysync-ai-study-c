@@ -351,3 +351,75 @@ export interface ExamTopicAnalysis {
   isWeak: boolean
 }
 
+// =========================================
+// StudyRoom / Lerngruppenmodus
+// =========================================
+
+export type StudyRoomMode = 'collab' | 'challenge'
+export type StudyRoomState = 'lobby' | 'running' | 'finished'
+export type StudyRoomMemberStatus = 'idle' | 'ready' | 'solving' | 'submitted'
+
+export interface StudyRoomTask {
+  id: string
+  moduleId: string
+  question: string
+  solution: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  topic?: string
+  tags?: string[]
+}
+
+export interface StudyRoomMember {
+  userId: string
+  nickname: string
+  joinedAt: string
+  lastSeenAt: string
+  ready: boolean
+  status: StudyRoomMemberStatus
+}
+
+export interface StudyRoomSubmission {
+  userId: string
+  submittedAt: string
+  isCorrect?: boolean
+  timeMs?: number
+  answerPreview?: string
+  rank?: number
+  pointsAwarded?: number
+}
+
+export interface StudyRoomRound {
+  id: string
+  roundIndex: number
+  mode: StudyRoomMode
+  task: StudyRoomTask
+  startedAt: string
+  endsAt?: string
+  extended: boolean
+  state: 'running' | 'ended'
+  baseTimeSec: number
+  extendedTimeSec?: number
+  submissions: StudyRoomSubmission[]
+  extensionVotes: string[]
+  endedAt?: string
+}
+
+export interface StudyRoom {
+  id: string
+  code: string
+  moduleId: string
+  topic?: string
+  createdAt: string
+  host: { userId: string; nickname: string }
+  members: StudyRoomMember[]
+  state: StudyRoomState
+  currentRound?: StudyRoomRound
+  rounds: StudyRoomRound[]
+  scoreboard: Record<string, number>
+}
+
+export interface StudyRoomIdentity {
+  userId: string
+  nickname: string
+}
+
