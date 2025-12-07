@@ -17,6 +17,7 @@ import {
   clearAllData,
   type BackupData 
 } from '@/hooks/use-database'
+import { downloadSharedBackupFromServer, uploadSharedBackupToServer } from '@/lib/shared-backup'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -50,6 +51,7 @@ export function StorageDebugPanel({ onRefresh }: StorageDebugPanelProps) {
   const [status, setStatus] = useState<StorageStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [lastSyncMessage, setLastSyncMessage] = useState<string | null>(null)
 
   const loadStatus = async () => {
     setLoading(true)
@@ -119,6 +121,37 @@ export function StorageDebugPanel({ onRefresh }: StorageDebugPanelProps) {
       }
     }
     input.click()
+  }
+
+  const handleUploadSharedBackup = async () => {
+    setActionLoading('upload-shared')
+    setLastSyncMessage(null)
+    try {
+      const result = await uploadSharedBackupToServer()
+      setLastSyncMessage(`Server-Backup gespeichert (Version ${result.version || 'n/a'})`)
+    } catch (e) {
+      console.error('Shared backup upload failed:', e)
+      alert('Server-Backup fehlgeschlagen: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDownloadSharedBackup = async () => {
+    setActionLoading('download-shared')
+    setLastSyncMessage(null)
+    try {
+      const { counts } = await downloadSharedBackupFromServer()
+      const total = Object.values(counts || {}).reduce((sum, c) => sum + (c || 0), 0)
+      setLastSyncMessage(`Server-Backup geladen und gemergt (${total} Elemente berücksichtigt)`)
+      alert('Server-Backup geladen. Deine persönlichen Fortschritte wurden beibehalten.')
+      window.location.reload()
+    } catch (e) {
+      console.error('Shared backup download failed:', e)
+      alert('Server-Backup laden fehlgeschlagen: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const handleClear = async () => {
@@ -339,6 +372,34 @@ export function StorageDebugPanel({ onRefresh }: StorageDebugPanelProps) {
             Importieren
           </Button>
 
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleUploadSharedBackup}
+            disabled={actionLoading !== null}
+          >
+            {actionLoading === 'upload-shared' ? (
+              <ArrowsClockwise className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <UploadSimple className="h-4 w-4 mr-1" />
+            )}
+            Server-Backup hochladen
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownloadSharedBackup}
+            disabled={actionLoading !== null}
+          >
+            {actionLoading === 'download-shared' ? (
+              <ArrowsClockwise className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <DownloadSimple className="h-4 w-4 mr-1" />
+            )}
+            Server-Backup laden
+          </Button>
+
           <Button 
             size="sm" 
             variant="outline"
@@ -366,6 +427,12 @@ export function StorageDebugPanel({ onRefresh }: StorageDebugPanelProps) {
             Alles löschen
           </Button>
         </div>
+
+        {lastSyncMessage && (
+          <div className="text-sm text-muted-foreground">
+            {lastSyncMessage}
+          </div>
+        )}
 
         {/* User Agent Info (for debugging) */}
         <details className="text-xs text-muted-foreground">

@@ -11,6 +11,9 @@ import {
   flashcardsDB,
 } from "./database.js";
 import { roomsRouter } from "./rooms.js";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +50,52 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use("/api/rooms", roomsRouter);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SHARED_BACKUP_PATH = path.join(__dirname, "shared-backup.json");
+
+// Shared Backup Endpoints (einfacher JSON-Store auf dem Server)
+app.get("/api/shared-backup", async (_req, res) => {
+  try {
+    const raw = await fs.readFile(SHARED_BACKUP_PATH, "utf-8");
+    const backup = JSON.parse(raw);
+    res.json({ backup });
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return res.status(404).json({ error: "Kein Server-Backup vorhanden" });
+    }
+    console.error("[SharedBackup] read failed:", error);
+    res.status(500).json({ error: "Backup konnte nicht gelesen werden" });
+  }
+});
+
+app.post("/api/shared-backup", async (req, res) => {
+  const backup = req.body;
+  if (!backup || !backup.version || !backup.data) {
+    return res.status(400).json({ error: "Ungültiges Backup-Payload" });
+  }
+
+  try {
+    const payload = {
+      ...backup,
+      savedAt: new Date().toISOString(),
+    };
+    await fs.writeFile(
+      SHARED_BACKUP_PATH,
+      JSON.stringify(payload, null, 2),
+      "utf-8"
+    );
+    res.json({
+      status: "saved",
+      version: backup.version,
+      exportedAt: backup.exportedAt,
+    });
+  } catch (error) {
+    console.error("[SharedBackup] save failed:", error);
+    res.status(500).json({ error: "Backup konnte nicht gespeichert werden" });
+  }
+});
 
 // Root-Route
 app.get("/", (req, res) => {
