@@ -17,6 +17,8 @@ import { fileURLToPath } from "url";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+// Render hat ein Default-Limit von 100MB, wir nutzen konservativ 50MB
+const JSON_LIMIT = process.env.JSON_LIMIT || "50mb";
 
 // CORS-Konfiguration: Erlaubte Origins für Dev und Prod
 const allowedOrigins = [
@@ -48,7 +50,8 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: JSON_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
 app.use("/api/rooms", roomsRouter);
 
 const __filename = fileURLToPath(import.meta.url);
