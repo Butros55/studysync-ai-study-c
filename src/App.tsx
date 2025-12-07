@@ -42,6 +42,8 @@ import { getUserPreferencePreferredInputMode } from './lib/analysis-storage'
 import { runValidationPipeline } from './lib/task-validator'
 import { normalizeTags, getModuleAllowedTags, formatAllowedTagsForPrompt, migrateExistingTags } from './lib/tag-canonicalizer'
 import { createStudyRoomApi, joinStudyRoomApi, fetchStudyRoom, setReadyState, startStudyRound, voteForExtension, submitStudyRound, endStudyRound, leaveStudyRoom, limitAnswerPreview, unsubmitStudyRound } from './lib/study-room-api'
+import { StudyRoomProvider, useStudyRoom } from './studyroom/StudyRoomProvider'
+import { StudyRoomHUD } from './studyroom/StudyRoomHUD'
 import { ensureStudyRoomIdentity, loadStudyRoomIdentity, updateStudyRoomNickname } from './lib/study-room-identity'
 import type { DocumentType } from './lib/analysis-types'
 
@@ -89,7 +91,7 @@ AUSGABEFORMAT:
 - Tabellen als Markdown-Tabellen
 - NUR die Transkription, keine Kommentare oder Bewertung`
 
-function App() {
+function AppContent() {
   // Datenbank-Hooks mit SQLite-Backend
   const { 
     data: modules, 
@@ -3061,6 +3063,15 @@ Gib deine Antwort als JSON zurÃ¼ck:
 
       </div>
     </>
+  )
+}
+
+
+function App() {
+  return (
+    <StudyRoomProvider>
+      <AppContent />
+    </StudyRoomProvider>
   )
 }
 
