@@ -150,6 +150,7 @@ export function ModuleDashboard({
   const [studyRoomNickname, setStudyRoomNickname] = useState(defaultNickname || '')
   const [studyRoomTopic, setStudyRoomTopic] = useState('')
   const [studyRoomCode, setStudyRoomCode] = useState('')
+  const [studyRoomExpanded, setStudyRoomExpanded] = useState(false)
   
   // Berechnungen
   const learningBlocks = useMemo(() => generateLearningBlocks(tasks, scripts), [tasks, scripts])
@@ -308,77 +309,81 @@ export function ModuleDashboard({
 
       {/* Lerngruppe / StudyRoom */}
       <Card>
-        <CardHeader>
+        <CardHeader
+          className="cursor-pointer"
+          onClick={() => setStudyRoomExpanded((prev) => !prev)}
+        >
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <UsersThree className="w-5 h-5" />
-                Lerngruppen-Modus (Beta)
-              </CardTitle>
-              <CardDescription>
-                Starte oder tritt einem StudyRoom bei. Deine Identity wird lokal gespeichert.
-              </CardDescription>
+            <div className="flex items-center gap-2">
+              <UsersThree className="w-5 h-5" />
+              <div>
+                <CardTitle className="text-base">Lerngruppe</CardTitle>
+                <CardDescription>Gemeinsam lernen & challengen</CardDescription>
+              </div>
             </div>
+            <Badge variant="outline">{studyRoomExpanded ? 'Schließen' : 'Öffnen'}</Badge>
           </div>
         </CardHeader>
-        <CardContent className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="study-nickname">Nickname</Label>
-            <Input
-              id="study-nickname"
-              value={studyRoomNickname}
-              onChange={(e) => setStudyRoomNickname(e.target.value)}
-              placeholder="Dein Anzeigename im Raum"
-            />
-            <Label htmlFor="study-topic" className="text-sm text-muted-foreground">
-              Optionales Thema/Tag
-            </Label>
-            <Input
-              id="study-topic"
-              value={studyRoomTopic}
-              onChange={(e) => setStudyRoomTopic(e.target.value)}
-              placeholder="z.B. Analysis, Kostenrechnung"
-            />
-            <Button
-              className="w-full"
-              disabled={!onStartStudyRoom || studyRoomBusy}
-              onClick={() =>
-                onStartStudyRoom?.({
-                  moduleId: module.id,
-                  topic: studyRoomTopic || undefined,
-                  nickname: studyRoomNickname || defaultNickname || 'Gast',
-                })
-              }
-            >
-              Lerngruppe starten (Host)
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="study-code">Room-Code</Label>
-            <Input
-              id="study-code"
-              value={studyRoomCode}
-              onChange={(e) => setStudyRoomCode(e.target.value.toUpperCase())}
-              placeholder="Z.B. ABC123"
-            />
-            <div className="text-xs text-muted-foreground">
-              Der Code besteht aus 6 Zeichen (A-Z, 0-9). Polling aktualisiert den Raum alle paar Sekunden.
+        {studyRoomExpanded && (
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="study-nickname">Nickname</Label>
+              <Input
+                id="study-nickname"
+                value={studyRoomNickname}
+                onChange={(e) => setStudyRoomNickname(e.target.value)}
+                placeholder="Dein Anzeigename im Raum"
+              />
+              <Label htmlFor="study-topic" className="text-sm text-muted-foreground">
+                Optionales Thema/Tag
+              </Label>
+              <Input
+                id="study-topic"
+                value={studyRoomTopic}
+                onChange={(e) => setStudyRoomTopic(e.target.value)}
+                placeholder="z.B. Analysis, Kostenrechnung"
+              />
+              <Button
+                className="w-full"
+                disabled={!onStartStudyRoom || studyRoomBusy}
+                onClick={() =>
+                  onStartStudyRoom?.({
+                    moduleId: module.id,
+                    topic: studyRoomTopic || undefined,
+                    nickname: studyRoomNickname || defaultNickname || 'Gast',
+                  })
+                }
+              >
+                Lerngruppe starten (Host)
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={!onJoinStudyRoom || !studyRoomCode || studyRoomBusy}
-              onClick={() =>
-                onJoinStudyRoom?.({
-                  code: studyRoomCode,
-                  nickname: studyRoomNickname || defaultNickname || 'Gast',
-                })
-              }
-            >
-              Lerngruppe beitreten
-            </Button>
-          </div>
-        </CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="study-code">Room-Code</Label>
+              <Input
+                id="study-code"
+                value={studyRoomCode}
+                onChange={(e) => setStudyRoomCode(e.target.value.toUpperCase())}
+                placeholder="Z.B. ABC123"
+              />
+              <div className="text-xs text-muted-foreground">
+                Der Code besteht aus 6 Zeichen (A-Z, 0-9). Polling aktualisiert den Raum alle paar Sekunden.
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={!onJoinStudyRoom || !studyRoomCode || studyRoomBusy}
+                onClick={() =>
+                  onJoinStudyRoom?.({
+                    code: studyRoomCode,
+                    nickname: studyRoomNickname || defaultNickname || 'Gast',
+                  })
+                }
+              >
+                Lerngruppe beitreten
+              </Button>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* Was du heute lernen solltest */}

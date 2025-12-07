@@ -384,6 +384,7 @@ export interface StudyRoomSubmission {
   isCorrect?: boolean
   timeMs?: number
   answerPreview?: string
+  answerText?: string
   rank?: number
   pointsAwarded?: number
 }
@@ -393,15 +394,29 @@ export interface StudyRoomRound {
   roundIndex: number
   mode: StudyRoomMode
   task: StudyRoomTask
+  phase: 'starting' | 'running' | 'ending' | 'review'
+  startsAt: string
   startedAt: string
   endsAt?: string
   extended: boolean
   state: 'running' | 'ended'
+  lockCountdownStartAt?: string
   baseTimeSec: number
   extendedTimeSec?: number
   submissions: StudyRoomSubmission[]
   extensionVotes: string[]
   endedAt?: string
+  evaluation?: {
+    status: 'idle' | 'pending' | 'done' | 'error'
+    result?: {
+      summaryMarkdown?: string
+      perUser?: Record<
+        string,
+        { correct?: boolean; feedbackMarkdown?: string; scoreHint?: string }
+      >
+    }
+    error?: string
+  }
 }
 
 export interface StudyRoom {

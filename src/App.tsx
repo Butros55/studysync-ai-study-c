@@ -41,51 +41,51 @@ import { buildGenerationContext, formatContextForPrompt } from './lib/generation
 import { getUserPreferencePreferredInputMode } from './lib/analysis-storage'
 import { runValidationPipeline } from './lib/task-validator'
 import { normalizeTags, getModuleAllowedTags, formatAllowedTagsForPrompt, migrateExistingTags } from './lib/tag-canonicalizer'
-import { createStudyRoomApi, joinStudyRoomApi, fetchStudyRoom, setReadyState, startStudyRound, voteForExtension, submitStudyRound, endStudyRound, leaveStudyRoom, limitAnswerPreview } from './lib/study-room-api'
+import { createStudyRoomApi, joinStudyRoomApi, fetchStudyRoom, setReadyState, startStudyRound, voteForExtension, submitStudyRound, endStudyRound, leaveStudyRoom, limitAnswerPreview, unsubmitStudyRound } from './lib/study-room-api'
 import { ensureStudyRoomIdentity, loadStudyRoomIdentity, updateStudyRoomNickname } from './lib/study-room-identity'
 import type { DocumentType } from './lib/analysis-types'
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
 
-const buildHandwritingPrompt = (question: string) => `Du bist ein Experte für das Lesen von Handschrift und die Erkennung mathematischer Notationen.
+const buildHandwritingPrompt = (question: string) => `Du bist ein Experte fÃ¼r das Lesen von Handschrift und die Erkennung mathematischer Notationen.
 
 Analysiere das Bild und transkribiere EXAKT was du siehst.
 
-WICHTIGE REGELN FÜR MATHEMATISCHE SYMBOLE:
-1. Wurzelzeichen (√) IMMER als LaTeX: \\sqrt{...} 
-   - Beispiel: √a → \\sqrt{a}
-   - Beispiel: √(a²+b) → \\sqrt{a^2 + b}
-   - Das Wurzelzeichen sieht aus wie ein Häkchen mit horizontaler Linie darüber
+WICHTIGE REGELN FÃœR MATHEMATISCHE SYMBOLE:
+1. Wurzelzeichen (âˆš) IMMER als LaTeX: \\sqrt{...} 
+   - Beispiel: âˆša â†’ \\sqrt{a}
+   - Beispiel: âˆš(aÂ²+b) â†’ \\sqrt{a^2 + b}
+   - Das Wurzelzeichen sieht aus wie ein HÃ¤kchen mit horizontaler Linie darÃ¼ber
 
-2. Brüche IMMER als LaTeX: \\frac{Zähler}{Nenner}
-   - Beispiel: a/b → \\frac{a}{b}
-   - Horizontale Linien mit Zahlen darüber und darunter sind Brüche
+2. BrÃ¼che IMMER als LaTeX: \\frac{ZÃ¤hler}{Nenner}
+   - Beispiel: a/b â†’ \\frac{a}{b}
+   - Horizontale Linien mit Zahlen darÃ¼ber und darunter sind BrÃ¼che
 
 3. Potenzen/Hochzahlen: a^{n} oder a^n
    - Kleine Zahlen rechts oben sind Exponenten
-   - Beispiel: a² → a^2, x³ → x^3
+   - Beispiel: aÂ² â†’ a^2, xÂ³ â†’ x^3
 
 4. Indizes (tiefgestellt): a_{n}
    - Kleine Zahlen rechts unten sind Indizes
 
 5. Griechische Buchstaben als LaTeX:
-   - α → \\alpha, β → \\beta, γ → \\gamma, π → \\pi, Σ → \\sum, etc.
+   - Î± â†’ \\alpha, Î² â†’ \\beta, Î³ â†’ \\gamma, Ï€ â†’ \\pi, Î£ â†’ \\sum, etc.
 
 6. Weitere Symbole:
-   - × oder · (Multiplikation) → \\cdot oder \\times
-   - ÷ → \\div
-   - ≠ → \\neq
-   - ≤ → \\leq, ≥ → \\geq
-   - ∞ → \\infty
-   - ∫ → \\int
+   - Ã— oder Â· (Multiplikation) â†’ \\cdot oder \\times
+   - Ã· â†’ \\div
+   - â‰  â†’ \\neq
+   - â‰¤ â†’ \\leq, â‰¥ â†’ \\geq
+   - âˆž â†’ \\infty
+   - âˆ« â†’ \\int
 
 KONTEXT - Die Fragestellung war: ${question}
 
 AUSGABEFORMAT:
-- Gib mathematische Ausdrücke in LaTeX-Notation zurück
-- Für komplexe Formeln nutze Display-Math: $$...$$
-- Für inline Formeln nutze: $...$
+- Gib mathematische AusdrÃ¼cke in LaTeX-Notation zurÃ¼ck
+- FÃ¼r komplexe Formeln nutze Display-Math: $$...$$
+- FÃ¼r inline Formeln nutze: $...$
 - Tabellen als Markdown-Tabellen
 - NUR die Transkription, keine Kommentare oder Bewertung`
 
@@ -156,10 +156,10 @@ function App() {
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
   const [storageInitialized, setStorageInitialized] = useState(false)
   
-  // Globaler State für Exam-Generierung (damit das Widget überall sichtbar ist)
+  // Globaler State fÃ¼r Exam-Generierung (damit das Widget Ã¼berall sichtbar ist)
   const [examGenerationState, setExamGenerationState] = useState<ExamGenerationState | null>(null)
   
-  // Globaler State für andere KI-Aktionen (Analyse, Notizen, Aufgaben, Karteikarten)
+  // Globaler State fÃ¼r andere KI-Aktionen (Analyse, Notizen, Aufgaben, Karteikarten)
   const [aiActionState, setAiActionState] = useState<{
     type: AIActionType
     moduleName: string
@@ -185,11 +185,11 @@ function App() {
     roundIndex: number
   } | null>(null)
   
-  // Ref für das Modul/Scripts während einer laufenden Exam-Generierung
-  // Damit die Generierung weiterläuft, auch wenn der User das Modul wechselt
+  // Ref fÃ¼r das Modul/Scripts wÃ¤hrend einer laufenden Exam-Generierung
+  // Damit die Generierung weiterlÃ¤uft, auch wenn der User das Modul wechselt
   const examGenerationModuleRef = useRef<{ module: Module; scripts: Script[] } | null>(null)
   
-  // Ref für versteckten File-Input (Import)
+  // Ref fÃ¼r versteckten File-Input (Import)
   const importInputRef = useRef<HTMLInputElement>(null)
 
   // Export-Handler
@@ -222,7 +222,7 @@ function App() {
       toast.error('Import fehlgeschlagen')
     }
     
-    // Input zurücksetzen
+    // Input zurÃ¼cksetzen
     if (importInputRef.current) {
       importInputRef.current.value = ''
     }
@@ -235,6 +235,28 @@ function App() {
   // =========================================
   // StudyRoom (Lerngruppe) Helpers & Actions
   // =========================================
+
+  const buildModuleMeta = useCallback((moduleId?: string, topic?: string) => {
+    const mod = modules?.find((m) => m.id === moduleId)
+    const moduleTasks = tasks?.filter((t) => t.moduleId === moduleId) || []
+    const sampleTasks = moduleTasks.slice(0, 3).map((t) => ({
+      question: t.question.slice(0, 800),
+      difficulty: t.difficulty,
+      tags: t.tags,
+    }))
+    return {
+      moduleTitle: mod?.name,
+      moduleTags: Array.from(
+        new Set(
+          moduleTasks
+            .flatMap((t) => t.tags || [])
+            .filter(Boolean)
+        )
+      ).slice(0, 8),
+      topic: topic || undefined,
+      sampleTasks,
+    }
+  }, [modules, tasks])
 
   const syncStudyRoomState = useCallback((room: StudyRoom | null) => {
     setStudyRoom(room)
@@ -267,6 +289,7 @@ function App() {
         topic: params.topic,
         nickname: identity.nickname,
         userId: identity.userId,
+        moduleMeta: buildModuleMeta(params.moduleId, params.topic),
       })
       syncStudyRoomState(room)
       setSelectedModuleId(params.moduleId)
@@ -291,6 +314,7 @@ function App() {
         code: params.code,
         nickname: identity.nickname,
         userId: identity.userId,
+        moduleMeta: selectedModuleId ? buildModuleMeta(selectedModuleId) : undefined,
       })
       syncStudyRoomState(room)
       setSelectedModuleId(room.moduleId)
@@ -328,6 +352,7 @@ function App() {
       const { room, round } = await startStudyRound(studyRoom.id, {
         hostId: studyRoom.host.userId,
         mode,
+        moduleMeta: buildModuleMeta(studyRoom.moduleId, studyRoom.topic),
       })
       syncStudyRoomState(room)
       setStudyRoomError(null)
@@ -346,10 +371,24 @@ function App() {
     try {
       const room = await voteForExtension(studyRoom.id, { userId: studyRoomIdentity.userId })
       syncStudyRoomState(room)
-      toast.success('Stimme für Verlängerung gezählt')
+      toast.success('Stimme fÃ¼r VerlÃ¤ngerung gezÃ¤hlt')
     } catch (error) {
       console.error('[StudyRoom] vote extension failed', error)
-      toast.error('Konnte Verlängerung nicht senden')
+      toast.error('Konnte VerlÃ¤ngerung nicht senden')
+    }
+  }
+
+
+  const handleUnsubmit = async () => {
+    if (!studyRoom || !studyRoomIdentity) return
+    try {
+      await unsubmitStudyRound(studyRoom.id, { userId: studyRoomIdentity.userId })
+      await refreshStudyRoom(studyRoom.id)
+      toast.info('Antwort wieder bearbeitbar')
+      openStudyRoomTask()
+    } catch (error) {
+      console.error('[StudyRoom] unsubmit failed', error)
+      toast.error('Konnte Antwort nicht freigeben')
     }
   }
 
@@ -445,7 +484,7 @@ function App() {
     initStorage()
   }, [])
 
-  // Einmalige Tag-Migration für bestehende Tasks
+  // Einmalige Tag-Migration fÃ¼r bestehende Tasks
   useEffect(() => {
     const migrateTagsOnce = async () => {
       // Check if migration was already done
@@ -502,6 +541,19 @@ function App() {
       toast.error(`Lerngruppe: ${studyRoomError}`)
     }
   }, [studyRoomError])
+
+  useEffect(() => {
+    const round = studyRoom?.currentRound
+    if (!round) return
+    const isStudySolverOpen = !!studyRoomSolveContext && activeTask
+    if ((round.phase === 'starting' || round.phase === 'running') && !isStudySolverOpen) {
+      openStudyRoomTask()
+    }
+    if (round.phase === 'review') {
+      setActiveTask(null)
+      setStudyRoomSolveContext(null)
+    }
+  }, [studyRoom?.currentRound?.id, studyRoom?.currentRound?.phase])
 
   // Subscribe to analysis queue progress updates
   useEffect(() => {
@@ -565,7 +617,7 @@ function App() {
       'generate-flashcards': 'generate-flashcards',
     }
     
-    // Sammle alle relevanten Tasks nach Typ (nur pending/processing für neuen State)
+    // Sammle alle relevanten Tasks nach Typ (nur pending/processing fÃ¼r neuen State)
     const tasksByType: Record<AIActionType, typeof pipelineTasks> = {
       'analyze': [],
       'generate-notes': [],
@@ -602,11 +654,11 @@ function App() {
       
       // Wenn keine aktiven Tasks mehr aber vorher noch was lief (wurde gerade fertig)
       if (!activeActionType && prev && !prev.isComplete) {
-        // Setze auf complete für die Fertig-Animation
+        // Setze auf complete fÃ¼r die Fertig-Animation
         return { ...prev, isComplete: true, progress: 100 }
       }
       
-      // Wenn bereits complete und keine aktiven Tasks, nichts ändern (wird durch Timer entfernt)
+      // Wenn bereits complete und keine aktiven Tasks, nichts Ã¤ndern (wird durch Timer entfernt)
       if (!activeActionType && prev?.isComplete) {
         return prev
       }
@@ -637,7 +689,7 @@ function App() {
         status: t.status === 'pending' ? 'queued' as const : t.status as 'processing' | 'completed' | 'error',
       }))
       
-      // Wenn sich nichts geändert hat, nicht updaten
+      // Wenn sich nichts geÃ¤ndert hat, nicht updaten
       if (prev && 
           prev.type === activeActionType &&
           prev.progress === totalProgress &&
@@ -646,8 +698,8 @@ function App() {
         return prev
       }
       
-      // Wenn schon ein State existiert für diesen Typ, nur updaten
-      // WICHTIG: totalCount nur erhöhen, nie verringern (damit die Anzeige stabil bleibt)
+      // Wenn schon ein State existiert fÃ¼r diesen Typ, nur updaten
+      // WICHTIG: totalCount nur erhÃ¶hen, nie verringern (damit die Anzeige stabil bleibt)
       if (prev && prev.type === activeActionType) {
         return {
           ...prev,
@@ -697,7 +749,7 @@ function App() {
     }
   }, [aiActionState?.isComplete, aiActionState?.isMinimized])
 
-  // Handler zum Öffnen des Bearbeitungsdialogs
+  // Handler zum Ã–ffnen des Bearbeitungsdialogs
   const handleEditModule = (module: Module) => {
     setModuleToEdit(module)
     setEditModuleDialogOpen(true)
@@ -740,16 +792,16 @@ function App() {
     }
   }
 
-  // Modul löschen mit allem Inhalt
+  // Modul lÃ¶schen mit allem Inhalt
   const handleDeleteModule = async (moduleId: string) => {
     try {
-      // Alle zugehörigen Daten löschen
+      // Alle zugehÃ¶rigen Daten lÃ¶schen
       const moduleScriptsToDelete = scripts?.filter(s => s.moduleId === moduleId) || []
       const moduleNotesToDelete = notes?.filter(n => n.moduleId === moduleId) || []
       const moduleTasksToDelete = tasks?.filter(t => t.moduleId === moduleId) || []
       const moduleFlashcardsToDelete = flashcards?.filter(f => f.moduleId === moduleId) || []
       
-      // Alle Inhalte parallel löschen
+      // Alle Inhalte parallel lÃ¶schen
       await Promise.all([
         ...moduleScriptsToDelete.map(s => removeScript(s.id)),
         ...moduleNotesToDelete.map(n => removeNote(n.id)),
@@ -757,18 +809,18 @@ function App() {
         ...moduleFlashcardsToDelete.map(f => removeFlashcard(f.id)),
       ])
       
-      // Dann das Modul selbst löschen
+      // Dann das Modul selbst lÃ¶schen
       await removeModule(moduleId)
       
-      // Falls gerade in diesem Modul, zurück zur Hauptseite
+      // Falls gerade in diesem Modul, zurÃ¼ck zur Hauptseite
       if (selectedModuleId === moduleId) {
         setSelectedModuleId(null)
       }
       
-      toast.success('Modul und alle Inhalte gelöscht')
+      toast.success('Modul und alle Inhalte gelÃ¶scht')
     } catch (error) {
-      console.error('Fehler beim Löschen des Moduls:', error)
-      toast.error('Fehler beim Löschen des Moduls')
+      console.error('Fehler beim LÃ¶schen des Moduls:', error)
+      toast.error('Fehler beim LÃ¶schen des Moduls')
     }
   }
 
@@ -857,7 +909,7 @@ function App() {
               ...t, 
               status: 'error', 
               error: 'Upload fehlgeschlagen',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
               timestamp: Date.now() 
             } : t
           )
@@ -908,7 +960,7 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         // Wissenschaftlicher LaTeX-Notizen-Prompt
-        const prompt = `Du bist ein Experte für die Erstellung wissenschaftlicher Lernnotizen im LaTeX-Stil.
+        const prompt = `Du bist ein Experte fÃ¼r die Erstellung wissenschaftlicher Lernnotizen im LaTeX-Stil.
 
 KURSMATERIAL ZUM ZUSAMMENFASSEN:
 ${script.content}
@@ -917,14 +969,14 @@ ERSTELLE STRUKTURIERTE LERNNOTIZEN MIT FOLGENDEN VORGABEN:
 
 ## FORMATIERUNG (WICHTIG!)
 
-1. **Überschriften** mit Markdown:
+1. **Ãœberschriften** mit Markdown:
    - # Hauptthema
    - ## Abschnitt
    - ### Unterabschnitt
 
 2. **Mathematische Formeln** IMMER in LaTeX:
    - Inline: $a^2 + b^2 = c^2$
-   - Block (für wichtige Formeln):
+   - Block (fÃ¼r wichtige Formeln):
      $$f(x) = \\frac{a}{b} + \\sqrt{x}$$
 
 3. **Tabellen** als Markdown:
@@ -932,64 +984,64 @@ ERSTELLE STRUKTURIERTE LERNNOTIZEN MIT FOLGENDEN VORGABEN:
    |----------|----------|
    | Wert 1   | Wert 2   |
 
-4. **Listen** für Aufzählungen:
+4. **Listen** fÃ¼r AufzÃ¤hlungen:
    - Stichpunkt 1
    - Stichpunkt 2
 
 5. **Hervorhebungen**:
-   - **Fett** für wichtige Begriffe
-   - *Kursiv* für Definitionen
+   - **Fett** fÃ¼r wichtige Begriffe
+   - *Kursiv* fÃ¼r Definitionen
 
 ## INHALTLICHE STRUKTUR
 
-1. **Titel & Überblick**
+1. **Titel & Ãœberblick**
    - Thema klar benennen
-   - Kurze Einleitung (1-2 Sätze)
+   - Kurze Einleitung (1-2 SÃ¤tze)
 
 2. **Kernkonzepte**
-   - Definitionen präzise formulieren
+   - Definitionen prÃ¤zise formulieren
    - Wichtige Eigenschaften auflisten
 
 3. **Formeln & Gesetze**
    - Alle relevanten Formeln in LaTeX
-   - Kurze Erklärung jeder Formel
-   - Beispiel: $E = mc^2$ (Energie-Masse-Äquivalenz)
+   - Kurze ErklÃ¤rung jeder Formel
+   - Beispiel: $E = mc^2$ (Energie-Masse-Ã„quivalenz)
 
-4. **Zusammenhänge & Regeln**
-   - Logische Verknüpfungen darstellen
+4. **ZusammenhÃ¤nge & Regeln**
+   - Logische VerknÃ¼pfungen darstellen
    - Bei Bedarf Wahrheitstabellen
 
 5. **Beispiele**
    - Mindestens ein durchgerechnetes Beispiel
-   - Schritt-für-Schritt-Lösung
+   - Schritt-fÃ¼r-Schritt-LÃ¶sung
 
-6. **Merksätze**
-   - Wichtigste Punkte zum Einprägen
-   - Kurz und prägnant
+6. **MerksÃ¤tze**
+   - Wichtigste Punkte zum EinprÃ¤gen
+   - Kurz und prÃ¤gnant
 
 ## VERBOTEN:
 - Kein Inhaltsverzeichnis
 - Keine Referenzen/Quellenangaben
-- Kein Fließtext ohne Struktur
+- Kein FlieÃŸtext ohne Struktur
 - Keine Wiederholungen
 
-## BEISPIEL FÜR GUTE NOTATION:
+## BEISPIEL FÃœR GUTE NOTATION:
 
 ### Quadratische Gleichung
 Die allgemeine Form lautet:
 $$ax^2 + bx + c = 0$$
 
-**Lösungsformel (Mitternachtsformel):**
+**LÃ¶sungsformel (Mitternachtsformel):**
 $$x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
 
 **Diskriminante:** $D = b^2 - 4ac$
-- $D > 0$: Zwei reelle Lösungen
-- $D = 0$: Eine reelle Lösung
-- $D < 0$: Keine reelle Lösung
+- $D > 0$: Zwei reelle LÃ¶sungen
+- $D = 0$: Eine reelle LÃ¶sung
+- $D < 0$: Keine reelle LÃ¶sung
 
 ---
 
-Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mathematischen Ausdrücke!`
+Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX fÃ¼r alle mathematischen AusdrÃ¼cke!`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -1017,7 +1069,7 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mat
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        toast.success(`Notizen für "${script.name}" erfolgreich erstellt`)
+        toast.success(`Notizen fÃ¼r "${script.name}" erfolgreich erstellt`)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         const errorStack = error instanceof Error ? error.stack : undefined
@@ -1028,12 +1080,12 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mat
               ...t, 
               status: 'error', 
               error: 'Erstellung fehlgeschlagen',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
               timestamp: Date.now() 
             } : t
           )
         )
-        toast.error(`Fehler beim Erstellen der Notizen für "${script.name}"`)
+        toast.error(`Fehler beim Erstellen der Notizen fÃ¼r "${script.name}"`)
       }
     }
 
@@ -1102,14 +1154,14 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mat
           ? moduleContext
           : `Kursmaterial:\n${script.content.substring(0, 8000)}`
 
-        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Übungsaufgaben basierend auf dem bereitgestellten Kontext.
+        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Ãœbungsaufgaben basierend auf dem bereitgestellten Kontext.
 
-WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
-- easy = 1-2 Minuten Lösungszeit, sehr kurze Rechenaufgaben
+WICHTIG - Aufgaben sollen KURZ und PRÃ„ZISE sein:
+- easy = 1-2 Minuten LÃ¶sungszeit, sehr kurze Rechenaufgaben
 - medium = 3-5 Minuten, mittlere Interpretationsaufgaben  
 - hard = 5-10 Minuten, maximal 2-3 Teilaufgaben
 
-Variation: Mische kurze Berechnungen, Verständnisfragen und ab und zu komplexere Aufgaben.
+Variation: Mische kurze Berechnungen, VerstÃ¤ndnisfragen und ab und zu komplexere Aufgaben.
 
 ${contentSection}
 ${contextPack.inputModeConstraints}
@@ -1119,8 +1171,8 @@ ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 {
   "tasks": [
     {
-      "question": "### Kurzer Titel\n\nKlare, präzise Aufgabenstellung auf Deutsch.",
-      "solution": "Kurze, strukturierte Lösung",
+      "question": "### Kurzer Titel\n\nKlare, prÃ¤zise Aufgabenstellung auf Deutsch.",
+      "solution": "Kurze, strukturierte LÃ¶sung",
       "difficulty": "easy" | "medium" | "hard",
       "topic": "Hauptthema der Aufgabe",
       "tags": ["tag1", "tag2"]
@@ -1129,8 +1181,8 @@ ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 }
 
 Regeln:
-- Fragen in Markdown formatieren (### für Titel, - für Listen)
-- Keine Textwüsten - maximal 3-4 Sätze pro Aufgabe
+- Fragen in Markdown formatieren (### fÃ¼r Titel, - fÃ¼r Listen)
+- Keine TextwÃ¼sten - maximal 3-4 SÃ¤tze pro Aufgabe
 - Teilaufgaben als a), b), c) formatieren
 - Alles auf DEUTSCH
 - Nutze die analysierten Themen, Definitionen und Formeln aus dem Kontext`
@@ -1149,24 +1201,24 @@ Regeln:
         try {
           parsed = JSON.parse(response)
         } catch (parseError) {
-          throw new Error('Ungültiges Antwortformat von der KI')
+          throw new Error('UngÃ¼ltiges Antwortformat von der KI')
         }
 
         if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
-          throw new Error('Antwort enthält kein tasks-Array')
+          throw new Error('Antwort enthÃ¤lt kein tasks-Array')
         }
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
         )
 
-        // Modul-Informationen für Tags holen
+        // Modul-Informationen fÃ¼r Tags holen
         const moduleInfo = modules?.find(m => m.id === script.moduleId)
 
         // Create initial tasks from parsed response with normalized tags
         const initialTasks: Task[] = []
         for (const t of parsed.tasks) {
-          // Extrahiere zusätzliche Tags wenn nicht vom LLM geliefert
+          // Extrahiere zusÃ¤tzliche Tags wenn nicht vom LLM geliefert
           const extracted = extractTagsFromQuestion(t.question)
           const rawTags = t.tags || extracted.tags
           
@@ -1204,7 +1256,7 @@ Regeln:
             enableDebugReport: false,
             onRegenerate: async (issuesToAvoid) => {
               // Regenerate this single task with issues to avoid
-              const regeneratePrompt = `Generiere EINE neue Übungsaufgabe zum Thema "${task.topic || 'Allgemein'}".
+              const regeneratePrompt = `Generiere EINE neue Ãœbungsaufgabe zum Thema "${task.topic || 'Allgemein'}".
 
 ${contentSection}
 ${contextPack.inputModeConstraints}
@@ -1215,8 +1267,8 @@ WICHTIG - VERMEIDE DIESE PROBLEME:
 
 ANTWORTE NUR MIT VALIDEM JSON:
 {
-  "question": "Präzise Aufgabenstellung",
-  "solution": "Kurze Lösung",
+  "question": "PrÃ¤zise Aufgabenstellung",
+  "solution": "Kurze LÃ¶sung",
   "difficulty": "${task.difficulty}",
   "topic": "${task.topic || ''}",
   "tags": ["tag1", "tag2"]
@@ -1265,12 +1317,12 @@ ANTWORTE NUR MIT VALIDEM JSON:
         // Show validation info in toast if repairs/failures occurred
         if (validationStats.repaired > 0 || validationStats.failed > 0) {
           toast.success(
-            `${validatedTasks.length} Aufgaben für "${script.name}" erstellt` +
+            `${validatedTasks.length} Aufgaben fÃ¼r "${script.name}" erstellt` +
             (validationStats.repaired > 0 ? ` (${validationStats.repaired} repariert)` : '') +
             (validationStats.failed > 0 ? ` (${validationStats.failed} mit Warnungen)` : '')
           )
         } else {
-          toast.success(`${validatedTasks.length} Aufgaben für "${script.name}" erstellt`)
+          toast.success(`${validatedTasks.length} Aufgaben fÃ¼r "${script.name}" erstellt`)
         }
       } catch (error) {
         console.error('Fehler bei Aufgabenerstellung:', error)
@@ -1283,21 +1335,21 @@ ANTWORTE NUR MIT VALIDEM JSON:
               ...t, 
               status: 'error', 
               error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
               timestamp: Date.now()
             } : t
           )
         )
-        toast.error(`Fehler beim Erstellen der Aufgaben für "${script.name}"`)
+        toast.error(`Fehler beim Erstellen der Aufgaben fÃ¼r "${script.name}"`)
       }
     }
 
     await taskQueue.add({ id: taskId, execute })
   }
 
-  // Neue Funktion: Generiere Tasks für mehrere Scripts (vom Dashboard)
+  // Neue Funktion: Generiere Tasks fÃ¼r mehrere Scripts (vom Dashboard)
   const handleGenerateTasksFromDashboard = async (moduleId: string, scriptIds: string[]) => {
-    // Filter scripts die zum Modul gehören
+    // Filter scripts die zum Modul gehÃ¶ren
     const scriptsToProcess = scripts?.filter(s => scriptIds.includes(s.id) && s.moduleId === moduleId) || []
     
     if (scriptsToProcess.length === 0) {
@@ -1321,17 +1373,19 @@ ANTWORTE NUR MIT VALIDEM JSON:
       let userAnswer = answer
       let transcription = ''
 
-      setPipelineTasks((current) => [
-        ...current,
-        {
-          id: taskId,
-          type: 'task-submit',
-          name: 'Aufgabe wird geprueft',
-          progress: 0,
-          status: 'processing',
-          timestamp: Date.now(),
-        },
-      ])
+      if (!isStudyRoomAttempt) {
+        setPipelineTasks((current) => [
+          ...current,
+          {
+            id: taskId,
+            type: 'task-submit',
+            name: 'Aufgabe wird geprueft',
+            progress: 0,
+            status: 'processing',
+            timestamp: Date.now(),
+          },
+        ])
+      }
 
       if (isHandwritten && canvasDataUrl) {
         toast.loading('Analysiere deine Handschrift...', { id: 'task-submit' })
@@ -1383,6 +1437,27 @@ ANTWORTE NUR MIT VALIDEM JSON:
         }
       }
 
+      if (isStudyRoomAttempt) {
+        // StudyRoom: submit without evaluation, lock submission and go back to lobby
+        try {
+          await submitStudyRound(studyRoomSolveContext.roomId, {
+            userId: studyRoomIdentity.userId,
+            answerPreview: limitAnswerPreview(userAnswer),
+            answerText: userAnswer,
+          })
+          await refreshStudyRoom(studyRoomSolveContext.roomId)
+          setActiveTask(null)
+          setStudyRoomSolveContext(null)
+          setTaskFeedback(null)
+          toast.success('Abgabe gesperrt â€“ zurÃ¼ck zur Lobby')
+          return
+        } catch (submitError) {
+          console.error('[StudyRoom] submit failed', submitError)
+          toast.error('Abgabe konnte nicht gesendet werden')
+          throw submitError
+        }
+      }
+
       setPipelineTasks((current) =>
         current.map((t) => (t.id === taskId ? { ...t, progress: 50, name: 'Antwort wird bewertet' } : t))
       )
@@ -1422,20 +1497,7 @@ Gib deine Antwort als JSON zurueck:
           updateTopicStats(activeTask.moduleId, activeTask.topic, evaluation.isCorrect)
         }
 
-        if (isStudyRoomAttempt && studyRoom && studyRoomSolveContext) {
-          try {
-            const submissionResponse = await submitStudyRound(studyRoomSolveContext.roomId, {
-              userId: studyRoomIdentity.userId,
-              isCorrect: evaluation.isCorrect,
-              answerPreview: limitAnswerPreview(userAnswer),
-            })
-            syncStudyRoomState(submissionResponse.room)
-            toast.success('Abgabe im Lerngruppenraum gespeichert')
-          } catch (submitError) {
-            console.error('[StudyRoom] submit failed', submitError)
-            toast.error('Abgabe konnte nicht an den Raum gesendet werden')
-          }
-        } else if (evaluation.isCorrect) {
+        if (evaluation.isCorrect) {
           await updateTask(activeTask.id, { completed: true, completedAt: new Date().toISOString() })
           toast.success('Richtige Antwort!')
         }
@@ -1571,7 +1633,7 @@ Gib deine Antwort als JSON zurueck:
       setActiveSequenceIndex(null)
       setActiveTask(null)
       setTaskFeedback(null)
-      toast.success('Alle Aufgaben im Block abgeschlossen! 🎉')
+      toast.success('Alle Aufgaben im Block abgeschlossen! ðŸŽ‰')
       return
     }
 
@@ -1598,7 +1660,7 @@ Gib deine Antwort als JSON zurueck:
       const script = scripts?.find((s) => s.id === scriptId)
       const moduleId = script?.moduleId
       
-      // Zuerst verknüpfte Daten löschen
+      // Zuerst verknÃ¼pfte Daten lÃ¶schen
       const relatedNotes = notes?.filter((n) => n.scriptId === scriptId) || []
       const relatedTasks = tasks?.filter((t) => t.scriptId === scriptId) || []
       const relatedFlashcards = relatedNotes.flatMap((n) => flashcards?.filter((f) => f.noteId === n.id) || [])
@@ -1622,10 +1684,10 @@ Gib deine Antwort als JSON zurueck:
         removeScript(scriptId)
       ])
       
-      toast.success('Skript gelöscht')
+      toast.success('Skript gelÃ¶scht')
     } catch (error) {
-      console.error('Fehler beim Löschen:', error)
-      toast.error('Fehler beim Löschen des Skripts')
+      console.error('Fehler beim LÃ¶schen:', error)
+      toast.error('Fehler beim LÃ¶schen des Skripts')
     }
   }
 
@@ -1655,14 +1717,14 @@ Gib deine Antwort als JSON zurueck:
         script.name,
         script.content
       )
-      toast.info(`Analyse für "${script.name}" wurde gestartet`)
+      toast.info(`Analyse fÃ¼r "${script.name}" wurde gestartet`)
     } catch (error) {
       console.error('Fehler beim Starten der Analyse:', error)
       toast.error('Fehler beim Starten der Analyse')
     }
   }
 
-  // Alle Skripte im Modul neu analysieren (vorherige Analysen löschen)
+  // Alle Skripte im Modul neu analysieren (vorherige Analysen lÃ¶schen)
   const handleReanalyzeAllScripts = async () => {
     if (!selectedModuleId) return
     const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
@@ -1672,18 +1734,18 @@ Gib deine Antwort als JSON zurueck:
       return
     }
     
-    // Alte Analysen für dieses Modul löschen
+    // Alte Analysen fÃ¼r dieses Modul lÃ¶schen
     try {
       const { deleteModuleDocumentAnalyses } = await import('@/lib/analysis-storage')
       await deleteModuleDocumentAnalyses(selectedModuleId)
     } catch (error) {
-      console.warn('Fehler beim Löschen alter Analysen:', error)
+      console.warn('Fehler beim LÃ¶schen alter Analysen:', error)
     }
     
-    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufügen
+    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufÃ¼gen
     const scriptsWithContent = moduleScripts.filter(s => s.content)
     
-    // WICHTIG: Erst alle Tasks zur Pipeline hinzufügen, damit die UI sofort die richtige Anzahl zeigt
+    // WICHTIG: Erst alle Tasks zur Pipeline hinzufÃ¼gen, damit die UI sofort die richtige Anzahl zeigt
     const newTasks = scriptsWithContent.map(script => ({
       id: `analyze-${script.id}`,
       type: 'analyze' as const,
@@ -1694,12 +1756,12 @@ Gib deine Antwort als JSON zurueck:
     }))
     
     setPipelineTasks(current => {
-      // Entferne eventuell vorhandene alte Tasks für diese Skripte
+      // Entferne eventuell vorhandene alte Tasks fÃ¼r diese Skripte
       const filtered = current.filter(t => !newTasks.some(nt => nt.id === t.id))
       return [...filtered, ...newTasks]
     })
     
-    // Dann die Analysen starten (ohne await, da wir die Tasks schon hinzugefügt haben)
+    // Dann die Analysen starten (ohne await, da wir die Tasks schon hinzugefÃ¼gt haben)
     scriptsWithContent.forEach(script => {
       const documentTypeMap: Record<string, DocumentType> = {
         'script': 'script',
@@ -1720,32 +1782,32 @@ Gib deine Antwort als JSON zurueck:
       ).catch(err => console.error('Fehler beim Starten der Analyse:', err))
     })
     
-    toast.success(`Neu-Analyse für ${scriptsWithContent.length} Skripte(n) gestartet`)
+    toast.success(`Neu-Analyse fÃ¼r ${scriptsWithContent.length} Skripte(n) gestartet`)
   }
 
-  // Ausgewählte Skripte neu analysieren (vorherige Analysen löschen)
+  // AusgewÃ¤hlte Skripte neu analysieren (vorherige Analysen lÃ¶schen)
   const handleReanalyzeSelectedScripts = async (scriptIds: string[]) => {
     if (scriptIds.length === 0) {
-      toast.error('Keine Skripte ausgewählt')
+      toast.error('Keine Skripte ausgewÃ¤hlt')
       return
     }
     
     const selectedScripts = scripts?.filter((s) => scriptIds.includes(s.id)) || []
     
-    // Alte Analysen für die ausgewählten Skripte löschen
+    // Alte Analysen fÃ¼r die ausgewÃ¤hlten Skripte lÃ¶schen
     try {
       const { deleteDocumentAnalysis } = await import('@/lib/analysis-storage')
       for (const script of selectedScripts) {
         await deleteDocumentAnalysis(script.moduleId, script.id)
       }
     } catch (error) {
-      console.warn('Fehler beim Löschen alter Analysen:', error)
+      console.warn('Fehler beim LÃ¶schen alter Analysen:', error)
     }
     
-    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufügen
+    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufÃ¼gen
     const scriptsWithContent = selectedScripts.filter(s => s.content)
     
-    // WICHTIG: Erst alle Tasks zur Pipeline hinzufügen, damit die UI sofort die richtige Anzahl zeigt
+    // WICHTIG: Erst alle Tasks zur Pipeline hinzufÃ¼gen, damit die UI sofort die richtige Anzahl zeigt
     const newTasks = scriptsWithContent.map(script => ({
       id: `analyze-${script.id}`,
       type: 'analyze' as const,
@@ -1781,13 +1843,13 @@ Gib deine Antwort als JSON zurueck:
       ).catch(err => console.error('Fehler beim Starten der Analyse:', err))
     })
     
-    toast.success(`Neu-Analyse für ${scriptsWithContent.length} Skript(e) gestartet`)
+    toast.success(`Neu-Analyse fÃ¼r ${scriptsWithContent.length} Skript(e) gestartet`)
   }
 
-  // Notizen für ausgewählte Skripte generieren
+  // Notizen fÃ¼r ausgewÃ¤hlte Skripte generieren
   const handleGenerateNotesForSelected = async (scriptIds: string[]) => {
     if (scriptIds.length === 0) {
-      toast.error('Keine Skripte ausgewählt')
+      toast.error('Keine Skripte ausgewÃ¤hlt')
       return
     }
     
@@ -1797,13 +1859,13 @@ Gib deine Antwort als JSON zurueck:
       handleGenerateNotes(script.id)
     }
     
-    toast.success(`Notizen-Generierung für ${scriptIds.length} Skript(e) gestartet`)
+    toast.success(`Notizen-Generierung fÃ¼r ${scriptIds.length} Skript(e) gestartet`)
   }
 
-  // Aufgaben für ausgewählte Skripte generieren
+  // Aufgaben fÃ¼r ausgewÃ¤hlte Skripte generieren
   const handleGenerateTasksForSelected = async (scriptIds: string[]) => {
     if (scriptIds.length === 0) {
-      toast.error('Keine Skripte ausgewählt')
+      toast.error('Keine Skripte ausgewÃ¤hlt')
       return
     }
     
@@ -1813,7 +1875,7 @@ Gib deine Antwort als JSON zurueck:
       handleGenerateTasks(script.id)
     }
     
-    toast.success(`Aufgaben-Generierung für ${scriptIds.length} Skript(e) gestartet`)
+    toast.success(`Aufgaben-Generierung fÃ¼r ${scriptIds.length} Skript(e) gestartet`)
   }
 
   
@@ -1824,10 +1886,10 @@ const handleDeleteNote = async (noteId: string) => {
         ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
         removeNote(noteId),
       ])
-      toast.success('Notiz gelöscht')
+      toast.success('Notiz gelÃ¶scht')
     } catch (error) {
-      console.error('Fehler beim Löschen:', error)
-      toast.error('Fehler beim Löschen der Notiz')
+      console.error('Fehler beim LÃ¶schen:', error)
+      toast.error('Fehler beim LÃ¶schen der Notiz')
     }
   }
 
@@ -1835,10 +1897,10 @@ const handleDeleteNote = async (noteId: string) => {
 const handleDeleteTask = async (taskId: string) => {
     try {
       await removeTask(taskId)
-      toast.success('Aufgabe gelöscht')
+      toast.success('Aufgabe gelÃ¶scht')
     } catch (error) {
-      console.error('Fehler beim Löschen:', error)
-      toast.error('Fehler beim Löschen der Aufgabe')
+      console.error('Fehler beim LÃ¶schen:', error)
+      toast.error('Fehler beim LÃ¶schen der Aufgabe')
     }
   }
 
@@ -1892,23 +1954,23 @@ const handleDeleteTask = async (taskId: string) => {
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
+        const prompt = `Du bist ein Experte fÃ¼r das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
 
 Notizen:
 ${note.content}
 
-Erstelle 5-10 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthält. Jede Karteikarte muss diese exakten Felder haben:
-- front: Die Frage oder das Konzept (kurz und prägnant, AUF DEUTSCH) (string)
-- back: Die Antwort oder Erklärung (klar und vollständig, AUF DEUTSCH) (string)
+Erstelle 5-10 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthÃ¤lt. Jede Karteikarte muss diese exakten Felder haben:
+- front: Die Frage oder das Konzept (kurz und prÃ¤gnant, AUF DEUTSCH) (string)
+- back: Die Antwort oder ErklÃ¤rung (klar und vollstÃ¤ndig, AUF DEUTSCH) (string)
 
-Erstelle Karten, die Schlüsselkonzepte, Definitionen, Formeln und wichtige Zusammenhänge abdecken.
+Erstelle Karten, die SchlÃ¼sselkonzepte, Definitionen, Formeln und wichtige ZusammenhÃ¤nge abdecken.
 
 Beispielformat:
 {
   "flashcards": [
     {
-      "front": "Was ist die Formel für die Kreisfläche?",
-      "back": "A = π × r²\n\nDabei ist:\n- A = Fläche\n- r = Radius\n- π ≈ 3,14159"
+      "front": "Was ist die Formel fÃ¼r die KreisflÃ¤che?",
+      "back": "A = Ï€ Ã— rÂ²\n\nDabei ist:\n- A = FlÃ¤che\n- r = Radius\n- Ï€ â‰ˆ 3,14159"
     }
   ]
 }`
@@ -1927,11 +1989,11 @@ Beispielformat:
         try {
           parsed = JSON.parse(response)
         } catch (parseError) {
-          throw new Error('Ungültiges Antwortformat von der KI')
+          throw new Error('UngÃ¼ltiges Antwortformat von der KI')
         }
 
         if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
-          throw new Error('Antwort enthält kein flashcards-Array')
+          throw new Error('Antwort enthÃ¤lt kein flashcards-Array')
         }
 
         setPipelineTasks((current) =>
@@ -1969,7 +2031,7 @@ Beispielformat:
               ...t, 
               status: 'error', 
               error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
               timestamp: Date.now()
             } : t
           )
@@ -1996,10 +2058,10 @@ Beispielformat:
   const handleDeleteFlashcard = async (flashcardId: string) => {
     try {
       await removeFlashcard(flashcardId)
-      toast.success('Karteikarte gelöscht')
+      toast.success('Karteikarte gelÃ¶scht')
     } catch (error) {
-      console.error('Fehler beim Löschen:', error)
-      toast.error('Fehler beim Löschen der Karteikarte')
+      console.error('Fehler beim LÃ¶schen:', error)
+      toast.error('Fehler beim LÃ¶schen der Karteikarte')
     }
   }
 
@@ -2035,10 +2097,10 @@ Beispielformat:
         ...relatedTasks.map((t) => removeTask(t.id)),
         ...ids.map((id) => removeScript(id)),
       ])
-      toast.success(`${ids.length} Skripte gelöscht`)
+      toast.success(`${ids.length} Skripte gelÃ¶scht`)
     } catch (error) {
-      console.error('Fehler beim Bulk-Löschen der Skripte:', error)
-      toast.error('Fehler beim Löschen der Skripte')
+      console.error('Fehler beim Bulk-LÃ¶schen der Skripte:', error)
+      toast.error('Fehler beim LÃ¶schen der Skripte')
     }
   }
 
@@ -2049,30 +2111,30 @@ Beispielformat:
         ...relatedFlashcards.map((f) => removeFlashcard(f.id)),
         ...ids.map((id) => removeNote(id)),
       ])
-      toast.success(`${ids.length} Notizen gelöscht`)
+      toast.success(`${ids.length} Notizen gelÃ¶scht`)
     } catch (error) {
-      console.error('Fehler beim Bulk-Löschen der Notizen:', error)
-      toast.error('Fehler beim Löschen der Notizen')
+      console.error('Fehler beim Bulk-LÃ¶schen der Notizen:', error)
+      toast.error('Fehler beim LÃ¶schen der Notizen')
     }
   }
 
   const handleBulkDeleteTasks = async (ids: string[]) => {
     try {
       await Promise.all(ids.map((id) => removeTask(id)))
-      toast.success(`${ids.length} Aufgaben gelöscht`)
+      toast.success(`${ids.length} Aufgaben gelÃ¶scht`)
     } catch (error) {
-      console.error('Fehler beim Bulk-Löschen der Aufgaben:', error)
-      toast.error('Fehler beim Löschen der Aufgaben')
+      console.error('Fehler beim Bulk-LÃ¶schen der Aufgaben:', error)
+      toast.error('Fehler beim LÃ¶schen der Aufgaben')
     }
   }
 
   const handleBulkDeleteFlashcards = async (ids: string[]) => {
     try {
       await Promise.all(ids.map((id) => removeFlashcard(id)))
-      toast.success(`${ids.length} Karteikarten gelöscht`)
+      toast.success(`${ids.length} Karteikarten gelÃ¶scht`)
     } catch (error) {
-      console.error('Fehler beim Bulk-Löschen der Karteikarten:', error)
-      toast.error('Fehler beim Löschen der Karteikarten')
+      console.error('Fehler beim Bulk-LÃ¶schen der Karteikarten:', error)
+      toast.error('Fehler beim LÃ¶schen der Karteikarten')
     }
   }
 
@@ -2084,7 +2146,7 @@ Beispielformat:
     })
     
     if (dueCards.length === 0) {
-      toast.info('Keine fälligen Karteikarten zum Lernen')
+      toast.info('Keine fÃ¤lligen Karteikarten zum Lernen')
       return
     }
     
@@ -2124,7 +2186,7 @@ Beispielformat:
         {
           id: taskId,
           type: 'task-submit',
-          name: 'Aufgabe wird überprüft',
+          name: 'Aufgabe wird Ã¼berprÃ¼ft',
           progress: 0,
           status: 'processing',
           timestamp: Date.now(),
@@ -2139,7 +2201,7 @@ Beispielformat:
         )
 
         try {
-          // Sende das Bild an die Vision-API für echte Handschrift-Erkennung
+          // Sende das Bild an die Vision-API fÃ¼r echte Handschrift-Erkennung
           const visionPrompt = buildHandwritingPrompt(task.question)
 
           const visionResponse = await llmWithRetry(
@@ -2166,13 +2228,13 @@ Beispielformat:
                 ...t, 
                 status: 'error', 
                 error: 'Fehler beim Analysieren der Handschrift',
-                errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+                errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
                 timestamp: Date.now()
               } : t
             )
           )
           
-          toast.error('Fehler beim Analysieren der Handschrift. Siehe Benachrichtigungen für Details.')
+          toast.error('Fehler beim Analysieren der Handschrift. Siehe Benachrichtigungen fÃ¼r Details.')
           throw transcriptionError
         }
       }
@@ -2181,21 +2243,21 @@ Beispielformat:
         current.map((t) => (t.id === taskId ? { ...t, progress: 50, name: 'Antwort wird bewertet' } : t))
       )
 
-      toast.loading('Überprüfe deine Antwort...', { id: 'quiz-submit' })
+      toast.loading('ÃœberprÃ¼fe deine Antwort...', { id: 'quiz-submit' })
       
       try {
         const evaluationPrompt = `Du bist ein Dozent, der die Antwort eines Studenten bewertet.
 
 Fragestellung: ${task.question}
-Musterlösung: ${task.solution}
+MusterlÃ¶sung: ${task.solution}
 Antwort des Studenten: ${userAnswer}
 
-Bewerte, ob die Antwort des Studenten korrekt ist. Sie müssen nicht wortwörtlich übereinstimmen, aber die Schlüsselkonzepte und die Endergebnisse sollten korrekt sein.
+Bewerte, ob die Antwort des Studenten korrekt ist. Sie mÃ¼ssen nicht wortwÃ¶rtlich Ã¼bereinstimmen, aber die SchlÃ¼sselkonzepte und die Endergebnisse sollten korrekt sein.
 
-Gib deine Antwort als JSON zurück:
+Gib deine Antwort als JSON zurÃ¼ck:
 {
   "isCorrect": true/false,
-  "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die Lösung preiszugeben)
+  "hints": ["hinweis1", "hinweis2"] (nur falls inkorrekt, gib 2-3 hilfreiche Hinweise AUF DEUTSCH ohne die LÃ¶sung preiszugeben)
 }`
 
         const response = await llmWithRetry(evaluationPrompt, standardModel, true, 1, 'task-submit', task.moduleId)
@@ -2224,17 +2286,17 @@ Gib deine Antwort als JSON zurück:
               ...t, 
               status: 'error', 
               error: 'Fehler beim Bewerten der Antwort',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
               timestamp: Date.now()
             } : t
           )
         )
         
-        toast.error('Fehler beim Bewerten der Antwort. Siehe Benachrichtigungen für Details.')
+        toast.error('Fehler beim Bewerten der Antwort. Siehe Benachrichtigungen fÃ¼r Details.')
         throw evaluationError
       }
     } catch (error) {
-      console.error('Fehler bei Antwortüberprüfung:', error)
+      console.error('Fehler bei AntwortÃ¼berprÃ¼fung:', error)
       toast.dismiss('quiz-submit')
       
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -2255,9 +2317,9 @@ Gib deine Antwort als JSON zurück:
                 ? 'API-Limit erreicht'
                 : error.message.includes('network') || error.message.includes('fetch')
                 ? 'Netzwerkfehler'
-                : 'Fehler bei der Aufgabenprüfung')
+                : 'Fehler bei der AufgabenprÃ¼fung')
               : 'Unerwarteter Fehler',
-            errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+            errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
             timestamp: Date.now()
           } : t
         )
@@ -2267,7 +2329,7 @@ Gib deine Antwort als JSON zurück:
         if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
           toast.error('API-Limit erreicht. Bitte warte einen Moment.')
         } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          toast.error('Netzwerkfehler. Bitte überprüfe deine Internetverbindung.')
+          toast.error('Netzwerkfehler. Bitte Ã¼berprÃ¼fe deine Internetverbindung.')
         } else {
           toast.error(`Fehler: ${error.message}`)
         }
@@ -2279,7 +2341,7 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
-  // Speichere das Modul für die Generierung, wenn eine neue Generierung startet
+  // Speichere das Modul fÃ¼r die Generierung, wenn eine neue Generierung startet
   useEffect(() => {
     if (examGenerationState?.phase === 'preparing' && selectedModule) {
       examGenerationModuleRef.current = {
@@ -2291,8 +2353,8 @@ Gib deine Antwort als JSON zurück:
     }
   }, [examGenerationState?.phase, selectedModule, moduleScripts])
 
-  // Versteckte ExamMode-Komponente für Hintergrund-Generierung
-  // Nutzt das gespeicherte Modul aus dem Ref, damit die Generierung weiterläuft
+  // Versteckte ExamMode-Komponente fÃ¼r Hintergrund-Generierung
+  // Nutzt das gespeicherte Modul aus dem Ref, damit die Generierung weiterlÃ¤uft
   const examGenModule = examGenerationModuleRef.current?.module || selectedModule
   const examGenScripts = examGenerationModuleRef.current?.scripts || moduleScripts
   
@@ -2334,7 +2396,7 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
-        {/* Großes AI Action UI */}
+        {/* GroÃŸes AI Action UI */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}
@@ -2396,7 +2458,7 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
-        {/* Großes AI Action UI */}
+        {/* GroÃŸes AI Action UI */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}
@@ -2443,7 +2505,7 @@ Gib deine Antwort als JSON zurück:
           scripts={moduleScripts}
           formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
           onBack={() => {
-            // Wenn gerade generiert wird, nicht den State löschen
+            // Wenn gerade generiert wird, nicht den State lÃ¶schen
             if (examGenerationState?.phase === 'preparing' || examGenerationState?.phase === 'ready') {
               setShowExamMode(false)
             } else {
@@ -2464,6 +2526,18 @@ Gib deine Antwort als JSON zurück:
       (taskSequence && taskSequence.some(t => !t.completed && t.id !== activeTask.id)) ||
       moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
     const isStudyRoomTask = !!studyRoomSolveContext && studyRoomSolveContext.taskId === activeTask.id
+    const hudRound = isStudyRoomTask ? studyRoom?.currentRound : null
+    const hudData = hudRound && studyRoom ? {
+      roomCode: studyRoom.code,
+      roundIndex: hudRound.roundIndex,
+      mode: hudRound.mode,
+      endsAt: hudRound.endsAt,
+      extensionVotes: hudRound.extensionVotes.length,
+      memberCount: studyRoom.members.length,
+      submittedCount: hudRound.submissions.length,
+      phase: hudRound.phase,
+      lockCountdownStartAt: hudRound.lockCountdownStartAt,
+    } : undefined
 
     return (
       <>
@@ -2495,6 +2569,8 @@ Gib deine Antwort als JSON zurück:
                 }
           }
           formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
+          hideSolution={isStudyRoomTask}
+          studyRoomHud={hudData}
         />
         {examGenerationState && (
           <ExamPreparationMinimized
@@ -2509,7 +2585,7 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
-        {/* Großes AI Action UI */}
+        {/* GroÃŸes AI Action UI */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}
@@ -2564,6 +2640,7 @@ Gib deine Antwort als JSON zurück:
           onOpenTask={openStudyRoomTask}
           onEndRound={handleEndStudyRound}
           onRefresh={() => refreshStudyRoom(studyRoom.id)}
+          onUnsubmit={handleUnsubmit}
         />
       </>
     )
@@ -2597,7 +2674,7 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
-        {/* Großes AI Action UI */}
+        {/* GroÃŸes AI Action UI */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}
@@ -2650,7 +2727,7 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
-        {/* Großes AI Action UI */}
+        {/* GroÃŸes AI Action UI */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}
@@ -2730,7 +2807,7 @@ Gib deine Antwort als JSON zurück:
           studyRoomNickname={studyRoomIdentity.nickname}
         />
 
-        {/* EditModuleDialog auch in ModuleView verfügbar */}
+        {/* EditModuleDialog auch in ModuleView verfÃ¼gbar */}
         <EditModuleDialog
           module={moduleToEdit}
           open={editModuleDialogOpen}
@@ -2751,7 +2828,7 @@ Gib deine Antwort als JSON zurück:
             onClick={() => setShowExamMode(true)}
           />
         )}
-        {/* Großes AI Action UI */}
+        {/* GroÃŸes AI Action UI */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}
@@ -2794,7 +2871,7 @@ Gib deine Antwort als JSON zurück:
         onClearAll={() => setPipelineTasks([])}
       />
       
-      {/* Flex-Container für Sticky Footer */}
+      {/* Flex-Container fÃ¼r Sticky Footer */}
       <div className="min-h-screen bg-background flex flex-col">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -2804,7 +2881,7 @@ Gib deine Antwort als JSON zurück:
                   <div className="flex-1">
                     <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
                     <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                      Dein KI-gestützter Lernbegleiter für die Uni
+                      Dein KI-gestÃ¼tzter Lernbegleiter fÃ¼r die Uni
                     </p>
                   </div>
                 </div>
@@ -2859,14 +2936,14 @@ Gib deine Antwort als JSON zurück:
           </div>
         </div>
 
-        {/* Hauptinhalt mit flex-1 für Sticky Footer */}
+        {/* Hauptinhalt mit flex-1 fÃ¼r Sticky Footer */}
         <main className="flex-1">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
             {!modules || modules.length === 0 ? (
               <>
                 <EmptyState
                   title="Noch keine Module"
-                  description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Übungsaufgaben zu organisieren."
+                  description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Ãœbungsaufgaben zu organisieren."
                   actionLabel="Erstes Modul erstellen"
                   onAction={() => setCreateDialogOpen(true)}
                   secondaryActionLabel="Backup importieren"
@@ -2898,7 +2975,7 @@ Gib deine Antwort als JSON zurück:
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <LocalStorageIndicator />
               <p className="text-xs text-muted-foreground">
-                StudyMate © {new Date().getFullYear()} · Deine Daten bleiben privat
+                StudyMate Â© {new Date().getFullYear()} Â· Deine Daten bleiben privat
               </p>
             </div>
           </div>
@@ -2924,7 +3001,7 @@ Gib deine Antwort als JSON zurück:
           } : undefined}
         />
 
-        {/* Versteckter File-Input für Import */}
+        {/* Versteckter File-Input fÃ¼r Import */}
         <input
           ref={importInputRef}
           type="file"
@@ -2933,7 +3010,7 @@ Gib deine Antwort als JSON zurück:
           className="hidden"
         />
 
-        {/* Onboarding Tutorial für neue Benutzer */}
+        {/* Onboarding Tutorial fÃ¼r neue Benutzer */}
         {isChecked && showOnboarding && (
           <OnboardingTutorial 
             onComplete={completeOnboarding}
@@ -2941,7 +3018,7 @@ Gib deine Antwort als JSON zurück:
           />
         )}
         
-        {/* Globales Exam-Generation Widget - immer sichtbar während einer Generierung */}
+        {/* Globales Exam-Generation Widget - immer sichtbar wÃ¤hrend einer Generierung */}
         {examGenerationState && !showExamMode && (
           <ExamPreparationMinimized
             progress={examGenerationState.progress}
@@ -2950,7 +3027,7 @@ Gib deine Antwort als JSON zurück:
           />
         )}
         
-        {/* AI Preparation UI - für Analyse, Notizen, Aufgaben, Karteikarten */}
+        {/* AI Preparation UI - fÃ¼r Analyse, Notizen, Aufgaben, Karteikarten */}
         {aiActionState && !aiActionState.isMinimized && (
           <AIPreparation
             type={aiActionState.type}

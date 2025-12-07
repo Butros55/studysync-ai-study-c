@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
+import { OpenAI } from "openai";
 import { tasksDB } from "./database.js";
 
 // TODO: persist rooms in a durable store if rooms need to survive restarts
@@ -8,6 +9,10 @@ const rooms = new Map();
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
 const EXTENSION_VOTE_RATIO = 0.5;
+const openai =
+  process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== "demo"
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : null;
 
 const router = Router();
 
@@ -104,7 +109,75 @@ function pickTaskForRound(moduleId, topic) {
     console.warn("[StudyRoom] Failed to pick existing task for round:", error);
   }
 
-  // Fallback: lightweight placeholder until server-side generation is wired up
+  return null;
+}
+
+async function generateTaskWithLLM(moduleId, topic, moduleMeta) {
+  if (!openai) return null;
+  const safeTopic = topic || moduleMeta?.topic || moduleMeta?.moduleTitle || "Allgemein";
+  const tagList = Array.isArray(moduleMeta?.moduleTags)
+    ? moduleMeta.moduleTags.join(", ")
+    : "";
+  const sampleBlock =
+    moduleMeta?.sampleTasks && moduleMeta.sampleTasks.length
+      ? moduleMeta.sampleTasks
+          .slice(0, 3)
+          .map(
+            (t, idx) =>
+              `### Sample ${idx + 1}\nFrage: ${t.question}\nSchwierigkeit: ${
+                t.difficulty || "medium"
+              }\nTags: ${(t.tags || []).join(", ")}`
+          )
+          .join("\n\n")
+      : "";
+
+  const prompt = `Erstelle EINE kurze Übungsaufgabe für ein Challenge-Duell.
+Module title: ${moduleMeta?.moduleTitle || moduleId}
+Tags/Topics: ${tagList}
+Focus topic: ${safeTopic}
+Language: Deutsch
+Samples (zur Stil-Referenz, KEINE Lösungen): 
+${sampleBlock || "- keine Samples vorhanden -"}
+`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Du bist ein Dozent. Erstelle realistische, kurze Übungsaufgaben mit klarer Musterlösung.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      max_completion_tokens: 600,
+    });
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      id: uuidv4(),
+      moduleId,
+      question: parsed.question,
+      solution: parsed.solution,
+      difficulty: parsed.difficulty || "medium",
+      topic: parsed.topic || safeTopic,
+      tags: Array.isArray(parsed.tags) ? parsed.tags : [safeTopic],
+      solutionMarkdown: parsed.solutionMarkdown || parsed.solution,
+    };
+  } catch (error) {
+    console.warn("[StudyRoom] LLM task generation failed, falling back:", error);
+    return null;
+  }
+}
+
+async function resolveRoundTask(moduleId, topic, moduleMeta) {
+  const existing = pickTaskForRound(moduleId, topic);
+  if (existing) return existing;
+  const generated = await generateTaskWithLLM(moduleId, topic, moduleMeta);
+  if (generated) return generated;
   const safeTopic = topic || "Allgemein";
   return {
     id: uuidv4(),
@@ -114,7 +187,134 @@ function pickTaskForRound(moduleId, topic) {
     difficulty: "medium",
     topic: safeTopic,
     tags: safeTopic ? [safeTopic] : [],
+    solutionMarkdown: `Diskutiere ${safeTopic}.`,
+    fallback: true,
   };
+}
+
+function computeRoundPhase(round) {
+  if (!round) return;
+  const now = Date.now();
+  if (round.phase === "starting" && round.startsAt) {
+    if (now >= new Date(round.startsAt).getTime()) {
+      round.phase = "running";
+    }
+  }
+  if (round.phase === "running" && round.endsAt) {
+    if (now >= new Date(round.endsAt).getTime()) {
+      round.phase = "ending";
+    }
+  }
+}
+
+function shouldEarlyFinish(round, members) {
+  if (!round) return false;
+  const allSubmitted =
+    round.submissions.length > 0 &&
+    members.every((m) => round.submissions.some((s) => s.userId === m.userId));
+  return allSubmitted;
+}
+
+async function evaluateRound(room) {
+  const round = room.currentRound;
+  if (!round) return;
+  round.evaluation = { status: "pending" };
+
+  const submissions = [...round.submissions];
+  const perUser = {};
+  let summaryMarkdown = "Kurze Auswertung.";
+
+  if (openai && round.task?.solutionMarkdown) {
+    const answerBlock = submissions
+      .map(
+        (s) =>
+          `User: ${s.userId}\nAntwort: ${s.answerText || s.answerPreview || "—"}\n\n`
+      )
+      .join("\n");
+    const evalPrompt = `Bewerte die Antworten einer Challenge-Aufgabe. Gib JSON zurück:
+{
+  "summaryMarkdown": "kurze Zusammenfassung",
+  "perUser": {
+    "<userId>": { "correct": true/false, "feedbackMarkdown": "kurzes Feedback", "scoreHint": "Hinweis" }
+  }
+}
+
+Aufgabe:
+${round.task.question}
+
+Offizielle Lösung:
+${round.task.solutionMarkdown || round.task.solution}
+
+Antworten:
+${answerBlock}`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: evalPrompt }],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 600,
+      });
+      const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+      if (parsed.perUser) Object.assign(perUser, parsed.perUser);
+      if (parsed.summaryMarkdown) summaryMarkdown = parsed.summaryMarkdown;
+    } catch (error) {
+      console.warn("[StudyRoom] evaluation LLM failed:", error);
+      round.evaluation = { status: "error", error: "Auswertung fehlgeschlagen" };
+    }
+  }
+
+  // Mark correctness & points
+  const correctSubs = submissions
+    .map((s) => {
+      const verdict = perUser[s.userId]?.correct;
+      const correct = verdict === undefined ? true : !!verdict;
+      return { ...s, isCorrect: correct };
+    })
+    .filter((s) => s.isCorrect)
+    .sort(
+      (a, b) =>
+        new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
+    );
+
+  correctSubs.forEach((submission, index) => {
+    const rank = index + 1;
+    const points = computePoints(rank, correctSubs.length, room.members.length);
+    submission.rank = rank;
+    submission.pointsAwarded = points;
+    room.scoreboard[submission.userId] =
+      (room.scoreboard[submission.userId] || 0) + points;
+  });
+
+  round.submissions = submissions;
+  round.evaluation = { status: "done", result: { summaryMarkdown, perUser } };
+  round.phase = "review";
+  round.state = "ended";
+  round.endedAt = new Date().toISOString();
+  room.members.forEach((member) => {
+    member.status = "idle";
+    member.ready = false;
+  });
+}
+
+async function autoEndIfNeeded(room) {
+  const round = room.currentRound;
+  if (!round) return;
+  computeRoundPhase(round);
+  const now = Date.now();
+
+  if (round.phase === "running" && round.endsAt) {
+    const lockActive =
+      round.lockCountdownStartAt &&
+      now - new Date(round.lockCountdownStartAt).getTime() >= 5000;
+    const timeOver = now >= new Date(round.endsAt).getTime();
+    if (timeOver || lockActive) {
+      round.phase = "ending";
+      round.state = "ended";
+      round.endedAt = new Date().toISOString();
+      await evaluateRound(room);
+    }
+  }
 }
 
 function updateMemberLastSeen(room, userId) {
@@ -125,7 +325,7 @@ function updateMemberLastSeen(room, userId) {
 }
 
 router.post("/", (req, res) => {
-  const { moduleId, topic, nickname, userId } = req.body || {};
+  const { moduleId, topic, nickname, userId, moduleMeta } = req.body || {};
 
   if (!moduleId || !nickname || !userId) {
     return res.status(400).json({
@@ -157,6 +357,7 @@ router.post("/", (req, res) => {
     currentRound: undefined,
     rounds: [],
     scoreboard: {},
+    moduleMeta,
   };
 
   rooms.set(roomId, room);
@@ -164,7 +365,7 @@ router.post("/", (req, res) => {
 });
 
 router.post("/join", (req, res) => {
-  const { code, nickname, userId } = req.body || {};
+  const { code, nickname, userId, moduleMeta } = req.body || {};
   if (!code || !nickname || !userId) {
     return res.status(400).json({
       error: "code, nickname und userId werden benötigt",
@@ -193,6 +394,10 @@ router.post("/join", (req, res) => {
     });
   }
 
+  if (moduleMeta) {
+    room.moduleMeta = moduleMeta;
+  }
+
   res.json({ room });
 });
 
@@ -204,6 +409,10 @@ router.get("/:roomId", (req, res) => {
   if (!room) {
     return res.status(404).json({ error: "Room nicht gefunden" });
   }
+
+  autoEndIfNeeded(room).catch((err) =>
+    console.warn("[StudyRoom] autoEnd polling failed", err)
+  );
 
   if (userId) {
     updateMemberLastSeen(room, String(userId));
@@ -231,52 +440,64 @@ router.post("/:roomId/ready", (req, res) => {
   res.json({ room });
 });
 
-router.post("/:roomId/start-round", (req, res) => {
-  const { roomId } = req.params;
-  const { hostId, mode } = req.body || {};
-  const room = rooms.get(roomId);
+router.post("/:roomId/start-round", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { hostId, mode, moduleMeta } = req.body || {};
+    const room = rooms.get(roomId);
 
-  if (!room) {
-    return res.status(404).json({ error: "Room nicht gefunden" });
+    if (!room) {
+      return res.status(404).json({ error: "Room nicht gefunden" });
+    }
+
+    if (room.host.userId !== hostId) {
+      return res.status(403).json({ error: "Nur der Host kann Runden starten" });
+    }
+
+    if (!["collab", "challenge"].includes(mode)) {
+      return res.status(400).json({ error: "Ungültiger Rundentyp" });
+    }
+
+    if (moduleMeta) {
+      room.moduleMeta = moduleMeta;
+    }
+
+    const startsAt = new Date(Date.now() + 3000).toISOString();
+    const roundTask = await resolveRoundTask(room.moduleId, room.topic, room.moduleMeta);
+    const baseTimeSec = getBaseTimeSec(roundTask);
+
+    const round = {
+      id: uuidv4(),
+      roundIndex: room.rounds.length + 1,
+      mode,
+      task: roundTask,
+      phase: mode === "challenge" ? "starting" : "running",
+      startsAt,
+      startedAt: startsAt,
+      endsAt: new Date(
+        new Date(startsAt).getTime() + baseTimeSec * 1000
+      ).toISOString(),
+      extended: false,
+      state: "running",
+      baseTimeSec,
+      submissions: [],
+      extensionVotes: [],
+      evaluation: { status: "idle" },
+    };
+
+    room.currentRound = round;
+    room.rounds.push(round);
+    room.state = "running";
+    room.members.forEach((member) => {
+      member.status = "solving";
+      member.ready = false;
+    });
+
+    res.json({ room, round });
+  } catch (error) {
+    console.error("[StudyRoom] start-round failed:", error);
+    res.status(500).json({ error: "Konnte Runde nicht starten" });
   }
-
-  if (room.host.userId !== hostId) {
-    return res.status(403).json({ error: "Nur der Host kann Runden starten" });
-  }
-
-  if (!["collab", "challenge"].includes(mode)) {
-    return res.status(400).json({ error: "Ungültiger Rundentyp" });
-  }
-
-  const roundTask = pickTaskForRound(room.moduleId, room.topic);
-  const startedAt = new Date().toISOString();
-  const baseTimeSec = getBaseTimeSec(roundTask);
-
-  const round = {
-    id: uuidv4(),
-    roundIndex: room.rounds.length + 1,
-    mode,
-    task: roundTask,
-    startedAt,
-    endsAt: new Date(
-      new Date(startedAt).getTime() + baseTimeSec * 1000
-    ).toISOString(),
-    extended: false,
-    state: "running",
-    baseTimeSec,
-    submissions: [],
-    extensionVotes: [],
-  };
-
-  room.currentRound = round;
-  room.rounds.push(round);
-  room.state = "running";
-  room.members.forEach((member) => {
-    member.status = "solving";
-    member.ready = false;
-  });
-
-  res.json({ room, round });
 });
 
 router.post("/:roomId/vote-extension", (req, res) => {
@@ -314,14 +535,13 @@ router.post("/:roomId/vote-extension", (req, res) => {
 
 router.post("/:roomId/submit", (req, res) => {
   const { roomId } = req.params;
-  const { userId, isCorrect, answerPreview } = req.body || {};
+  const { userId, isCorrect, answerPreview, answerText } = req.body || {};
   const room = rooms.get(roomId);
 
   if (!room?.currentRound) {
     return res.status(404).json({ error: "Keine laufende Runde gefunden" });
   }
 
-  // TODO: serverseitige Korrektur/Scoring integrieren, statt sich nur auf den Client zu verlassen
   const member = room.members.find((m) => m.userId === userId);
   if (!member) {
     return res.status(404).json({ error: "Mitglied nicht gefunden" });
@@ -330,7 +550,7 @@ router.post("/:roomId/submit", (req, res) => {
   const now = new Date().toISOString();
   const round = room.currentRound;
   const timeMs = new Date(now).getTime() - new Date(round.startedAt).getTime();
-  const preview = sanitizePreview(answerPreview);
+  const preview = sanitizePreview(answerPreview || answerText);
 
   const existing = round.submissions.find((s) => s.userId === userId);
   if (existing) {
@@ -338,6 +558,7 @@ router.post("/:roomId/submit", (req, res) => {
     existing.isCorrect = isCorrect;
     existing.timeMs = timeMs;
     existing.answerPreview = preview;
+    existing.answerText = answerText;
   } else {
     round.submissions.push({
       userId,
@@ -345,11 +566,39 @@ router.post("/:roomId/submit", (req, res) => {
       isCorrect,
       timeMs,
       answerPreview: preview,
+      answerText,
     });
   }
 
   member.status = "submitted";
 
+  if (shouldEarlyFinish(round, room.members)) {
+    round.lockCountdownStartAt = round.lockCountdownStartAt || now;
+  } else {
+    round.lockCountdownStartAt = undefined;
+  }
+
+  res.json({ room, round });
+});
+
+router.post("/:roomId/unsubmit", (req, res) => {
+  const { roomId } = req.params;
+  const { userId } = req.body || {};
+  const room = rooms.get(roomId);
+
+  if (!room?.currentRound) {
+    return res.status(404).json({ error: "Keine laufende Runde gefunden" });
+  }
+
+  const member = room.members.find((m) => m.userId === userId);
+  if (!member) {
+    return res.status(404).json({ error: "Mitglied nicht gefunden" });
+  }
+
+  const round = room.currentRound;
+  round.submissions = round.submissions.filter((s) => s.userId !== userId);
+  member.status = "solving";
+  round.lockCountdownStartAt = undefined;
   res.json({ room, round });
 });
 
@@ -368,34 +617,14 @@ router.post("/:roomId/end-round", (req, res) => {
 
   const round = room.currentRound;
   round.state = "ended";
+  round.phase = "ending";
   round.endedAt = new Date().toISOString();
 
-  if (round.mode === "challenge") {
-    const correctSubs = round.submissions
-      .filter((s) => s.isCorrect)
-      .sort(
-        (a, b) =>
-          new Date(a.submittedAt).getTime() -
-          new Date(b.submittedAt).getTime()
-      );
-
-    correctSubs.forEach((submission, index) => {
-      const rank = index + 1;
-      const points = computePoints(
-        rank,
-        correctSubs.length,
-        room.members.length
-      );
-      submission.rank = rank;
-      submission.pointsAwarded = points;
-      room.scoreboard[submission.userId] =
-        (room.scoreboard[submission.userId] || 0) + points;
+  evaluateRound(room).then(() => {
+    room.members.forEach((member) => {
+      member.status = "idle";
+      member.ready = false;
     });
-  }
-
-  room.members.forEach((member) => {
-    member.status = "idle";
-    member.ready = false;
   });
 
   res.json({ room, round });

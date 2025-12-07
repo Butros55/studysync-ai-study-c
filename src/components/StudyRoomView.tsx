@@ -35,6 +35,7 @@ interface StudyRoomViewProps {
   onOpenTask: () => void
   onEndRound: () => Promise<void> | void
   onRefresh?: () => void
+  onUnsubmit?: () => void
 }
 
 function useRoundCountdown(round?: StudyRoomRound) {
@@ -76,11 +77,14 @@ export function StudyRoomView({
   onOpenTask,
   onEndRound,
   onRefresh,
+  onUnsubmit,
 }: StudyRoomViewProps) {
   const me = room.members.find((m) => m.userId === currentUserId)
   const isHost = room.host.userId === currentUserId
   const readyCount = room.members.filter((m) => m.ready).length
   const currentRound = room.currentRound
+  const [startCountdown, setStartCountdown] = useState<number>(0)
+  const [lockCountdown, setLockCountdown] = useState<number | null>(null)
   const { remainingMs, progress } = useRoundCountdown(currentRound)
 
   const scoreboard = useMemo(() => {
@@ -104,10 +108,44 @@ export function StudyRoomView({
     isHost && room.members.length >= 2 && readyCount === room.members.length
   const canStartCollab = isHost && room.members.length >= 1
 
+  useEffect(() => {
+    if (!currentRound) return
+    const tick = () => {
+      if (currentRound.phase === 'starting' && currentRound.startsAt) {
+        const diff = Math.max(
+          0,
+          Math.ceil((new Date(currentRound.startsAt).getTime() - Date.now()) / 1000)
+        )
+        setStartCountdown(diff)
+      } else {
+        setStartCountdown(0)
+      }
+      if (currentRound.lockCountdownStartAt) {
+        const diff = 5000 - (Date.now() - new Date(currentRound.lockCountdownStartAt).getTime())
+        setLockCountdown(diff > 0 ? Math.ceil(diff / 1000) : 0)
+      } else {
+        setLockCountdown(null)
+      }
+    }
+    tick()
+    const interval = setInterval(tick, 500)
+    return () => clearInterval(interval)
+  }, [currentRound?.id, currentRound?.phase, currentRound?.startsAt])
+
   // TODO: replace polling trigger with realtime once backend supports WS/SSE
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {currentRound?.phase === 'starting' && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center text-white text-6xl font-bold">
+          {startCountdown > 0 ? startCountdown : 0}
+        </div>
+      )}
+      {currentRound?.phase === 'ending' && (
+        <div className="fixed inset-0 z-50 bg-red-900/70 flex items-center justify-center text-white text-4xl font-bold">
+          Runde endet...
+        </div>
+      )}
       <div className="border-b bg-card">
         <div className="max-w-6xl mx-auto px-4 py-4 sm:py-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -277,9 +315,9 @@ export function StudyRoomView({
                       <Progress value={progress} className="h-2" />
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={onOpenTask}>
-                      Aufgabe öffnen
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Button size="sm" onClick={onOpenTask} disabled={startCountdown > 0 || currentRound.phase === 'review'}>
+                      {startCountdown > 0 ? `Start in ${startCountdown}` : 'Aufgabe öffnen'}
                     </Button>
                     {currentRound.mode === 'challenge' && currentRound.state === 'running' && (
                       <Button size="sm" variant="outline" onClick={onVoteExtension} disabled={currentRound.extended}>
@@ -289,6 +327,14 @@ export function StudyRoomView({
                     {isHost && currentRound.state === 'running' && (
                       <Button size="sm" variant="secondary" onClick={onEndRound}>
                         Runde beenden
+                      </Button>
+                    )}
+                    {lockCountdown !== null && (
+                      <Badge variant="destructive">Endet in {lockCountdown}s</Badge>
+                    )}
+                    {me?.status === 'submitted' && onUnsubmit && currentRound.phase === 'running' && (
+                      <Button size="sm" variant="outline" onClick={onUnsubmit}>
+                        Antwort bearbeiten
                       </Button>
                     )}
                   </div>
@@ -337,6 +383,27 @@ export function StudyRoomView({
                       </CardContent>
                     </Card>
                   </div>
+                  {currentRound.phase === 'review' && (
+                    <Card className="bg-green-500/5 border-green-500/40">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-semibold">Review & Punkte</CardTitle>
+                        <CardDescription>
+                          {currentRound.evaluation?.status === 'pending'
+                            ? 'Auswertung läuft...'
+                            : 'Auswertung abgeschlossen'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        {currentRound.evaluation?.result?.summaryMarkdown ? (
+                          <div className="text-muted-foreground whitespace-pre-wrap">
+                            {currentRound.evaluation.result.summaryMarkdown}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">Warten auf Auswertung...</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">

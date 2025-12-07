@@ -41,6 +41,7 @@ export async function createStudyRoomApi(params: {
   topic?: string
   nickname: string
   userId: string
+  moduleMeta?: any
 }): Promise<StudyRoom> {
   const data = await postJson<RoomResponse>('/api/rooms', params)
   return data.room
@@ -50,6 +51,7 @@ export async function joinStudyRoomApi(params: {
   code: string
   nickname: string
   userId: string
+  moduleMeta?: any
 }): Promise<StudyRoom> {
   const data = await postJson<RoomResponse>('/api/rooms/join', params)
   return data.room
@@ -72,6 +74,7 @@ export async function setReadyState(roomId: string, params: {
 export async function startStudyRound(roomId: string, params: {
   hostId: string
   mode: StudyRoomMode
+  moduleMeta?: any
 }): Promise<RoomResponse> {
   return postJson<RoomResponse>(`/api/rooms/${roomId}/start-round`, params)
 }
@@ -95,6 +98,12 @@ export async function endStudyRound(roomId: string, params: {
   hostId: string
 }): Promise<RoomResponse> {
   return postJson<RoomResponse>(`/api/rooms/${roomId}/end-round`, params)
+}
+
+export async function unsubmitStudyRound(roomId: string, params: {
+  userId: string
+}): Promise<RoomResponse> {
+  return postJson<RoomResponse>(`/api/rooms/${roomId}/unsubmit`, params)
 }
 
 export async function leaveStudyRoom(roomId: string, params: {
