@@ -13,8 +13,11 @@ class TaskQueue {
 
   async add(task: QueueTask) {
     this.queue.push(task)
+    // Start processing in the background; don't block the caller
     if (!this.isProcessing) {
-      await this.process()
+      this.process().catch((error) => {
+        console.error('Task queue processing failed:', error)
+      })
     }
   }
 

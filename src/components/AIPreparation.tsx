@@ -189,6 +189,41 @@ export function AIPreparation({
   // Finde das aktuell verarbeitete Item
   const currentItem = items.find(item => item.status === 'processing')
 
+  // Step-Status pro aktuellem Item (für generate-tasks nutzen wir den Fortschritt des Items)
+  const computeStepState = () => {
+    // Default: nutze den aggregierten currentStep aus den Props
+    const completed = new Set<number>()
+    for (let i = 0; i < currentStep; i++) {
+      completed.add(i)
+    }
+    let active = isComplete ? null : currentStep
+
+    // Spezielle Logik: bei generate-tasks leiten wir den Step aus dem Fortschritt des aktuellen Items ab
+    if (type === 'generate-tasks' && currentItem) {
+      const p = currentItem.progress
+      // Schwellenwerte passend zu den setPipelineTasks Fortschritten in App.tsx (5/15/30/70/85/100)
+      if (p >= 100) {
+        completed.add(0)
+        completed.add(1)
+        completed.add(2)
+        active = null
+      } else if (p >= 70) {
+        completed.add(0)
+        completed.add(1)
+        active = 2 // Qualität prüfen
+      } else if (p >= 15) {
+        completed.add(0)
+        active = 1 // Aufgaben generieren
+      } else {
+        active = 0 // Kontext laden
+      }
+    }
+
+    return { active, completed }
+  }
+
+  const stepState = computeStepState()
+
   // Wechsle Nachrichten während des Ladens
   useEffect(() => {
     if (isComplete) return
@@ -206,12 +241,21 @@ export function AIPreparation({
   }, [isComplete, config.loadingMessages.length])
 
   return (
-    <div className="min-h-screen bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 fixed inset-0 z-50">
+    <div 
+      className="min-h-screen bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 fixed inset-0 z-50"
+      onClick={(e) => {
+        // Schließe UI wenn außerhalb geklickt wird
+        if (e.target === e.currentTarget && onMinimize) {
+          onMinimize()
+        }
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="w-full max-w-md"
+        onClick={(e) => e.stopPropagation()} // Verhindert Schließen wenn auf Card geklickt
       >
         <Card className="p-6 shadow-xl border-2 relative">
           {/* Minimize Button */}
@@ -299,21 +343,40 @@ export function AIPreparation({
             <Progress value={progress} className="h-2" />
           </div>
           
-          {/* Progress Text */}
-          <p className="text-center text-sm text-muted-foreground mb-4">
-            {isComplete 
-              ? `${totalCount} ${totalCount === 1 ? 'Dokument' : 'Dokumente'} verarbeitet`
-              : `${Math.round(progress)}%`
-            }
-          </p>
+          {/* Progress Text / Stats when complete */}
+          {isComplete ? (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-4"
+            >
+              <div className="flex items-center justify-center gap-6 py-3">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{totalCount}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {totalCount === 1 ? 'Dokument' : 'Dokumente'}
+                  </p>
+                </div>
+                <div className="h-8 w-px bg-border" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-primary">100%</p>
+                  <p className="text-xs text-muted-foreground">Abgeschlossen</p>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <p className="text-center text-sm text-muted-foreground mb-4">
+              {Math.round(progress)}%
+            </p>
+          )}
 
           {/* Steps */}
           {!isComplete && (
             <div className="space-y-3 mt-4">
               {config.steps.map((step, index) => {
                 const StepIcon = step.icon
-                const isActive = index === currentStep
-                const isCompleteStep = index < currentStep
+                const isActive = stepState.active === index
+                const isCompleteStep = stepState.completed.has(index)
 
                 return (
                   <div
@@ -440,6 +503,9 @@ export function AIPreparationMinimized({
   // Calculate stroke dashoffset for progress ring
   const circumference = 2 * Math.PI * 24 // r=24
   const strokeDashoffset = circumference - (progress / 100) * circumference
+  
+  // Anzahl der noch zu verarbeitenden Tasks
+  const remainingCount = totalCount - processedCount
 
   return (
     <motion.button
@@ -450,7 +516,7 @@ export function AIPreparationMinimized({
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
       className={cn(
-        "fixed bottom-6 z-50 w-14 h-14 rounded-full bg-card border shadow-lg flex items-center justify-center overflow-hidden group",
+        "fixed bottom-6 z-50 w-14 h-14 rounded-full bg-card border shadow-lg flex items-center justify-center group",
         offsetLeft ? "right-24" : "right-6"
       )}
     >
@@ -481,10 +547,16 @@ export function AIPreparationMinimized({
         />
       </svg>
       
-      {/* Spark Icon - wie beim Prüfungsmodus */}
-      <div className="relative z-10">
+      {/* Spark Icon - immer Sparkle, grün wenn fertig */}
+      <div className="relative z-10 flex items-center justify-center">
         {isComplete ? (
-          <CheckCircle size={24} className="text-green-500" weight="fill" />
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+          >
+            <Sparkle size={24} className="text-green-500" weight="fill" />
+          </motion.div>
         ) : (
           <motion.div
             animate={{ rotate: 360 }}
@@ -495,14 +567,15 @@ export function AIPreparationMinimized({
         )}
       </div>
       
-      {/* Badge mit Anzahl der Tasks in der Queue */}
-      {totalCount > 0 && !isComplete && (
+      {/* Badge mit Anzahl der verbleibenden Tasks */}
+      {remainingCount > 0 && !isComplete && (
         <motion.div 
-          initial={{ scale: 0 }}
+          key={remainingCount}
+          initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
-          className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium shadow-sm"
+          className="absolute -top-1.5 -right-1.5 min-w-6 h-6 px-1.5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-semibold shadow-md"
         >
-          {totalCount}
+          {remainingCount}
         </motion.div>
       )}
       
@@ -510,7 +583,7 @@ export function AIPreparationMinimized({
       <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover border rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
         {isComplete 
           ? `${totalCount} ${config.title.includes('analysiert') ? 'analysiert' : 'generiert'}`
-          : `${processedCount}/${totalCount} • ${Math.round(progress)}%`
+          : `${remainingCount} verbleibend • ${Math.round(progress)}%`
         }
       </div>
     </motion.button>

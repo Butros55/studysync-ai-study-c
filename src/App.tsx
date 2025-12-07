@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { useModules, useScripts, useNotes, useTasks, useFlashcards, migrateFromServerIfNeeded } from './hooks/use-database'
 import { storageReady, downloadExportFile, importData } from './lib/storage'
 import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
@@ -343,7 +344,7 @@ function App() {
       'generate-flashcards': 'generate-flashcards',
     }
     
-    // Sammle alle relevanten Tasks nach Typ
+    // Sammle alle relevanten Tasks nach Typ (nur pending/processing für neuen State)
     const tasksByType: Record<AIActionType, typeof pipelineTasks> = {
       'analyze': [],
       'generate-notes': [],
@@ -365,6 +366,7 @@ function App() {
     
     for (const actionType of actionTypes) {
       const tasks = tasksByType[actionType]
+      // Nur Tasks die noch laufen (pending/processing) starten ein neues UI
       const hasActive = tasks.some(t => t.status === 'pending' || t.status === 'processing')
       if (hasActive) {
         activeActionType = actionType
@@ -373,30 +375,22 @@ function App() {
       }
     }
     
-    // Wenn kein aktiver Typ gefunden, prüfe ob gerade einer abgeschlossen wurde
-    if (!activeActionType) {
-      for (const actionType of actionTypes) {
-        const tasks = tasksByType[actionType]
-        if (tasks.length > 0 && tasks.every(t => t.status === 'completed' || t.status === 'error')) {
-          activeActionType = actionType
-          activeTasks = tasks
-          break
-        }
-      }
-    }
-    
     setAiActionState(prev => {
       // Wenn keine aktiven Tasks und kein vorheriger State, nichts tun
       if (!activeActionType && !prev) return null
       
-      // Wenn keine aktiven Tasks mehr aber vorher noch was lief
-      if (!activeActionType && prev) {
-        // Behalte den State nur wenn er noch nicht complete ist (für die Animation)
-        if (!prev.isComplete) {
-          return { ...prev, isComplete: true }
-        }
+      // Wenn keine aktiven Tasks mehr aber vorher noch was lief (wurde gerade fertig)
+      if (!activeActionType && prev && !prev.isComplete) {
+        // Setze auf complete für die Fertig-Animation
+        return { ...prev, isComplete: true, progress: 100 }
+      }
+      
+      // Wenn bereits complete und keine aktiven Tasks, nichts ändern (wird durch Timer entfernt)
+      if (!activeActionType && prev?.isComplete) {
         return prev
       }
+      
+      // Ab hier: Es gibt aktive Tasks
       
       // Berechne den neuen State
       const completedCount = activeTasks.filter(t => t.status === 'completed').length
@@ -432,13 +426,14 @@ function App() {
       }
       
       // Wenn schon ein State existiert für diesen Typ, nur updaten
+      // WICHTIG: totalCount nur erhöhen, nie verringern (damit die Anzeige stabil bleibt)
       if (prev && prev.type === activeActionType) {
         return {
           ...prev,
           progress: totalProgress,
           currentStep,
           processedCount: completedCount,
-          totalCount: activeTasks.length,
+          totalCount: Math.max(prev.totalCount, activeTasks.length),
           isComplete: allComplete,
           items: newItems,
         }
@@ -460,21 +455,24 @@ function App() {
     })
   }, [pipelineTasks, modules, scripts])
 
-  // Auto-close nach Abschluss
+  // Auto-minimize nach Abschluss, dann Widget ausblenden
   useEffect(() => {
     if (aiActionState?.isComplete && !aiActionState.isMinimized) {
+      // Nach 2 Sekunden minimieren
       const minimizeTimer = setTimeout(() => {
         setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)
       }, 2000)
       
+      return () => clearTimeout(minimizeTimer)
+    }
+    
+    // Wenn minimiert und complete, nach 3 Sekunden ausblenden
+    if (aiActionState?.isComplete && aiActionState.isMinimized) {
       const closeTimer = setTimeout(() => {
-        setAiActionState(prev => prev?.isComplete ? null : prev)
-      }, 5000)
+        setAiActionState(null)
+      }, 3000)
       
-      return () => {
-        clearTimeout(minimizeTimer)
-        clearTimeout(closeTimer)
-      }
+      return () => clearTimeout(closeTimer)
     }
   }, [aiActionState?.isComplete, aiActionState?.isMinimized])
 
@@ -655,19 +653,31 @@ function App() {
     if (!script) return
 
     const taskId = generateId()
-    
-    const execute = async () => {
-      setPipelineTasks((current) => [
+    const taskName = script.name
+
+    // Pre-register task so the UI knows the full queue size immediately
+    setPipelineTasks((current) => {
+      if (current.some((t) => t.id === taskId)) return current
+      return [
         ...current,
         {
           id: taskId,
           type: 'generate-notes',
-          name: script.name,
+          name: taskName,
           progress: 0,
-          status: 'processing',
+          status: 'pending',
           timestamp: Date.now(),
         },
-      ])
+      ]
+    })
+    
+    const execute = async () => {
+      // Mark as running when the queue starts processing this job
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'processing', timestamp: Date.now() } : t
+        )
+      )
 
       try {
         setPipelineTasks((current) =>
@@ -814,19 +824,31 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mat
     if (!script) return
 
     const taskId = generateId()
-    
-    const execute = async () => {
-      setPipelineTasks((current) => [
+    const taskName = script.name
+
+    // Pre-register task so the queue size is correct before execution starts
+    setPipelineTasks((current) => {
+      if (current.some((t) => t.id === taskId)) return current
+      return [
         ...current,
         {
           id: taskId,
           type: 'generate-tasks',
-          name: script.name,
+          name: taskName,
           progress: 0,
-          status: 'processing',
+          status: 'pending',
           timestamp: Date.now(),
         },
-      ])
+      ]
+    })
+    
+    const execute = async () => {
+      // Switch the pre-registered task to processing when it actually runs
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'processing', timestamp: Date.now() } : t
+        )
+      )
 
       try {
         setPipelineTasks((current) =>
@@ -1062,10 +1084,10 @@ ANTWORTE NUR MIT VALIDEM JSON:
       return
     }
 
-    // Generiere Tasks für jedes Script sequentiell
-    for (const script of scriptsToProcess) {
-      await handleGenerateTasks(script.id)
-    }
+    // Starte alle Task-Generierungen sofort, damit die Queue-Groesse im UI stimmt
+    scriptsToProcess.forEach((script) => {
+      handleGenerateTasks(script.id)
+    })
   }
 
   const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
@@ -1422,14 +1444,47 @@ Gib deine Antwort als JSON zurück:
       console.warn('Fehler beim Löschen alter Analysen:', error)
     }
     
-    // Neue Analysen starten
-    for (const script of moduleScripts) {
-      if (script.content) {
-        await handleAnalyzeScript(script.id)
-      }
-    }
+    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufügen
+    const scriptsWithContent = moduleScripts.filter(s => s.content)
     
-    toast.success(`Neu-Analyse für ${moduleScripts.length} Skripte(n) gestartet`)
+    // WICHTIG: Erst alle Tasks zur Pipeline hinzufügen, damit die UI sofort die richtige Anzahl zeigt
+    const newTasks = scriptsWithContent.map(script => ({
+      id: `analyze-${script.id}`,
+      type: 'analyze' as const,
+      name: script.name,
+      progress: 0,
+      status: 'pending' as const,
+      timestamp: Date.now(),
+    }))
+    
+    setPipelineTasks(current => {
+      // Entferne eventuell vorhandene alte Tasks für diese Skripte
+      const filtered = current.filter(t => !newTasks.some(nt => nt.id === t.id))
+      return [...filtered, ...newTasks]
+    })
+    
+    // Dann die Analysen starten (ohne await, da wir die Tasks schon hinzugefügt haben)
+    scriptsWithContent.forEach(script => {
+      const documentTypeMap: Record<string, DocumentType> = {
+        'script': 'script',
+        'exam': 'exam',
+        'exercise': 'exercise',
+        'formula-sheet': 'formula-sheet',
+        'lecture-notes': 'lecture-notes',
+        'summary': 'summary',
+      }
+      const docType: DocumentType = documentTypeMap[script.category || 'script'] || 'script'
+      
+      enqueueAnalysis(
+        script.moduleId,
+        script.id,
+        docType,
+        script.name,
+        script.content!
+      ).catch(err => console.error('Fehler beim Starten der Analyse:', err))
+    })
+    
+    toast.success(`Neu-Analyse für ${scriptsWithContent.length} Skripte(n) gestartet`)
   }
 
   // Ausgewählte Skripte neu analysieren (vorherige Analysen löschen)
@@ -1451,14 +1506,46 @@ Gib deine Antwort als JSON zurück:
       console.warn('Fehler beim Löschen alter Analysen:', error)
     }
     
-    // Neue Analysen starten
-    for (const script of selectedScripts) {
-      if (script.content) {
-        await handleAnalyzeScript(script.id)
-      }
-    }
+    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufügen
+    const scriptsWithContent = selectedScripts.filter(s => s.content)
     
-    toast.success(`Neu-Analyse für ${scriptIds.length} Skript(e) gestartet`)
+    // WICHTIG: Erst alle Tasks zur Pipeline hinzufügen, damit die UI sofort die richtige Anzahl zeigt
+    const newTasks = scriptsWithContent.map(script => ({
+      id: `analyze-${script.id}`,
+      type: 'analyze' as const,
+      name: script.name,
+      progress: 0,
+      status: 'pending' as const,
+      timestamp: Date.now(),
+    }))
+    
+    setPipelineTasks(current => {
+      const filtered = current.filter(t => !newTasks.some(nt => nt.id === t.id))
+      return [...filtered, ...newTasks]
+    })
+    
+    // Dann die Analysen starten
+    scriptsWithContent.forEach(script => {
+      const documentTypeMap: Record<string, DocumentType> = {
+        'script': 'script',
+        'exam': 'exam',
+        'exercise': 'exercise',
+        'formula-sheet': 'formula-sheet',
+        'lecture-notes': 'lecture-notes',
+        'summary': 'summary',
+      }
+      const docType: DocumentType = documentTypeMap[script.category || 'script'] || 'script'
+      
+      enqueueAnalysis(
+        script.moduleId,
+        script.id,
+        docType,
+        script.name,
+        script.content!
+      ).catch(err => console.error('Fehler beim Starten der Analyse:', err))
+    })
+    
+    toast.success(`Neu-Analyse für ${scriptsWithContent.length} Skript(e) gestartet`)
   }
 
   // Notizen für ausgewählte Skripte generieren
@@ -1468,11 +1555,10 @@ Gib deine Antwort als JSON zurück:
       return
     }
     
-    for (const scriptId of scriptIds) {
-      const script = scripts?.find((s) => s.id === scriptId)
-      if (script) {
-        handleGenerateNotes(scriptId)
-      }
+    // Alle auf einmal starten - die Tasks werden von handleGenerateNotes erstellt
+    const selectedScripts = scripts?.filter((s) => scriptIds.includes(s.id)) || []
+    for (const script of selectedScripts) {
+      handleGenerateNotes(script.id)
     }
     
     toast.success(`Notizen-Generierung für ${scriptIds.length} Skript(e) gestartet`)
@@ -1485,11 +1571,10 @@ Gib deine Antwort als JSON zurück:
       return
     }
     
-    for (const scriptId of scriptIds) {
-      const script = scripts?.find((s) => s.id === scriptId)
-      if (script) {
-        handleGenerateTasks(scriptId)
-      }
+    // Alle auf einmal starten - die Tasks werden von handleGenerateTasks erstellt
+    const selectedScripts = scripts?.filter((s) => scriptIds.includes(s.id)) || []
+    for (const script of selectedScripts) {
+      handleGenerateTasks(script.id)
     }
     
     toast.success(`Aufgaben-Generierung für ${scriptIds.length} Skript(e) gestartet`)
@@ -2028,17 +2113,20 @@ Gib deine Antwort als JSON zurück:
             onClose={() => setAiActionState(null)}
           />
         )}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -2087,17 +2175,20 @@ Gib deine Antwort als JSON zurück:
             onClose={() => setAiActionState(null)}
           />
         )}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -2191,17 +2282,20 @@ Gib deine Antwort als JSON zurück:
             onClose={() => setAiActionState(null)}
           />
         )}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -2249,17 +2343,20 @@ Gib deine Antwort als JSON zurück:
             onClose={() => setAiActionState(null)}
           />
         )}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -2299,17 +2396,20 @@ Gib deine Antwort als JSON zurück:
             onClose={() => setAiActionState(null)}
           />
         )}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -2394,17 +2494,20 @@ Gib deine Antwort als JSON zurück:
           />
         )}
         {/* Minimiertes AI Action Widget */}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -2591,17 +2694,20 @@ Gib deine Antwort als JSON zurück:
         )}
         
         {/* Minimiertes AI Action Widget */}
-        {aiActionState && aiActionState.isMinimized && (
-          <AIPreparationMinimized
-            type={aiActionState.type}
-            progress={aiActionState.progress}
-            isComplete={aiActionState.isComplete}
-            processedCount={aiActionState.processedCount}
-            totalCount={aiActionState.totalCount}
-            onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
             offsetLeft={!!examGenerationState}
           />
-        )}
+          )}
+        </AnimatePresence>
 
       </div>
     </>
@@ -2609,3 +2715,10 @@ Gib deine Antwort als JSON zurück:
 }
 
 export default App
+
+
+
+
+
+
+
