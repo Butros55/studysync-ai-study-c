@@ -157,6 +157,17 @@ function AppContent() {
   
   const [pipelineTasks, setPipelineTasks] = useState<PipelineTask[]>([])
   const [storageInitialized, setStorageInitialized] = useState(false)
+  const notificationsEnabled = false
+  const renderNotificationCenter = () => {
+    if (!notificationsEnabled) return null
+    return (
+      <NotificationCenter
+        tasks={pipelineTasks}
+        onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
+        onClearAll={() => setPipelineTasks([])}
+      />
+    )
+  }
   
   // Globaler State fÃ¼r Exam-Generierung (damit das Widget Ã¼berall sichtbar ist)
   const [examGenerationState, setExamGenerationState] = useState<ExamGenerationState | null>(null)
@@ -186,6 +197,42 @@ function AppContent() {
     roomCode: string
     roundIndex: number
   } | null>(null)
+
+  // Prevent leaving the app with browser back (global guard)
+  useEffect(() => {
+    const guard = () => {
+      try {
+        window.history.pushState({ guard: true }, '')
+      } catch {
+        // ignore
+      }
+    }
+    guard()
+    const onPopState = (e: PopStateEvent) => {
+      e.preventDefault()
+      guard()
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  // Prevent browser back from exiting the app while a task modal is open
+  useEffect(() => {
+    if (!activeTask) return
+
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault()
+      setActiveTask(null)
+      setTaskFeedback(null)
+      setTaskSequence(null)
+      setActiveSequenceIndex(null)
+      setStudyRoomSolveContext(null)
+    }
+
+    window.history.pushState({ modal: 'task' }, '')
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [activeTask])
   
   // Ref fÃ¼r das Modul/Scripts wÃ¤hrend einer laufenden Exam-Generierung
   // Damit die Generierung weiterlÃ¤uft, auch wenn der User das Modul wechselt
@@ -1576,6 +1623,13 @@ Gib deine Antwort als JSON zurueck:
     setSelectedModuleId(task.moduleId)
     setStudyRoomSolveContext(null)
 
+    // Stelle sicher, dass der Aufgaben-Tab aktiv bleibt, wenn wir zurückgehen
+    try {
+      localStorage.setItem(`module-active-tab:${task.moduleId}`, 'tasks')
+    } catch {
+      // ignore
+    }
+
     if (sequence && sequence.length > 0) {
       const startIndex = startTaskId ? sequence.findIndex(t => t.id === startTaskId) : 0
       setTaskSequence(sequence)
@@ -2378,11 +2432,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <FlashcardStudy
           flashcards={activeFlashcards}
           onClose={() => setActiveFlashcards(null)}
@@ -2435,11 +2485,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <QuizMode
           tasks={tasks || []}
           modules={modules || []}
@@ -2497,11 +2543,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
   if (showExamMode && selectedModule) {
     return (
       <>
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <ExamMode
           module={selectedModule}
           scripts={moduleScripts}
@@ -2544,11 +2586,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <TaskSolver
           task={activeTask}
           onClose={() => {
@@ -2625,11 +2663,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <StudyRoomView
           room={studyRoom}
           currentUserId={studyRoomIdentity.userId}
@@ -2652,11 +2686,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <StatisticsDashboard
           modules={modules || []}
           tasks={tasks || []}
@@ -2713,11 +2743,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <CostTrackingDashboard onBack={() => setShowCostTracking(false)} />
         {examGenerationState && (
           <ExamPreparationMinimized
@@ -2766,11 +2792,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
     return (
       <>
         {BackgroundExamGenerator}
-        <NotificationCenter
-          tasks={pipelineTasks}
-          onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-          onClearAll={() => setPipelineTasks([])}
-        />
+        {renderNotificationCenter()}
         <ModuleView
           module={selectedModule}
           scripts={moduleScripts}
@@ -2867,11 +2889,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
   return (
     <>
       {BackgroundExamGenerator}
-      <NotificationCenter
-        tasks={pipelineTasks}
-        onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
-        onClearAll={() => setPipelineTasks([])}
-      />
+      {renderNotificationCenter()}
       
       {/* Flex-Container fÃ¼r Sticky Footer */}
       <div className="min-h-screen bg-background flex flex-col">
@@ -2883,7 +2901,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   <div className="flex-1">
                     <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
                     <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                      Dein KI-gestÃ¼tzter Lernbegleiter fÃ¼r die Uni
+                      Dein KI-gestuetzter Lernbegleiter fuer die Uni
                     </p>
                   </div>
                 </div>

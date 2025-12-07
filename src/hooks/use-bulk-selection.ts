@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 
 interface UseBulkSelectionOptions<T> {
   items: T[]
@@ -10,18 +10,22 @@ interface UseBulkSelectionOptions<T> {
  */
 export function useBulkSelection<T>({ items, getId }: UseBulkSelectionOptions<T>) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const getIdRef = useRef(getId)
+  useEffect(() => {
+    getIdRef.current = getId
+  }, [getId])
 
   // Clean up selected IDs when items change
   useEffect(() => {
     setSelectedIds((prev) => {
       const validIds = new Set<string>()
       items.forEach((item) => {
-        const id = getId(item)
+        const id = getIdRef.current(item)
         if (prev.has(id)) validIds.add(id)
       })
       return validIds
     })
-  }, [items, getId])
+  }, [items])
 
   const toggleSelection = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -38,17 +42,17 @@ export function useBulkSelection<T>({ items, getId }: UseBulkSelectionOptions<T>
   const toggleSelectAll = useCallback(() => {
     setSelectedIds((prev) => {
       const allSelected = prev.size === items.length && items.length > 0
-      return allSelected ? new Set() : new Set(items.map(getId))
+      return allSelected ? new Set() : new Set(items.map(item => getIdRef.current(item)))
     })
-  }, [items, getId])
+  }, [items])
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set())
   }, [])
 
   const selectAll = useCallback(() => {
-    setSelectedIds(new Set(items.map(getId)))
-  }, [items, getId])
+    setSelectedIds(new Set(items.map(item => getIdRef.current(item))))
+  }, [items])
 
   const isSelected = useCallback((id: string) => {
     return selectedIds.has(id)

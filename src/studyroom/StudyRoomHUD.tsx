@@ -1,7 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Timer, UsersThree, Alarm, RocketLaunch } from '@phosphor-icons/react'
-import { cn } from '@/lib/utils'
+import { Timer, UsersThree, Alarm } from '@phosphor-icons/react'
 
 interface StudyRoomHUDProps {
   roomCode?: string
@@ -29,7 +28,7 @@ export function StudyRoomHUD({
   lockCountdown,
 }: StudyRoomHUDProps) {
   return (
-    <div className="w-full bg-card/80 border-b shadow-sm">
+    <div className="w-full bg-card/80 border-b shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center gap-2 text-xs">
         <Badge variant="outline" className="flex items-center gap-1">
           <UsersThree size={14} />

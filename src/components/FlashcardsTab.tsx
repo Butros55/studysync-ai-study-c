@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import {
   Cards,
   Trash,
@@ -47,16 +48,24 @@ export function FlashcardsTab({
     getId: (card) => card.id,
   })
 
-  const getDueFlashcards = () => {
-    const now = new Date()
+  const getDueFlashcards = (reference: Date) => {
     return flashcards.filter((card) => {
       if (!card.nextReview) return true
-      return new Date(card.nextReview) <= now
+      return new Date(card.nextReview) <= reference
     })
   }
 
-  const dueCards = getDueFlashcards()
+  const now = new Date()
+  const dueCards = getDueFlashcards(now)
   const totalCards = flashcards.length
+  const upcomingCards = Math.max(totalCards - dueCards.length, 0)
+  const upcomingDates = flashcards
+    .map((card) => (card.nextReview ? new Date(card.nextReview) : null))
+    .filter((date): date is Date => !!date && date > now)
+    .sort((a, b) => a.getTime() - b.getTime())
+  const nextScheduledLabel = upcomingDates.length > 0
+    ? formatDistanceToNow(upcomingDates[0], { addSuffix: true, locale: de })
+    : 'Keine geplant'
 
   const getCardsByNote = (noteId: string) => {
     return flashcards.filter((card) => card.noteId === noteId)
@@ -176,7 +185,7 @@ export function FlashcardsTab({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4">
+        <Card className="p-4 border border-border/70 bg-card shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
               <Cards size={20} className="text-primary" />
@@ -187,7 +196,7 @@ export function FlashcardsTab({
             </div>
           </div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 border border-border/70 bg-card shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
               <Clock size={20} className="text-accent" />
@@ -198,31 +207,51 @@ export function FlashcardsTab({
             </div>
           </div>
         </Card>
+        <Card className="p-4 border border-border/70 bg-card shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+              <Lightning size={20} className="text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{upcomingCards}</p>
+              <p className="text-sm text-muted-foreground">Geplant • {nextScheduledLabel}</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <div className="grid gap-4">
         {flashcards.map((card) => {
+          const isDue = !card.nextReview || new Date(card.nextReview) <= now
           const dueLabel = card.nextReview
             ? formatDistanceToNow(new Date(card.nextReview), { addSuffix: true, locale: de })
-            : 'Sofort'
+            : 'sofort'
 
           return (
-            <Card key={card.id} className="p-4">
+            <Card
+              key={card.id}
+              className={`p-5 border transition-shadow ${isDue ? 'bg-primary/5 border-primary/30 shadow-sm' : 'bg-card shadow-sm hover:shadow-md'}`}
+            >
               <div className="flex items-start gap-3">
                 <Checkbox
                   checked={selectedCards.has(card.id)}
                   onCheckedChange={() => toggleSelect(card.id)}
                   className="mt-1"
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline">Front</Badge>
-                    <span className="text-xs text-muted-foreground">Faellig {dueLabel}</span>
+                <div className="flex-1 min-w-0 space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant={isDue ? 'default' : 'secondary'} className="text-[11px]">
+                      {isDue ? 'Faellig' : 'Geplant'}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">Review {dueLabel}</span>
                   </div>
-                  <p className="font-medium text-sm leading-relaxed whitespace-pre-wrap">{card.front}</p>
-                  <div className="mt-3">
-                    <Badge variant="outline">Back</Badge>
-                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{card.back}</p>
+                  <div className="space-y-1">
+                    <Badge variant="outline" className="text-[11px]">Front</Badge>
+                    <MarkdownRenderer content={card.front} compact className="text-sm leading-relaxed" />
+                  </div>
+                  <div className="space-y-1">
+                    <Badge variant="outline" className="text-[11px]">Back</Badge>
+                    <MarkdownRenderer content={card.back} compact className="text-sm text-muted-foreground leading-relaxed" />
                   </div>
                 </div>
                 <Button

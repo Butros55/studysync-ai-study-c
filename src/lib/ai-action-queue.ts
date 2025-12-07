@@ -88,17 +88,17 @@ export const STACK_CONFIG: Record<AIActionType, { label: string; icon: string; c
     color: 'text-blue-500'
   },
   'generate-notes': { 
-    label: 'Notizen generieren', 
+    label: 'Notiz generieren', 
     icon: 'FileText',
     color: 'text-green-500'
   },
   'generate-tasks': { 
-    label: 'Aufgaben generieren', 
+    label: 'Aufgabe generieren', 
     icon: 'ListChecks',
     color: 'text-orange-500'
   },
   'generate-flashcards': { 
-    label: 'Karteikarten erstellen', 
+    label: 'Karteikarte erstellen', 
     icon: 'Cards',
     color: 'text-purple-500'
   },
