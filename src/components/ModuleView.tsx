@@ -47,6 +47,11 @@ interface ModuleViewProps {
   onEditModule?: (module: Module) => void
   onStartExamMode?: () => void
   onAnalyzeScript?: (scriptId: string) => void
+  // Neue Props für Bulk-Aktionen
+  onReanalyzeAllScripts?: () => void
+  onReanalyzeSelectedScripts?: (scriptIds: string[]) => void
+  onGenerateNotesForSelected?: (scriptIds: string[]) => void
+  onGenerateTasksForSelected?: (scriptIds: string[]) => void
 }
 
 export function ModuleView({
@@ -77,6 +82,10 @@ export function ModuleView({
   onEditModule,
   onStartExamMode,
   onAnalyzeScript,
+  onReanalyzeAllScripts,
+  onReanalyzeSelectedScripts,
+  onGenerateNotesForSelected,
+  onGenerateTasksForSelected,
 }: ModuleViewProps) {
   const [activeTab, setActiveTab] = useState('dashboard')
 
@@ -194,6 +203,10 @@ export function ModuleView({
               onGenerateAllNotes={onGenerateAllNotes}
               onGenerateAllTasks={onGenerateAllTasks}
               onAnalyzeScript={onAnalyzeScript}
+              onReanalyzeAll={onReanalyzeAllScripts}
+              onReanalyzeSelected={onReanalyzeSelectedScripts}
+              onGenerateNotesForSelected={onGenerateNotesForSelected}
+              onGenerateTasksForSelected={onGenerateTasksForSelected}
             />
           </TabsContent>
 

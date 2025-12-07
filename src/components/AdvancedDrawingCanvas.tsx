@@ -142,20 +142,62 @@ export function AdvancedDrawingCanvas({
 
   // Temporärer Tool-Wechsel für Pen-Button-Eraser
   const originalToolRef = useRef<DrawingTool | null>(null)
+  
+  // Track previous task ID for change detection
+  const previousTaskIdRef = useRef<string | undefined>(undefined)
 
-  // Lade initiale Strokes (einmalig bei Mount oder wenn Task sich ändert)
+  // Handle task change: clear canvas, then load new strokes if any
+  // This ensures proper per-task state management
   useEffect(() => {
-    if (initialStrokes && initialStrokes.length > 0 && !initialStrokesLoadedRef.current) {
+    const taskId = task?.id
+    const previousTaskId = previousTaskIdRef.current
+    
+    // Check if task actually changed
+    if (taskId !== previousTaskId) {
+      console.log(`[DrawingCanvas] Task changed: ${previousTaskId} -> ${taskId}`)
+      
+      // Reset load flag FIRST
+      initialStrokesLoadedRef.current = false
+      
+      // Clear canvas for new task
+      drawing.clearAll()
+      drawing.resetView()
+      
+      // Update previous task ID
+      previousTaskIdRef.current = taskId
+      
+      // If new task has saved strokes, load them
+      if (initialStrokes && initialStrokes.length > 0) {
+        console.log(`[DrawingCanvas] Loading ${initialStrokes.length} saved strokes for task ${taskId}`)
+        drawing.loadStrokes(initialStrokes as any)
+        initialStrokesLoadedRef.current = true
+        onContentChange(true)
+      } else {
+        console.log(`[DrawingCanvas] No saved strokes for task ${taskId}, starting fresh`)
+        onContentChange(false)
+      }
+    }
+  }, [task?.id, initialStrokes, drawing, onContentChange])
+  
+  // Handle initial load when strokes become available after mount
+  // (e.g., when navigating back to a task)
+  useEffect(() => {
+    const taskId = task?.id
+    
+    // Only load if task didn't change but strokes became available
+    if (
+      taskId === previousTaskIdRef.current &&
+      initialStrokes && 
+      initialStrokes.length > 0 && 
+      !initialStrokesLoadedRef.current &&
+      drawing.strokes.length === 0
+    ) {
+      console.log(`[DrawingCanvas] Restoring ${initialStrokes.length} strokes for existing task ${taskId}`)
       drawing.loadStrokes(initialStrokes as any)
       initialStrokesLoadedRef.current = true
       onContentChange(true)
     }
-  }, [initialStrokes, drawing, onContentChange])
-  
-  // Reset wenn Task sich ändert
-  useEffect(() => {
-    initialStrokesLoadedRef.current = false
-  }, [task?.id])
+  }, [initialStrokes, drawing, onContentChange, task?.id])
 
   // Initialisiere Canvas-Größe
   const updateCanvasSize = useCallback(() => {

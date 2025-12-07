@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { useModules, useScripts, useNotes, useTasks, useFlashcards, migrateFromServerIfNeeded } from './hooks/use-database'
 import { storageReady, downloadExportFile, importData } from './lib/storage'
 import { Module, Script, StudyNote, Task, Flashcard } from './lib/types'
@@ -18,6 +19,7 @@ import { LocalStorageIndicator } from './components/LocalStorageIndicator'
 import { TutorDashboard } from './components/TutorDashboard'
 import { ExamMode, type ExamGenerationState } from './components/ExamMode'
 import { ExamPreparationMinimized } from './components/ExamPreparation'
+import { AIPreparation, AIPreparationMinimized, type AIActionType, type AIActionItem } from './components/AIPreparation'
 import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
 import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
@@ -153,6 +155,24 @@ function App() {
   
   // Globaler State für Exam-Generierung (damit das Widget überall sichtbar ist)
   const [examGenerationState, setExamGenerationState] = useState<ExamGenerationState | null>(null)
+  
+  // Globaler State für andere KI-Aktionen (Analyse, Notizen, Aufgaben, Karteikarten)
+  const [aiActionState, setAiActionState] = useState<{
+    type: AIActionType
+    moduleName: string
+    moduleId: string
+    progress: number
+    currentStep: number
+    processedCount: number
+    totalCount: number
+    isComplete: boolean
+    items: AIActionItem[]
+    isMinimized: boolean
+  } | null>(null)
+  
+  // Ref für das Modul/Scripts während einer laufenden Exam-Generierung
+  // Damit die Generierung weiterläuft, auch wenn der User das Modul wechselt
+  const examGenerationModuleRef = useRef<{ module: Module; scripts: Script[] } | null>(null)
   
   // Ref für versteckten File-Input (Import)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -313,6 +333,148 @@ function App() {
     
     return unsubscribe
   }, [])
+
+  // Synchronisiere pipelineTasks mit dem AI Action UI
+  useEffect(() => {
+    // Mapping von PipelineTask-Typen zu AIActionType
+    const taskTypeToActionType: Record<string, AIActionType> = {
+      'analyze': 'analyze',
+      'generate-notes': 'generate-notes',
+      'generate-tasks': 'generate-tasks',
+      'generate-flashcards': 'generate-flashcards',
+    }
+    
+    // Sammle alle relevanten Tasks nach Typ (nur pending/processing für neuen State)
+    const tasksByType: Record<AIActionType, typeof pipelineTasks> = {
+      'analyze': [],
+      'generate-notes': [],
+      'generate-tasks': [],
+      'generate-flashcards': [],
+    }
+    
+    for (const task of pipelineTasks) {
+      const actionType = taskTypeToActionType[task.type]
+      if (actionType) {
+        tasksByType[actionType].push(task)
+      }
+    }
+    
+    // Finde den aktiven Action-Typ (einer mit pending/processing Tasks)
+    const actionTypes: AIActionType[] = ['analyze', 'generate-notes', 'generate-tasks', 'generate-flashcards']
+    let activeActionType: AIActionType | null = null
+    let activeTasks: typeof pipelineTasks = []
+    
+    for (const actionType of actionTypes) {
+      const tasks = tasksByType[actionType]
+      // Nur Tasks die noch laufen (pending/processing) starten ein neues UI
+      const hasActive = tasks.some(t => t.status === 'pending' || t.status === 'processing')
+      if (hasActive) {
+        activeActionType = actionType
+        activeTasks = tasks
+        break
+      }
+    }
+    
+    setAiActionState(prev => {
+      // Wenn keine aktiven Tasks und kein vorheriger State, nichts tun
+      if (!activeActionType && !prev) return null
+      
+      // Wenn keine aktiven Tasks mehr aber vorher noch was lief (wurde gerade fertig)
+      if (!activeActionType && prev && !prev.isComplete) {
+        // Setze auf complete für die Fertig-Animation
+        return { ...prev, isComplete: true, progress: 100 }
+      }
+      
+      // Wenn bereits complete und keine aktiven Tasks, nichts ändern (wird durch Timer entfernt)
+      if (!activeActionType && prev?.isComplete) {
+        return prev
+      }
+      
+      // Ab hier: Es gibt aktive Tasks
+      
+      // Berechne den neuen State
+      const completedCount = activeTasks.filter(t => t.status === 'completed').length
+      const totalProgress = activeTasks.length > 0
+        ? activeTasks.reduce((sum, t) => sum + t.progress, 0) / activeTasks.length
+        : 0
+      const allComplete = activeTasks.every(t => t.status === 'completed' || t.status === 'error')
+      
+      // Berechne den aktuellen Schritt basierend auf Fortschritt
+      let currentStep = 0
+      if (totalProgress > 33) currentStep = 1
+      if (totalProgress > 66) currentStep = 2
+      
+      // Finde Modul-Info
+      const firstTask = activeTasks[0]
+      const script = scripts?.find(s => firstTask?.name === s.name)
+      const module = script ? modules?.find(m => m.id === script.moduleId) : null
+      
+      const newItems = activeTasks.map(t => ({
+        id: t.id,
+        name: t.name,
+        progress: t.progress,
+        status: t.status === 'pending' ? 'queued' as const : t.status as 'processing' | 'completed' | 'error',
+      }))
+      
+      // Wenn sich nichts geändert hat, nicht updaten
+      if (prev && 
+          prev.type === activeActionType &&
+          prev.progress === totalProgress &&
+          prev.processedCount === completedCount &&
+          prev.isComplete === allComplete) {
+        return prev
+      }
+      
+      // Wenn schon ein State existiert für diesen Typ, nur updaten
+      // WICHTIG: totalCount nur erhöhen, nie verringern (damit die Anzeige stabil bleibt)
+      if (prev && prev.type === activeActionType) {
+        return {
+          ...prev,
+          progress: totalProgress,
+          currentStep,
+          processedCount: completedCount,
+          totalCount: Math.max(prev.totalCount, activeTasks.length),
+          isComplete: allComplete,
+          items: newItems,
+        }
+      }
+      
+      // Neuen State erstellen
+      return {
+        type: activeActionType!,
+        moduleName: module?.name || 'Dokumente',
+        moduleId: module?.id || '',
+        progress: totalProgress,
+        currentStep,
+        processedCount: completedCount,
+        totalCount: activeTasks.length,
+        isComplete: allComplete,
+        items: newItems,
+        isMinimized: false,
+      }
+    })
+  }, [pipelineTasks, modules, scripts])
+
+  // Auto-minimize nach Abschluss, dann Widget ausblenden
+  useEffect(() => {
+    if (aiActionState?.isComplete && !aiActionState.isMinimized) {
+      // Nach 2 Sekunden minimieren
+      const minimizeTimer = setTimeout(() => {
+        setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)
+      }, 2000)
+      
+      return () => clearTimeout(minimizeTimer)
+    }
+    
+    // Wenn minimiert und complete, nach 3 Sekunden ausblenden
+    if (aiActionState?.isComplete && aiActionState.isMinimized) {
+      const closeTimer = setTimeout(() => {
+        setAiActionState(null)
+      }, 3000)
+      
+      return () => clearTimeout(closeTimer)
+    }
+  }, [aiActionState?.isComplete, aiActionState?.isMinimized])
 
   // Handler zum Öffnen des Bearbeitungsdialogs
   const handleEditModule = (module: Module) => {
@@ -491,19 +653,31 @@ function App() {
     if (!script) return
 
     const taskId = generateId()
-    
-    const execute = async () => {
-      setPipelineTasks((current) => [
+    const taskName = script.name
+
+    // Pre-register task so the UI knows the full queue size immediately
+    setPipelineTasks((current) => {
+      if (current.some((t) => t.id === taskId)) return current
+      return [
         ...current,
         {
           id: taskId,
           type: 'generate-notes',
-          name: script.name,
+          name: taskName,
           progress: 0,
-          status: 'processing',
+          status: 'pending',
           timestamp: Date.now(),
         },
-      ])
+      ]
+    })
+    
+    const execute = async () => {
+      // Mark as running when the queue starts processing this job
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'processing', timestamp: Date.now() } : t
+        )
+      )
 
       try {
         setPipelineTasks((current) =>
@@ -650,19 +824,31 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX für alle mat
     if (!script) return
 
     const taskId = generateId()
-    
-    const execute = async () => {
-      setPipelineTasks((current) => [
+    const taskName = script.name
+
+    // Pre-register task so the queue size is correct before execution starts
+    setPipelineTasks((current) => {
+      if (current.some((t) => t.id === taskId)) return current
+      return [
         ...current,
         {
           id: taskId,
           type: 'generate-tasks',
-          name: script.name,
+          name: taskName,
           progress: 0,
-          status: 'processing',
+          status: 'pending',
           timestamp: Date.now(),
         },
-      ])
+      ]
+    })
+    
+    const execute = async () => {
+      // Switch the pre-registered task to processing when it actually runs
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'processing', timestamp: Date.now() } : t
+        )
+      )
 
       try {
         setPipelineTasks((current) =>
@@ -898,10 +1084,10 @@ ANTWORTE NUR MIT VALIDEM JSON:
       return
     }
 
-    // Generiere Tasks für jedes Script sequentiell
-    for (const script of scriptsToProcess) {
-      await handleGenerateTasks(script.id)
-    }
+    // Starte alle Task-Generierungen sofort, damit die Queue-Groesse im UI stimmt
+    scriptsToProcess.forEach((script) => {
+      handleGenerateTasks(script.id)
+    })
   }
 
   const handleSubmitTaskAnswer = async (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => {
@@ -1238,6 +1424,160 @@ Gib deine Antwort als JSON zurück:
       console.error('Fehler beim Starten der Analyse:', error)
       toast.error('Fehler beim Starten der Analyse')
     }
+  }
+
+  // Alle Skripte im Modul neu analysieren (vorherige Analysen löschen)
+  const handleReanalyzeAllScripts = async () => {
+    if (!selectedModuleId) return
+    const moduleScripts = scripts?.filter((s) => s.moduleId === selectedModuleId) || []
+    
+    if (moduleScripts.length === 0) {
+      toast.error('Keine Skripte zum Analysieren vorhanden')
+      return
+    }
+    
+    // Alte Analysen für dieses Modul löschen
+    try {
+      const { deleteModuleDocumentAnalyses } = await import('@/lib/analysis-storage')
+      await deleteModuleDocumentAnalyses(selectedModuleId)
+    } catch (error) {
+      console.warn('Fehler beim Löschen alter Analysen:', error)
+    }
+    
+    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufügen
+    const scriptsWithContent = moduleScripts.filter(s => s.content)
+    
+    // WICHTIG: Erst alle Tasks zur Pipeline hinzufügen, damit die UI sofort die richtige Anzahl zeigt
+    const newTasks = scriptsWithContent.map(script => ({
+      id: `analyze-${script.id}`,
+      type: 'analyze' as const,
+      name: script.name,
+      progress: 0,
+      status: 'pending' as const,
+      timestamp: Date.now(),
+    }))
+    
+    setPipelineTasks(current => {
+      // Entferne eventuell vorhandene alte Tasks für diese Skripte
+      const filtered = current.filter(t => !newTasks.some(nt => nt.id === t.id))
+      return [...filtered, ...newTasks]
+    })
+    
+    // Dann die Analysen starten (ohne await, da wir die Tasks schon hinzugefügt haben)
+    scriptsWithContent.forEach(script => {
+      const documentTypeMap: Record<string, DocumentType> = {
+        'script': 'script',
+        'exam': 'exam',
+        'exercise': 'exercise',
+        'formula-sheet': 'formula-sheet',
+        'lecture-notes': 'lecture-notes',
+        'summary': 'summary',
+      }
+      const docType: DocumentType = documentTypeMap[script.category || 'script'] || 'script'
+      
+      enqueueAnalysis(
+        script.moduleId,
+        script.id,
+        docType,
+        script.name,
+        script.content!
+      ).catch(err => console.error('Fehler beim Starten der Analyse:', err))
+    })
+    
+    toast.success(`Neu-Analyse für ${scriptsWithContent.length} Skripte(n) gestartet`)
+  }
+
+  // Ausgewählte Skripte neu analysieren (vorherige Analysen löschen)
+  const handleReanalyzeSelectedScripts = async (scriptIds: string[]) => {
+    if (scriptIds.length === 0) {
+      toast.error('Keine Skripte ausgewählt')
+      return
+    }
+    
+    const selectedScripts = scripts?.filter((s) => scriptIds.includes(s.id)) || []
+    
+    // Alte Analysen für die ausgewählten Skripte löschen
+    try {
+      const { deleteDocumentAnalysis } = await import('@/lib/analysis-storage')
+      for (const script of selectedScripts) {
+        await deleteDocumentAnalysis(script.moduleId, script.id)
+      }
+    } catch (error) {
+      console.warn('Fehler beim Löschen alter Analysen:', error)
+    }
+    
+    // Neue Analysen starten - ALLE auf einmal zur Queue hinzufügen
+    const scriptsWithContent = selectedScripts.filter(s => s.content)
+    
+    // WICHTIG: Erst alle Tasks zur Pipeline hinzufügen, damit die UI sofort die richtige Anzahl zeigt
+    const newTasks = scriptsWithContent.map(script => ({
+      id: `analyze-${script.id}`,
+      type: 'analyze' as const,
+      name: script.name,
+      progress: 0,
+      status: 'pending' as const,
+      timestamp: Date.now(),
+    }))
+    
+    setPipelineTasks(current => {
+      const filtered = current.filter(t => !newTasks.some(nt => nt.id === t.id))
+      return [...filtered, ...newTasks]
+    })
+    
+    // Dann die Analysen starten
+    scriptsWithContent.forEach(script => {
+      const documentTypeMap: Record<string, DocumentType> = {
+        'script': 'script',
+        'exam': 'exam',
+        'exercise': 'exercise',
+        'formula-sheet': 'formula-sheet',
+        'lecture-notes': 'lecture-notes',
+        'summary': 'summary',
+      }
+      const docType: DocumentType = documentTypeMap[script.category || 'script'] || 'script'
+      
+      enqueueAnalysis(
+        script.moduleId,
+        script.id,
+        docType,
+        script.name,
+        script.content!
+      ).catch(err => console.error('Fehler beim Starten der Analyse:', err))
+    })
+    
+    toast.success(`Neu-Analyse für ${scriptsWithContent.length} Skript(e) gestartet`)
+  }
+
+  // Notizen für ausgewählte Skripte generieren
+  const handleGenerateNotesForSelected = async (scriptIds: string[]) => {
+    if (scriptIds.length === 0) {
+      toast.error('Keine Skripte ausgewählt')
+      return
+    }
+    
+    // Alle auf einmal starten - die Tasks werden von handleGenerateNotes erstellt
+    const selectedScripts = scripts?.filter((s) => scriptIds.includes(s.id)) || []
+    for (const script of selectedScripts) {
+      handleGenerateNotes(script.id)
+    }
+    
+    toast.success(`Notizen-Generierung für ${scriptIds.length} Skript(e) gestartet`)
+  }
+
+  // Aufgaben für ausgewählte Skripte generieren
+  const handleGenerateTasksForSelected = async (scriptIds: string[]) => {
+    if (scriptIds.length === 0) {
+      toast.error('Keine Skripte ausgewählt')
+      return
+    }
+    
+    // Alle auf einmal starten - die Tasks werden von handleGenerateTasks erstellt
+    const selectedScripts = scripts?.filter((s) => scriptIds.includes(s.id)) || []
+    for (const script of selectedScripts) {
+      handleGenerateTasks(script.id)
+    }
+    
+    toast.success(`Aufgaben-Generierung für ${scriptIds.length} Skript(e) gestartet`)
   }
 
   
@@ -1703,9 +2043,41 @@ Gib deine Antwort als JSON zurück:
     }
   }
 
+  // Speichere das Modul für die Generierung, wenn eine neue Generierung startet
+  useEffect(() => {
+    if (examGenerationState?.phase === 'preparing' && selectedModule) {
+      examGenerationModuleRef.current = {
+        module: selectedModule,
+        scripts: moduleScripts,
+      }
+    } else if (!examGenerationState) {
+      examGenerationModuleRef.current = null
+    }
+  }, [examGenerationState?.phase, selectedModule, moduleScripts])
+
+  // Versteckte ExamMode-Komponente für Hintergrund-Generierung
+  // Nutzt das gespeicherte Modul aus dem Ref, damit die Generierung weiterläuft
+  const examGenModule = examGenerationModuleRef.current?.module || selectedModule
+  const examGenScripts = examGenerationModuleRef.current?.scripts || moduleScripts
+  
+  const BackgroundExamGenerator = examGenerationState?.phase === 'preparing' && examGenModule && !showExamMode ? (
+    <div className="fixed inset-0 -z-50 opacity-0 pointer-events-none" aria-hidden="true">
+      <ExamMode
+        module={examGenModule}
+        scripts={examGenScripts}
+        formulaSheets={examGenScripts.filter(s => s.category === 'formula')}
+        onBack={() => setShowExamMode(false)}
+        generationState={examGenerationState}
+        onGenerationStateChange={setExamGenerationState}
+        onMinimizeToBackground={() => setShowExamMode(false)}
+      />
+    </div>
+  ) : null
+
   if (activeFlashcards) {
     return (
       <>
+        {BackgroundExamGenerator}
         <NotificationCenter
           tasks={pipelineTasks}
           onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -1726,6 +2098,35 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
+        {/* Großes AI Action UI */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -1733,6 +2134,7 @@ Gib deine Antwort als JSON zurück:
   if (showQuizMode) {
     return (
       <>
+        {BackgroundExamGenerator}
         <NotificationCenter
           tasks={pipelineTasks}
           onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -1758,10 +2160,40 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
+        {/* Großes AI Action UI */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
       </>
     )
   }
 
+  // ExamMode wird gerendert wenn showExamMode true ist
   if (showExamMode && selectedModule) {
     return (
       <>
@@ -1798,6 +2230,7 @@ Gib deine Antwort als JSON zurück:
 
     return (
       <>
+        {BackgroundExamGenerator}
         <NotificationCenter
           tasks={pipelineTasks}
           onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -1834,6 +2267,35 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
+        {/* Großes AI Action UI */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -1841,6 +2303,7 @@ Gib deine Antwort als JSON zurück:
   if (showStatistics) {
     return (
       <>
+        {BackgroundExamGenerator}
         <NotificationCenter
           tasks={pipelineTasks}
           onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -1865,6 +2328,35 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
+        {/* Großes AI Action UI */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -1872,6 +2364,7 @@ Gib deine Antwort als JSON zurück:
   if (showCostTracking) {
     return (
       <>
+        {BackgroundExamGenerator}
         <NotificationCenter
           tasks={pipelineTasks}
           onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -1888,6 +2381,35 @@ Gib deine Antwort als JSON zurück:
             }}
           />
         )}
+        {/* Großes AI Action UI */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
       </>
     )
   }
@@ -1895,6 +2417,7 @@ Gib deine Antwort als JSON zurück:
   if (selectedModule) {
     return (
       <>
+        {BackgroundExamGenerator}
         <NotificationCenter
           tasks={pipelineTasks}
           onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -1928,6 +2451,10 @@ Gib deine Antwort als JSON zurück:
           onEditModule={handleEditModule}
           onStartExamMode={() => setShowExamMode(true)}
           onAnalyzeScript={handleAnalyzeScript}
+          onReanalyzeAllScripts={handleReanalyzeAllScripts}
+          onReanalyzeSelectedScripts={handleReanalyzeSelectedScripts}
+          onGenerateNotesForSelected={handleGenerateNotesForSelected}
+          onGenerateTasksForSelected={handleGenerateTasksForSelected}
         />
 
         {/* EditModuleDialog auch in ModuleView verfügbar */}
@@ -1951,12 +2478,43 @@ Gib deine Antwort als JSON zurück:
             onClick={() => setShowExamMode(true)}
           />
         )}
+        {/* Großes AI Action UI */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        {/* Minimiertes AI Action Widget */}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
       </>
     )
   }
 
   return (
     <>
+      {BackgroundExamGenerator}
       <NotificationCenter
         tasks={pipelineTasks}
         onDismiss={(taskId) => setPipelineTasks((current) => current.filter((t) => t.id !== taskId))}
@@ -2118,9 +2676,49 @@ Gib deine Antwort als JSON zurück:
             onClick={() => setShowExamMode(true)}
           />
         )}
+        
+        {/* AI Preparation UI - für Analyse, Notizen, Aufgaben, Karteikarten */}
+        {aiActionState && !aiActionState.isMinimized && (
+          <AIPreparation
+            type={aiActionState.type}
+            moduleName={aiActionState.moduleName}
+            progress={aiActionState.progress}
+            currentStep={aiActionState.currentStep}
+            processedCount={aiActionState.processedCount}
+            totalCount={aiActionState.totalCount}
+            isComplete={aiActionState.isComplete}
+            items={aiActionState.items}
+            onMinimize={() => setAiActionState(prev => prev ? { ...prev, isMinimized: true } : null)}
+            onClose={() => setAiActionState(null)}
+          />
+        )}
+        
+        {/* Minimiertes AI Action Widget */}
+        <AnimatePresence>
+          {aiActionState && aiActionState.isMinimized && (
+            <AIPreparationMinimized
+              key="ai-prep-minimized"
+              type={aiActionState.type}
+              progress={aiActionState.progress}
+              isComplete={aiActionState.isComplete}
+              processedCount={aiActionState.processedCount}
+              totalCount={aiActionState.totalCount}
+              onClick={() => setAiActionState(prev => prev ? { ...prev, isMinimized: false } : null)}
+            offsetLeft={!!examGenerationState}
+          />
+          )}
+        </AnimatePresence>
+
       </div>
     </>
   )
 }
 
 export default App
+
+
+
+
+
+
+
