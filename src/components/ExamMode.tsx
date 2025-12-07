@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Module, Script, ExamSession, ExamTask, ExamResults, TopicStats } from '@/lib/types'
 import { ExamSetup, ExamConfig } from './ExamSetup'
 import { ExamPreparation } from './ExamPreparation'
@@ -71,6 +71,23 @@ export function ExamMode({
   const [pausedExam, setPausedExam] = useState<PausedExam | null>(null)
   const [initialTimeRemaining, setInitialTimeRemaining] = useState<number | null>(null)
 
+  // Refs für stabile Callbacks und Mounted-Status
+  const isMountedRef = useRef(true)
+  const onGenerationStateChangeRef = useRef(onGenerationStateChange)
+  
+  // Update ref wenn sich der Callback ändert
+  useEffect(() => {
+    onGenerationStateChangeRef.current = onGenerationStateChange
+  }, [onGenerationStateChange])
+  
+  // Track mounted status
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   const { standardModel } = useLLMModel()
   const { mode: preferredInputMode } = usePreferredInputMode()
 
@@ -131,27 +148,50 @@ export function ExamMode({
 
   // Starte Prüfungsvorbereitung
   const handleStartExam = useCallback(async (config: ExamConfig) => {
-    setPhase('preparing')
-    setPreparationProgress(0)
-    setPreparationStep('style')
+    // Hilfsfunktion für sichere State-Updates (nur wenn mounted)
+    const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T | ((prev: T) => T)) => {
+      if (isMountedRef.current) {
+        setter(value as T)
+      }
+    }
+    
+    // Hilfsfunktion um den globalen State zu aktualisieren (funktioniert auch wenn unmounted)
+    const updateGlobalState = (update: Partial<ExamGenerationState>) => {
+      onGenerationStateChangeRef.current?.({
+        moduleId: module.id,
+        moduleName: module.name,
+        phase: 'preparing',
+        progress: 0,
+        isComplete: false,
+        session: null,
+        ...update,
+      })
+    }
+    
+    safeSetState(setPhase, 'preparing')
+    safeSetState(setPreparationProgress, 0)
+    safeSetState(setPreparationStep, 'style')
+    updateGlobalState({ phase: 'preparing', progress: 0 })
     
     try {
       // Schritt 1: Stilprofil extrahieren
-      setPreparationStep('style')
-      setPreparationProgress(10)
+      safeSetState(setPreparationStep, 'style')
+      safeSetState(setPreparationProgress, 10)
+      updateGlobalState({ progress: 10 })
       
       const styleProfile = await extractExamStyle(categorizedScripts.exams, standardModel)
-      setPreparationProgress(25)
+      safeSetState(setPreparationProgress, 25)
+      updateGlobalState({ progress: 25 })
 
       // Schritt 2: Aufgaben generieren
-      setPreparationStep('generating')
+      safeSetState(setPreparationStep, 'generating')
       
       const taskCount = config.taskCount === 'auto' 
         ? Math.max(3, Math.min(10, Math.floor(config.duration / 8)))
         : config.taskCount
       
-      setTotalCount(taskCount)
-      setGeneratedCount(0)
+      safeSetState(setTotalCount, taskCount)
+      safeSetState(setGeneratedCount, 0)
 
       const moduleData = {
         scripts: categorizedScripts.scripts,
@@ -169,16 +209,19 @@ export function ExamMode({
         config.difficultyMix,
         standardModel,
         (current, total) => {
-          setGeneratedCount(current)
-          setPreparationProgress(25 + (current / total) * 60)
+          const progress = 25 + (current / total) * 60
+          safeSetState(setGeneratedCount, current)
+          safeSetState(setPreparationProgress, progress)
+          updateGlobalState({ progress })
         },
         preferredInputMode || undefined,
         config.duration // Pass exam duration for blueprint planning
       )
 
       // Schritt 3: Session finalisieren
-      setPreparationStep('finalizing')
-      setPreparationProgress(90)
+      safeSetState(setPreparationStep, 'finalizing')
+      safeSetState(setPreparationProgress, 90)
+      updateGlobalState({ progress: 90 })
 
       const newSession: ExamSession = {
         id: generateId(),
@@ -190,20 +233,21 @@ export function ExamMode({
         status: 'in-progress',
       }
 
-      setSession(newSession)
-      setPreparationProgress(100)
+      safeSetState(setSession, newSession)
+      safeSetState(setPreparationProgress, 100)
       
       // Wechsel zu 'ready' Phase statt sofort zu starten
-      setPhase('ready')
+      safeSetState(setPhase, 'ready')
+      updateGlobalState({ phase: 'ready', progress: 100, isComplete: true, session: newSession })
       toast.success('Prüfung wurde generiert!')
 
     } catch (error) {
       console.error('Fehler bei Prüfungsvorbereitung:', error)
       toast.error('Fehler bei der Prüfungsvorbereitung. Bitte versuche es erneut.')
-      setPhase('setup')
-      onGenerationStateChange?.(null)
+      safeSetState(setPhase, 'setup')
+      onGenerationStateChangeRef.current?.(null)
     }
-  }, [categorizedScripts, module.id, standardModel, onGenerationStateChange])
+  }, [categorizedScripts, module.id, module.name, standardModel, preferredInputMode])
 
   // Tatsächlicher Start der Prüfung
   const handleActualStart = useCallback(() => {

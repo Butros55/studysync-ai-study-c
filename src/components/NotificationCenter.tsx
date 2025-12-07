@@ -142,15 +142,28 @@ export function NotificationCenter({ tasks, onDismiss, onClearAll }: Notificatio
     })
   }
 
-  const totalNotifications = activeTasks.length + recentTasks.length
+  // AI-Generierungs-Typen - diese werden im AIPreparation UI angezeigt, nicht hier
+  const aiGenerationTypes = ['analyze', 'generate-notes', 'generate-tasks', 'generate-flashcards']
   
-  // Filtere Tasks basierend auf dismissed Kategorien (nicht einzelne IDs)
-  const visiblePopupTasks = activeTasks.concat(
-    [...completedTasks, ...errorTasks].filter(t => {
-      const categoryId = `${t.status}-${t.type}`
-      return !autoDismissedCategories.has(categoryId)
-    })
-  )
+  // Zähle nur Nicht-AI-Tasks für das Badge
+  const nonAiActiveTasks = activeTasks.filter(t => !aiGenerationTypes.includes(t.type))
+  const nonAiRecentTasks = recentTasks.filter(t => !aiGenerationTypes.includes(t.type) || t.status === 'error')
+  const totalNotifications = nonAiActiveTasks.length + nonAiRecentTasks.length
+  
+  // Filtere AI-Generierungen aus den Popup-Tasks (außer bei Errors)
+  // Diese werden stattdessen im AIPreparation UI angezeigt
+  const visiblePopupTasks = activeTasks
+    .filter(t => !aiGenerationTypes.includes(t.type)) // Keine aktiven AI-Tasks
+    .concat(
+      [...completedTasks, ...errorTasks].filter(t => {
+        const categoryId = `${t.status}-${t.type}`
+        // Zeige AI-Tasks nur bei Fehlern
+        if (aiGenerationTypes.includes(t.type) && t.status !== 'error') {
+          return false
+        }
+        return !autoDismissedCategories.has(categoryId)
+      })
+    )
 
   const getCategoryInfo = (task: PipelineTask) => {
     const statusLabel = task.status === 'completed'

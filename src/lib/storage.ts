@@ -574,14 +574,18 @@ export interface StudySyncExportData {
     tasks: unknown[]
     flashcards: unknown[]
     moduleTagRegistries?: unknown[]
+    // NEU: Analysen und Profile
+    documentAnalyses?: unknown[]
+    moduleProfiles?: unknown[]
+    userPreferences?: unknown
   }
 }
 
-const EXPORT_VERSION = '1.0.0'
-const COLLECTION_KEYS = ['modules', 'scripts', 'notes', 'tasks', 'flashcards', 'module_tag_registries'] as const
+const EXPORT_VERSION = '1.1.0'
+const COLLECTION_KEYS = ['modules', 'scripts', 'notes', 'tasks', 'flashcards', 'module_tag_registries', 'document_analyses', 'module_profiles'] as const
 
 /**
- * Exportiere alle Daten als JSON
+ * Exportiere alle Daten als JSON (inklusive Analysen und Profile)
  */
 export async function exportAllData(): Promise<StudySyncExportData> {
   await storageReady
@@ -592,6 +596,11 @@ export async function exportAllData(): Promise<StudySyncExportData> {
   const tasks = await getCollection('tasks')
   const flashcards = await getCollection('flashcards')
   const moduleTagRegistries = await getCollection('module_tag_registries')
+  
+  // Analysis-Daten separat sammeln
+  const documentAnalyses = await getCollection('document_analyses')
+  const moduleProfiles = await getCollection('module_profiles')
+  const userPreferences = await storage.getItem('user_preferences')
 
   return {
     version: EXPORT_VERSION,
@@ -603,6 +612,11 @@ export async function exportAllData(): Promise<StudySyncExportData> {
       tasks,
       flashcards,
       moduleTagRegistries,
+    },
+    analysisData: {
+      documentAnalyses,
+      moduleProfiles,
+      userPreferences,
     },
   }
 }
@@ -673,6 +687,52 @@ export async function importData(
         }
       } else {
         counts[key] = 0
+      }
+    }
+
+    // Importiere analysisData (Analysen, Profile, Einstellungen)
+    if (importData.analysisData) {
+      const { documentAnalyses, moduleProfiles, userPreferences } = importData.analysisData
+
+      // Document Analyses importieren
+      if (Array.isArray(documentAnalyses) && documentAnalyses.length > 0) {
+        if (mode === 'merge') {
+          const existing = await getCollection('document_analyses')
+          const existingIds = new Set(existing.map((item: { id?: string }) => item.id))
+          const newItems = documentAnalyses.filter((item: { id?: string }) => !existingIds.has(item.id))
+          await setCollection('document_analyses', [...existing, ...newItems])
+          counts['document_analyses'] = newItems.length
+        } else {
+          await setCollection('document_analyses', documentAnalyses)
+          counts['document_analyses'] = documentAnalyses.length
+        }
+      }
+
+      // Module Profiles importieren
+      if (Array.isArray(moduleProfiles) && moduleProfiles.length > 0) {
+        if (mode === 'merge') {
+          const existing = await getCollection('module_profiles')
+          const existingIds = new Set(existing.map((item: { moduleId?: string }) => item.moduleId))
+          const newItems = moduleProfiles.filter((item: { moduleId?: string }) => !existingIds.has(item.moduleId))
+          await setCollection('module_profiles', [...existing, ...newItems])
+          counts['module_profiles'] = newItems.length
+        } else {
+          await setCollection('module_profiles', moduleProfiles)
+          counts['module_profiles'] = moduleProfiles.length
+        }
+      }
+
+      // User Preferences importieren
+      if (userPreferences && typeof userPreferences === 'object') {
+        if (mode === 'replace') {
+          await setCollection('user_preferences', userPreferences)
+          counts['user_preferences'] = 1
+        } else {
+          // Bei merge: existierende Einstellungen mit importierten erweitern
+          const existing = await getCollection('user_preferences') || {}
+          await setCollection('user_preferences', { ...existing, ...userPreferences })
+          counts['user_preferences'] = 1
+        }
       }
     }
 

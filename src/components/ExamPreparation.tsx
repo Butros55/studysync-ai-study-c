@@ -276,6 +276,10 @@ export function ExamPreparationMinimized({
   isComplete: boolean
   onClick: () => void
 }) {
+  // Calculate stroke dashoffset for progress ring
+  const circumference = 2 * Math.PI * 24 // r=24
+  const strokeDashoffset = circumference - (progress / 100) * circumference
+
   return (
     <motion.button
       initial={{ scale: 0, opacity: 0 }}
@@ -304,8 +308,10 @@ export function ExamPreparationMinimized({
           fill="none"
           stroke="currentColor"
           strokeWidth="3"
-          strokeDasharray={150}
-          strokeDashoffset={150 - (progress / 100) * 150}
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           className={isComplete ? "text-green-500" : "text-primary"}
           strokeLinecap="round"
         />

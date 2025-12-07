@@ -44,6 +44,9 @@ import {
   X,
   CheckSquareOffset,
   MagnifyingGlass,
+  ArrowsClockwise,
+  Note,
+  ListChecks,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -112,6 +115,10 @@ interface FilesTabProps {
   onGenerateAllNotes: () => void
   onGenerateAllTasks: () => void
   onAnalyzeScript?: (scriptId: string) => void
+  onReanalyzeAll?: () => void
+  onReanalyzeSelected?: (ids: string[]) => void
+  onGenerateNotesForSelected?: (ids: string[]) => void
+  onGenerateTasksForSelected?: (ids: string[]) => void
 }
 
 export function FilesTab({
@@ -124,6 +131,10 @@ export function FilesTab({
   onGenerateAllNotes,
   onGenerateAllTasks,
   onAnalyzeScript,
+  onReanalyzeAll,
+  onReanalyzeSelected,
+  onGenerateNotesForSelected,
+  onGenerateTasksForSelected,
 }: FilesTabProps) {
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<FileCategory>>(
@@ -390,13 +401,57 @@ export function FilesTab({
                   KI-Aktionen
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-56">
+                {/* Aktionen für ALLE Dateien */}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  Alle Dateien
+                </div>
                 <DropdownMenuItem onClick={onGenerateAllNotes}>
+                  <Note className="w-4 h-4 mr-2" />
                   Alle Notizen generieren
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onGenerateAllTasks}>
+                  <ListChecks className="w-4 h-4 mr-2" />
                   Alle Aufgaben generieren
                 </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onReanalyzeAll?.()}
+                  disabled={!onReanalyzeAll}
+                >
+                  <ArrowsClockwise className="w-4 h-4 mr-2" />
+                  Alle neu analysieren
+                </DropdownMenuItem>
+                
+                {/* Aktionen für AUSGEWÄHLTE Dateien */}
+                {hasSelectedFiles && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                      Ausgewählt ({selectedIds.size})
+                    </div>
+                    <DropdownMenuItem 
+                      onClick={() => onGenerateNotesForSelected?.(Array.from(selectedIds))}
+                      disabled={!onGenerateNotesForSelected}
+                    >
+                      <Note className="w-4 h-4 mr-2" />
+                      Notizen für Auswahl
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onGenerateTasksForSelected?.(Array.from(selectedIds))}
+                      disabled={!onGenerateTasksForSelected}
+                    >
+                      <ListChecks className="w-4 h-4 mr-2" />
+                      Aufgaben für Auswahl
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => onReanalyzeSelected?.(Array.from(selectedIds))}
+                      disabled={!onReanalyzeSelected}
+                    >
+                      <ArrowsClockwise className="w-4 h-4 mr-2" />
+                      Auswahl neu analysieren
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
