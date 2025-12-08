@@ -26,8 +26,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 // Render hat ein Default-Limit von 100MB, wir nutzen konservativ 50MB
 // Default-Upload-Limit erhöhen (z.B. für große Backups/Uploads)
-// Kann per ENV JSON_LIMIT überschrieben werden, z.B. "200mb"
-const JSON_LIMIT = process.env.JSON_LIMIT || "300mb";
+// Kann per ENV JSON_LIMIT überschrieben werden, z.B. "400mb"
+const JSON_LIMIT = process.env.JSON_LIMIT || "400mb";
 const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
 // CORS-Konfiguration: Erlaubte Origins für Dev und Prod

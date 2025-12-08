@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "server": "node server/index.js",
+        "server": "node --max-old-space-size=1024 server/index.js",
+        "start": "node --max-old-space-size=1024 server/index.js",
         "dev:full": "concurrently \"npm run dev\" \"npm run server\"",
         "kill": "fuser -k 5000/tcp",
         "build": "tsc -b --noCheck && vite build",

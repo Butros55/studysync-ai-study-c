@@ -177,16 +177,26 @@ export async function generateExamBlueprint(
 
   // Build topic distribution based on frequency and weak topics
   const topicWeights = buildTopicWeights(knowledgeIndex, weakTopics)
+
+  // Dynamische Task-Anzahl basierend auf Themen- und Dokumentanzahl,
+  // um kleine Skripte nicht mit zu vielen Aufgaben zu überladen.
+  const dynamicTaskCount = (() => {
+    const topicFactor = Math.max(1, knowledgeIndex.allTopics.length / 2)
+    const docFactor = Math.max(1, knowledgeIndex.sourceDocumentCount * 1.2)
+    const estimate = Math.round(topicFactor + docFactor)
+    return Math.max(3, Math.min(15, estimate))
+  })()
+  const finalTaskCount = Math.max(3, Math.min(taskCount || dynamicTaskCount, dynamicTaskCount + 2))
   
   // Calculate points and time distribution
   const avgPointsPerTask = examStyle?.scoringPatterns?.averagePointsPerTask || 10
-  const totalPoints = Math.round(avgPointsPerTask * taskCount)
-  const avgMinutesPerTask = duration / taskCount
+  const totalPoints = Math.round(avgPointsPerTask * finalTaskCount)
+  const avgMinutesPerTask = duration / finalTaskCount
 
   // Compute difficulty counts
-  const easyCount = Math.max(1, Math.round(taskCount * difficultyMix.easy))
-  const hardCount = Math.max(0, Math.round(taskCount * difficultyMix.hard))
-  const mediumCount = Math.max(0, taskCount - easyCount - hardCount)
+  const easyCount = Math.max(1, Math.round(finalTaskCount * difficultyMix.easy))
+  const hardCount = Math.max(0, Math.round(finalTaskCount * difficultyMix.hard))
+  const mediumCount = Math.max(0, finalTaskCount - easyCount - hardCount)
 
   // Build the blueprint using LLM for intelligent topic distribution
   const blueprintItems = await planBlueprintWithLLM({
@@ -195,7 +205,7 @@ export async function generateExamBlueprint(
     knowledgeIndex,
     examStyle,
     duration,
-    taskCount,
+    taskCount: finalTaskCount,
     totalPoints,
     easyCount,
     mediumCount,
@@ -812,7 +822,6 @@ function buildTaskGenerationPrompt(
   const lengthGuidance = `
 LÄNGENRICHTLINIEN:
 - Geschätzte Bearbeitungszeit: ${blueprint.targetMinutes} Minuten
-- Punkte: ${blueprint.points}
 - ${blueprint.targetMinutes <= 5 ? 'Kurze, fokussierte Aufgabe' : blueprint.targetMinutes <= 10 ? 'Mittellange Aufgabe mit 2-3 Teilaufgaben' : 'Ausführliche Aufgabe mit mehreren Teilaufgaben'}`
 
   return `Du bist ein Universitätsprofessor, der eine Prüfungsaufgabe erstellt.
@@ -835,6 +844,9 @@ WICHTIGE REGELN:
 2. Nutze die bereitgestellten Definitionen, Formeln und Verfahren
 3. Halte dich an die Stil-Vorgaben
 4. Musterlösung muss vollständig und nachvollziehbar sein
+5. KEINE Nummerierung wie "1.", "2.", "3." im Aufgabentext; Teilaufgaben nur mit a), b), c) kennzeichnen
+6. KEINE Punkte- oder Bewertungshinweise im Fragetext (keine "(5 Punkte)" o.Ä.)
+7. KEINE Schwierigkeitsangaben im Fragetext (kein "schwer"/"leicht" etc.)
 
 Antworte im JSON-Format:
 {
