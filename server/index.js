@@ -30,7 +30,7 @@ const PORT = process.env.PORT || 3001;
 const JSON_LIMIT = process.env.JSON_LIMIT || "400mb";
 const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
-// CORS-Konfiguration: Erlaubte Origins für Dev und Prod
+// CORS: erlaubte Origins + permissiver Fallback, um Uploads nicht zu blockieren
 const allowedOrigins = [
   "http://localhost:5000",
   "http://localhost:5173",
@@ -44,7 +44,7 @@ app.use(
       // Erlaube Requests ohne Origin (z.B. Server-zu-Server, Postman)
       if (!origin) return callback(null, true);
 
-      // Prüfe ob Origin in der Liste oder mit GitHub Pages Subdomain beginnt
+      // Whitelist prüfen
       if (
         allowedOrigins.some(
           (allowed) => origin === allowed || origin.startsWith(allowed)
@@ -53,8 +53,9 @@ app.use(
         return callback(null, true);
       }
 
-      console.warn(`CORS blocked origin: ${origin}`);
-      return callback(new Error("Not allowed by CORS"));
+      // Fallback: allow other origins to avoid CORS blocking shared-backup
+      console.warn(`CORS: allowing non-whitelisted origin ${origin}`);
+      return callback(null, true);
     },
     credentials: false,
   })
