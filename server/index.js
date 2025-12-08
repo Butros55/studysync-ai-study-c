@@ -11,6 +11,7 @@ import {
   flashcardsDB,
 } from "./database.js";
 import { roomsRouter } from "./rooms.js";
+import { createCrudRoutes } from "./crud-routes.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -426,180 +427,13 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ========== MODULES API ==========
-app.get("/api/modules", (req, res) => {
-  try {
-    const modules = modulesDB.getAll();
-    res.json(modules);
-  } catch (error) {
-    console.error("[Modules] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/modules", (req, res) => {
-  try {
-    const module = modulesDB.create(req.body);
-    res.json(module);
-  } catch (error) {
-    console.error("[Modules] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/modules/:id", (req, res) => {
-  try {
-    modulesDB.delete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("[Modules] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ========== SCRIPTS API ==========
-app.get("/api/scripts", (req, res) => {
-  try {
-    const scripts = scriptsDB.getAll();
-    res.json(scripts);
-  } catch (error) {
-    console.error("[Scripts] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/scripts", (req, res) => {
-  try {
-    const script = scriptsDB.create(req.body);
-    res.json(script);
-  } catch (error) {
-    console.error("[Scripts] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/scripts/:id", (req, res) => {
-  try {
-    scriptsDB.delete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("[Scripts] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ========== NOTES API ==========
-app.get("/api/notes", (req, res) => {
-  try {
-    const notes = notesDB.getAll();
-    res.json(notes);
-  } catch (error) {
-    console.error("[Notes] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/notes", (req, res) => {
-  try {
-    const note = notesDB.create(req.body);
-    res.json(note);
-  } catch (error) {
-    console.error("[Notes] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/notes/:id", (req, res) => {
-  try {
-    notesDB.delete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("[Notes] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ========== TASKS API ==========
-app.get("/api/tasks", (req, res) => {
-  try {
-    const tasks = tasksDB.getAll();
-    res.json(tasks);
-  } catch (error) {
-    console.error("[Tasks] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/tasks", (req, res) => {
-  try {
-    const task = tasksDB.create(req.body);
-    res.json(task);
-  } catch (error) {
-    console.error("[Tasks] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put("/api/tasks/:id", (req, res) => {
-  try {
-    const task = tasksDB.update(req.params.id, req.body);
-    res.json(task);
-  } catch (error) {
-    console.error("[Tasks] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/tasks/:id", (req, res) => {
-  try {
-    tasksDB.delete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("[Tasks] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ========== FLASHCARDS API ==========
-app.get("/api/flashcards", (req, res) => {
-  try {
-    const flashcards = flashcardsDB.getAll();
-    res.json(flashcards);
-  } catch (error) {
-    console.error("[Flashcards] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/flashcards", (req, res) => {
-  try {
-    const flashcard = flashcardsDB.create(req.body);
-    res.json(flashcard);
-  } catch (error) {
-    console.error("[Flashcards] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put("/api/flashcards/:id", (req, res) => {
-  try {
-    const flashcard = flashcardsDB.update(req.params.id, req.body);
-    res.json(flashcard);
-  } catch (error) {
-    console.error("[Flashcards] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/api/flashcards/:id", (req, res) => {
-  try {
-    flashcardsDB.delete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("[Flashcards] Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+// ========== CRUD ROUTES ==========
+// Using generic factory to reduce code duplication
+createCrudRoutes(app, "modules", modulesDB);
+createCrudRoutes(app, "scripts", scriptsDB);
+createCrudRoutes(app, "notes", notesDB);
+createCrudRoutes(app, "tasks", tasksDB, { hasUpdate: true });
+createCrudRoutes(app, "flashcards", flashcardsDB, { hasUpdate: true });
 
 // Server starten mit Datenbank-Initialisierung
 async function startServer() {
