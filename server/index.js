@@ -40,8 +40,7 @@ const corsOptions = {
   preflightContinue: false
 };
 
-// Handle preflight requests for all routes
-app.options('*', cors(corsOptions));
+// CORS middleware handles preflight (OPTIONS) requests automatically
 app.use(cors(corsOptions));
 
 function resolveBaseUrl(req) {
