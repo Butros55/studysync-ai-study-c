@@ -12,7 +12,12 @@ import {
 } from "./database.js";
 import { roomsRouter } from "./rooms.js";
 import { createCrudRoutes } from "./crud-routes.js";
-import { calculateCost, DEFAULT_MODEL } from "../shared/model-pricing.js";
+import {
+  calculateCost,
+  DEFAULT_MODEL,
+  MODEL_PRICING,
+  FALLBACK_MODEL,
+} from "../shared/model-pricing.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -82,6 +87,44 @@ app.use("/api/rooms", roomsRouter);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SHARED_BACKUP_PATH = path.join(__dirname, "shared-backup.json");
+
+function estimateCost(model, usage) {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING[FALLBACK_MODEL];
+  const normalizedModel = model?.replace(/-\d{4}-\d{2}-\d{2}$/, "") || model;
+  const inputTokens =
+    usage?.prompt_tokens ??
+    usage?.input_tokens ??
+    usage?.cache_read_input_tokens ??
+    0;
+  const outputTokens = usage?.completion_tokens ?? usage?.output_tokens ?? 0;
+  const cachedInputTokens = usage?.cache_read_input_tokens ?? 0;
+  const totalTokens = inputTokens + outputTokens;
+
+  const inputUsd = pricing ? inputTokens * pricing.input : undefined;
+  const outputUsd = pricing ? outputTokens * pricing.output : undefined;
+  const estimatedUsd =
+    inputUsd !== undefined || outputUsd !== undefined
+      ? (inputUsd || 0) + (outputUsd || 0)
+      : undefined;
+
+  return {
+    normalizedModel,
+    usage: {
+      inputTokens,
+      outputTokens,
+      cachedInputTokens,
+      totalTokens,
+    },
+    cost: {
+      estimatedUsd,
+      breakdown: {
+        inputUsd,
+        outputUsd,
+      },
+      pricingModelKey: pricing ? model : undefined,
+    },
+  };
+}
 
 // Shared Backup Endpoints (einfacher JSON-Store auf dem Server)
 app.get("/api/shared-backup", async (_req, res) => {
