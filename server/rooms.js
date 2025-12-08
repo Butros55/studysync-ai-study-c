@@ -2,6 +2,12 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { OpenAI } from "openai";
 import { tasksDB } from "./database.js";
+import {
+  validateRoomById,
+  validateMember,
+  validateHost,
+  validateCurrentRound,
+} from "./room-middleware.js";
 
 // TODO: persist rooms in a durable store if rooms need to survive restarts
 const rooms = new Map();
@@ -421,14 +427,9 @@ router.get("/:roomId", (req, res) => {
   res.json({ room });
 });
 
-router.post("/:roomId/ready", (req, res) => {
-  const { roomId } = req.params;
+router.post("/:roomId/ready", validateRoomById(rooms), (req, res) => {
   const { userId, ready } = req.body || {};
-  const room = rooms.get(roomId);
-
-  if (!room) {
-    return res.status(404).json({ error: "Room nicht gefunden" });
-  }
+  const room = req.room;
 
   const member = room.members.find((m) => m.userId === userId);
   if (!member) {
@@ -440,19 +441,10 @@ router.post("/:roomId/ready", (req, res) => {
   res.json({ room });
 });
 
-router.post("/:roomId/start-round", async (req, res) => {
+router.post("/:roomId/start-round", validateRoomById(rooms), validateHost, async (req, res) => {
   try {
-    const { roomId } = req.params;
-    const { hostId, mode, moduleMeta } = req.body || {};
-    const room = rooms.get(roomId);
-
-    if (!room) {
-      return res.status(404).json({ error: "Room nicht gefunden" });
-    }
-
-    if (room.host.userId !== hostId) {
-      return res.status(403).json({ error: "Nur der Host kann Runden starten" });
-    }
+    const { mode, moduleMeta } = req.body || {};
+    const room = req.room;
 
     if (!["collab", "challenge"].includes(mode)) {
       return res.status(400).json({ error: "Ungültiger Rundentyp" });
@@ -500,16 +492,11 @@ router.post("/:roomId/start-round", async (req, res) => {
   }
 });
 
-router.post("/:roomId/vote-extension", (req, res) => {
-  const { roomId } = req.params;
+router.post("/:roomId/vote-extension", validateRoomById(rooms), validateCurrentRound, (req, res) => {
   const { userId } = req.body || {};
-  const room = rooms.get(roomId);
+  const room = req.room;
+  const round = req.round;
 
-  if (!room?.currentRound) {
-    return res.status(404).json({ error: "Keine laufende Runde gefunden" });
-  }
-
-  const round = room.currentRound;
   if (round.mode !== "challenge" || round.state !== "running") {
     return res
       .status(400)
@@ -533,14 +520,10 @@ router.post("/:roomId/vote-extension", (req, res) => {
   res.json({ room });
 });
 
-router.post("/:roomId/submit", (req, res) => {
-  const { roomId } = req.params;
+router.post("/:roomId/submit", validateRoomById(rooms), validateCurrentRound, (req, res) => {
   const { userId, isCorrect, answerPreview, answerText } = req.body || {};
-  const room = rooms.get(roomId);
-
-  if (!room?.currentRound) {
-    return res.status(404).json({ error: "Keine laufende Runde gefunden" });
-  }
+  const room = req.room;
+  const round = req.round;
 
   const member = room.members.find((m) => m.userId === userId);
   if (!member) {
@@ -548,7 +531,6 @@ router.post("/:roomId/submit", (req, res) => {
   }
 
   const now = new Date().toISOString();
-  const round = room.currentRound;
   const timeMs = new Date(now).getTime() - new Date(round.startedAt).getTime();
   const preview = sanitizePreview(answerPreview || answerText);
 
@@ -581,41 +563,26 @@ router.post("/:roomId/submit", (req, res) => {
   res.json({ room, round });
 });
 
-router.post("/:roomId/unsubmit", (req, res) => {
-  const { roomId } = req.params;
+router.post("/:roomId/unsubmit", validateRoomById(rooms), validateCurrentRound, (req, res) => {
   const { userId } = req.body || {};
-  const room = rooms.get(roomId);
-
-  if (!room?.currentRound) {
-    return res.status(404).json({ error: "Keine laufende Runde gefunden" });
-  }
+  const room = req.room;
+  const round = req.round;
 
   const member = room.members.find((m) => m.userId === userId);
   if (!member) {
     return res.status(404).json({ error: "Mitglied nicht gefunden" });
   }
 
-  const round = room.currentRound;
   round.submissions = round.submissions.filter((s) => s.userId !== userId);
   member.status = "solving";
   round.lockCountdownStartAt = undefined;
   res.json({ room, round });
 });
 
-router.post("/:roomId/end-round", (req, res) => {
-  const { roomId } = req.params;
-  const { hostId } = req.body || {};
-  const room = rooms.get(roomId);
+router.post("/:roomId/end-round", validateRoomById(rooms), validateCurrentRound, validateHost, (req, res) => {
+  const room = req.room;
+  const round = req.round;
 
-  if (!room?.currentRound) {
-    return res.status(404).json({ error: "Keine laufende Runde gefunden" });
-  }
-
-  if (room.host.userId !== hostId) {
-    return res.status(403).json({ error: "Nur der Host kann die Runde beenden" });
-  }
-
-  const round = room.currentRound;
   round.state = "ended";
   round.phase = "ending";
   round.endedAt = new Date().toISOString();
@@ -630,14 +597,9 @@ router.post("/:roomId/end-round", (req, res) => {
   res.json({ room, round });
 });
 
-router.post("/:roomId/leave", (req, res) => {
-  const { roomId } = req.params;
+router.post("/:roomId/leave", validateRoomById(rooms), (req, res) => {
   const { userId } = req.body || {};
-  const room = rooms.get(roomId);
-
-  if (!room) {
-    return res.status(404).json({ error: "Room nicht gefunden" });
-  }
+  const room = req.room;
 
   room.members = room.members.filter((m) => m.userId !== userId);
   res.json({ room });
