@@ -63,17 +63,17 @@ export const MODEL_PRICING = {
   "gpt-realtime": { input: 4.0 / 1_000_000, output: 16.0 / 1_000_000 },
   "gpt-realtime-mini": { input: 0.6 / 1_000_000, output: 2.4 / 1_000_000 },
 
-  // Audio
+  // Audio (Texttoken-Billing)
   "gpt-audio": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
   "gpt-audio-mini": { input: 0.6 / 1_000_000, output: 2.4 / 1_000_000 },
 
   // Reasoning / O-Serie
-  o1: { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
+  "o1": { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
   "o1-pro": { input: 150.0 / 1_000_000, output: 600.0 / 1_000_000 },
   "o1-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
   "o1-2024-12-17": { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
   "o3-pro": { input: 20.0 / 1_000_000, output: 80.0 / 1_000_000 },
-  o3: { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
+  "o3": { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
   "o3-deep-research": { input: 10.0 / 1_000_000, output: 40.0 / 1_000_000 },
   "o3-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
   "o4-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
