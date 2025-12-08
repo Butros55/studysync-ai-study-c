@@ -188,7 +188,11 @@ export function AIPreparation({
   const config = ACTION_CONFIG[type]
   
   // Finde das aktuell verarbeitete Item
-  const currentItem = items.find(item => item.status === 'processing') || items.find(item => item.status === 'error')
+  const currentItem =
+    items.find(item => item.status === 'processing') ||
+    items.find(item => item.status === 'error') ||
+    items.find(item => item.status === 'queued') ||
+    items[0]
 
   // Step-Status pro aktuellem Item (für generate-tasks nutzen wir den Fortschritt des Items)
   const computeStepState = () => {
@@ -431,7 +435,10 @@ export function AIPreparation({
                     >
                       {(() => {
                         const isError = currentItem.status === 'error'
-                        const progress = Math.min(100, Math.max(5, currentItem.progress ?? 0))
+                        const isQueued = currentItem.status === 'queued'
+                        const progress = isQueued
+                          ? 0
+                          : Math.min(100, Math.max(5, currentItem.progress ?? 0))
                         return (
                           <div
                             className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full border max-w-[320px] overflow-hidden ${
@@ -440,16 +447,24 @@ export function AIPreparation({
                                 : 'bg-primary/10 text-primary border-primary/20'
                             }`}
                           >
-                            <div
-                              className={`absolute inset-0 transition-[width] ${
-                                isError ? 'bg-red-100' : 'bg-primary/20'
-                              }`}
-                              style={{ width: `${isError ? 100 : progress}%` }}
-                            />
+                            {!isQueued && (
+                              <div
+                                className={`absolute inset-0 transition-[width] ${
+                                  isError ? 'bg-red-100' : 'bg-primary/20'
+                                }`}
+                                style={{ width: `${isError ? 100 : progress}%` }}
+                              />
+                            )}
                             <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.25),transparent_40%),radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.18),transparent_35%)]" />
                             <div className="relative flex items-center gap-2 w-full">
                               {isError ? (
                                 <WarningCircle size={16} weight="fill" className="text-red-600" />
+                              ) : isQueued ? (
+                                <motion.div
+                                  animate={{ opacity: [0.4, 1, 0.4] }}
+                                  transition={{ duration: 1.2, repeat: Infinity }}
+                                  className="w-4 h-4 rounded-full bg-primary/80"
+                                />
                               ) : (
                                 <motion.div
                                   animate={{ rotate: 360 }}
@@ -464,9 +479,13 @@ export function AIPreparation({
                                   isError ? 'text-red-700' : 'text-primary/80'
                                 }`}
                               >
-                                {isError ? 'Fehlgeschlagen' : `${progress.toFixed(0)}%`}
+                                {isError
+                                  ? 'Fehlgeschlagen'
+                                  : isQueued
+                                  ? 'Wartet...'
+                                  : `${progress.toFixed(0)}%`}
                               </span>
-                              {!isError && (
+                              {!isError && !isQueued && (
                                 <motion.span
                                   className="flex items-center gap-0.5 text-primary/80 text-xs"
                                   animate={{ opacity: [0.4, 1, 0.4] }}
