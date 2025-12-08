@@ -143,52 +143,55 @@ app.get("/api/shared-backup", async (_req, res) => {
   }
 });
 
-app.post(
-  "/api/shared-backup",
-  express.raw({ type: "application/json", limit: JSON_LIMIT }),
-  async (req, res) => {
-    try {
-      const rawBody = req.body?.toString("utf-8") || "";
-      if (!rawBody) {
-        return res.status(400).json({ error: "Leeres Backup-Payload" });
-      }
-
-      // Minimal validation without fully materializing huge objects twice
-      let parsed;
-      try {
-        parsed = JSON.parse(rawBody);
-      } catch (e) {
-        return res.status(400).json({ error: "Ungültiges JSON-Backup" });
-      }
-
-      if (!parsed?.version || !parsed?.data) {
-        return res.status(400).json({ error: "Ungültiges Backup-Payload" });
-      }
-
-      const payload = {
-        ...parsed,
-        savedAt: new Date().toISOString(),
-      };
-
-      await fs.writeFile(
-        SHARED_BACKUP_PATH,
-        JSON.stringify(payload, null, 2),
-        "utf-8"
-      );
-
-      res.json({
-        status: "saved",
-        version: parsed.version,
-        exportedAt: parsed.exportedAt,
-      });
-    } catch (error) {
-      console.error("[SharedBackup] save failed:", error);
-      res
-        .status(500)
-        .json({ error: "Backup konnte nicht gespeichert werden" });
+app.post("/api/shared-backup", async (req, res) => {
+  try {
+    // Accept body from express.json (object) or raw buffer/string
+    let rawBody = "";
+    if (Buffer.isBuffer(req.body)) {
+      rawBody = req.body.toString("utf-8");
+    } else if (typeof req.body === "string") {
+      rawBody = req.body;
+    } else if (req.body && typeof req.body === "object") {
+      // Already parsed by express.json
+      rawBody = JSON.stringify(req.body);
     }
+
+    if (!rawBody) {
+      return res.status(400).json({ error: "Leeres Backup-Payload" });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(rawBody);
+    } catch (e) {
+      return res.status(400).json({ error: "Ungültiges JSON-Backup" });
+    }
+
+    if (!parsed?.version || !parsed?.data) {
+      return res.status(400).json({ error: "Ungültiges Backup-Payload" });
+    }
+
+    const payload = {
+      ...parsed,
+      savedAt: new Date().toISOString(),
+    };
+
+    await fs.writeFile(
+      SHARED_BACKUP_PATH,
+      JSON.stringify(payload, null, 2),
+      "utf-8"
+    );
+
+    res.json({
+      status: "saved",
+      version: parsed.version,
+      exportedAt: parsed.exportedAt,
+    });
+  } catch (error) {
+    console.error("[SharedBackup] save failed:", error);
+    res.status(500).json({ error: "Backup konnte nicht gespeichert werden" });
   }
-);
+});
 
 // Root-Route
 app.get("/", (req, res) => {
