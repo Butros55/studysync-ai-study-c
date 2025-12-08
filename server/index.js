@@ -32,7 +32,6 @@ const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
 // CORS: allow all origins to avoid client-side blocks (GitHub Pages etc.)
 app.use(cors({ origin: true, credentials: false, preflightContinue: false, optionsSuccessStatus: 200 }));
-app.options("*", cors({ origin: true, credentials: false, optionsSuccessStatus: 200 }));
 
 function resolveBaseUrl(req) {
   const proto = req.get("x-forwarded-proto") || req.protocol;
