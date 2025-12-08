@@ -108,8 +108,8 @@ class DevToolsStore {
   private listeners: Set<(state: DevToolsState) => void> = new Set();
 
   constructor() {
-    const initialDevMode = isLocalhost() || loadBoolean(DEV_MODE_KEY, false);
-    const initialDebugLogging = loadBoolean(DEBUG_LOGGING_KEY, isLocalhost());
+    const initialDevMode = loadBoolean(DEV_MODE_KEY, false);
+    const initialDebugLogging = initialDevMode && loadBoolean(DEBUG_LOGGING_KEY, false);
     this.state = {
       devMode: initialDevMode,
       debugLogging: initialDebugLogging,

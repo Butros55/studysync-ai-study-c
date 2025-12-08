@@ -21,11 +21,12 @@ import { ExamMode, type ExamGenerationState } from './components/ExamMode'
 import { ExamPreparationMinimized } from './components/ExamPreparation'
 import { AIPreparation, AIPreparationMinimized, type AIActionType, type AIActionItem } from './components/AIPreparation'
 import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
+import { ServerBackupDialog } from './components/ServerBackupDialog'
 import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { StudyRoomView } from './components/StudyRoomView'
 import { Button } from './components/ui/button'
-import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple } from '@phosphor-icons/react'
+import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple, CloudArrowDown, UploadSimple } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -51,6 +52,14 @@ import { BugReportListener } from './components/BugReportListener'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './components/ui/dialog'
 import { Input } from './components/ui/input'
 import { Label } from './components/ui/label'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './components/ui/dropdown-menu'
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
@@ -188,6 +197,7 @@ function AppContent() {
   const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
   const [showCostTracking, setShowCostTracking] = useState(false)
+  const [serverBackupOpen, setServerBackupOpen] = useState(false)
   const [showQuizMode, setShowQuizMode] = useState(false)
   const [showExamMode, setShowExamMode] = useState(false)
   const [taskFeedback, setTaskFeedback] = useState<{
@@ -2984,12 +2994,40 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   <CurrencyDollar size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Kosten</span>
                 </Button>
-                {modules && modules.length > 0 && (
-                  <Button variant="outline" onClick={handleExportData} size="sm" className="flex-1 sm:flex-none" title="Alle Daten exportieren">
-                    <DownloadSimple size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
-                    <span className="hidden sm:inline">Backup</span>
-                  </Button>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
+                      title="Backup & Sync"
+                    >
+                      <DownloadSimple size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                      <span className="hidden sm:inline">Backup & Sync</span>
+                      <span className="sm:hidden">Backup</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Backup & Datenabgleich</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={triggerImportDialog} className="gap-2">
+                      <UploadSimple size={16} />
+                      Backup aus Datei importieren
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setServerBackupOpen(true)} className="gap-2">
+                      <CloudArrowDown size={16} />
+                      Module vom Server laden
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleExportData}
+                      disabled={!modules || modules.length === 0}
+                      className="gap-2"
+                    >
+                      <DownloadSimple size={16} />
+                      Backup exportieren
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button 
                   onClick={() => setCreateDialogOpen(true)} 
                   size="sm" 
@@ -3015,8 +3053,10 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Ãœbungsaufgaben zu organisieren."
                   actionLabel="Erstes Modul erstellen"
                   onAction={() => setCreateDialogOpen(true)}
-                  secondaryActionLabel="Backup importieren"
+                  secondaryActionLabel="Backup aus Datei importieren"
                   onSecondaryAction={triggerImportDialog}
+                  tertiaryActionLabel="Module vom Server laden"
+                  onTertiaryAction={() => setServerBackupOpen(true)}
                 />
               </>
             ) : (
@@ -3094,6 +3134,11 @@ Gib deine Antwort als JSON zurÃ¼ck:
           </DialogContent>
         </Dialog>
 
+        <ServerBackupDialog
+          open={serverBackupOpen}
+          onOpenChange={setServerBackupOpen}
+        />
+
         {/* Versteckter File-Input fuer Import */}
         <input
           ref={importInputRef}
@@ -3108,6 +3153,8 @@ Gib deine Antwort als JSON zurÃ¼ck:
           <OnboardingTutorial 
             onComplete={completeOnboarding}
             onCreateModule={() => setCreateDialogOpen(true)}
+            onImportBackup={triggerImportDialog}
+            onFetchServerBackup={() => setServerBackupOpen(true)}
           />
         )}
         

@@ -203,7 +203,7 @@ export async function uploadSharedBackupToServer(apiBase: string = API_BASE_URL)
   return response.json()
 }
 
-export async function downloadSharedBackupFromServer(apiBase: string = API_BASE_URL) {
+export async function fetchSharedBackupFromServer(apiBase: string = API_BASE_URL) {
   const response = await fetch(`${apiBase}/api/shared-backup`)
   if (response.status === 404) {
     throw new Error('Kein Server-Backup gefunden')
@@ -216,6 +216,66 @@ export async function downloadSharedBackupFromServer(apiBase: string = API_BASE_
   if (!payload?.backup) {
     throw new Error('Ungültige Server-Antwort')
   }
-  const counts = await importSharedBackup(payload.backup as StudySyncExportData)
-  return { backup: payload.backup as StudySyncExportData, counts }
+  return payload.backup as StudySyncExportData
+}
+
+/**
+ * Filtere ein Server-Backup auf die gewünschten Module und abhängige Daten.
+ */
+export function filterBackupByModules(
+  backup: StudySyncExportData,
+  moduleIds: string[]
+): StudySyncExportData {
+  if (!moduleIds || moduleIds.length === 0) {
+    return backup
+  }
+
+  const selection = new Set(moduleIds)
+  const clone = deepClone(backup)
+
+  const keepByModule = (items: any[] | undefined) =>
+    (items || []).filter((item) => item && selection.has((item as any).moduleId))
+
+  clone.data.modules = (clone.data.modules || []).filter((m: any) => selection.has(m.id))
+  clone.data.scripts = keepByModule(clone.data.scripts as any[])
+  clone.data.notes = keepByModule(clone.data.notes as any[])
+  clone.data.tasks = keepByModule(clone.data.tasks as any[])
+  clone.data.flashcards = keepByModule(clone.data.flashcards as any[])
+
+  if ((clone.data as any).moduleTagRegistries) {
+    ;(clone.data as any).moduleTagRegistries = keepByModule(
+      (clone.data as any).moduleTagRegistries
+    )
+  }
+
+  if ((clone as any).analysisData?.documentAnalyses) {
+    ;(clone as any).analysisData.documentAnalyses = keepByModule(
+      (clone as any).analysisData.documentAnalyses
+    )
+  }
+  if ((clone as any).analysisData?.moduleProfiles) {
+    ;(clone as any).analysisData.moduleProfiles = keepByModule(
+      (clone as any).analysisData.moduleProfiles
+    )
+  }
+
+  return clone
+}
+
+export async function importSharedBackupSelection(
+  backup: StudySyncExportData,
+  moduleIds: string[]
+) {
+  const filtered = filterBackupByModules(backup, moduleIds)
+  return importSharedBackup(filtered)
+}
+
+export async function downloadSharedBackupFromServer(
+  moduleIds?: string[],
+  apiBase: string = API_BASE_URL
+) {
+  const backup = await fetchSharedBackupFromServer(apiBase)
+  const filtered = moduleIds && moduleIds.length > 0 ? filterBackupByModules(backup, moduleIds) : backup
+  const counts = await importSharedBackup(filtered)
+  return { backup: filtered, counts }
 }

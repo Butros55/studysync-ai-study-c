@@ -55,7 +55,7 @@ export function DebugConsole({ open, onClose }: DebugConsoleProps) {
   const { logs, meta, clearLogs } = useDebugLogs()
   const { debugLogging, setEnabled } = useDebugMode()
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'api' | 'storage'>('api')
+  const [activeTab, setActiveTab] = useState<'api' | 'storage' | 'logs'>('api')
   const [loadingMeta, setLoadingMeta] = useState(false)
   const [bugLogId, setBugLogId] = useState<string | undefined>(undefined)
   const [bugDrawerOpen, setBugDrawerOpen] = useState(false)
@@ -97,6 +97,15 @@ export function DebugConsole({ open, onClose }: DebugConsoleProps) {
       setSelectedLogId(logs[0].id)
     }
   }, [logs, selectedLogId])
+
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [open])
 
   const stats = useMemo(() => {
     let totalTokens = 0
@@ -298,11 +307,11 @@ export function DebugConsole({ open, onClose }: DebugConsoleProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[9999]">
+      <div className="fixed inset-0 z-[40]">
         <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={onClose} />
         <div className="absolute left-0 right-0 bottom-0 transition-transform duration-300 translate-y-0">
           <div className="mx-auto max-w-7xl px-3 pb-3">
-            <div className="bg-card border rounded-t-2xl shadow-xl h-[65vh] flex flex-col overflow-hidden">
+            <div className="bg-card border rounded-t-2xl shadow-xl h-[72vh] flex flex-col overflow-hidden">
               <div className="flex items-start justify-between p-4 border-b">
                 <div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -336,6 +345,10 @@ export function DebugConsole({ open, onClose }: DebugConsoleProps) {
                         <TabsTrigger value="storage" className="gap-2">
                           <Database size={16} />
                           Storage
+                        </TabsTrigger>
+                        <TabsTrigger value="logs" className="gap-2">
+                          <Bug size={16} />
+                          Logs
                         </TabsTrigger>
                       </TabsList>
                       <div className="flex items-center gap-2">
@@ -430,6 +443,51 @@ export function DebugConsole({ open, onClose }: DebugConsoleProps) {
                       <Card className="h-full overflow-hidden border">
                         <ScrollArea className="h-full">
                           <StorageDebugPanel />
+                        </ScrollArea>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="logs" className="flex-1 overflow-hidden pt-3">
+                      <Card className="h-full overflow-hidden border">
+                        <div className="flex items-center justify-between px-4 py-3 border-b">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <ListBullets size={16} />
+                            Alle Logs
+                          </div>
+                          <div className="text-xs text-muted-foreground">{logs.length} Eintr„ge</div>
+                        </div>
+                        <ScrollArea className="h-[calc(100%-48px)]">
+                          <div className="space-y-3 p-3">
+                            {logs.length === 0 && (
+                              <div className="text-sm text-muted-foreground">Keine Logs vorhanden.</div>
+                            )}
+                            {logs.map((log) => {
+                              const tokens = extractTokens(log)
+                              const isError = !!log.error || (log.response && log.response.status >= 400)
+                              return (
+                                <div key={log.id} className="rounded-md border bg-muted/40 p-3 space-y-2">
+                                  <div className="flex items-start justify-between gap-3 text-[11px] text-muted-foreground">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full border ${isError ? 'border-destructive/40 text-destructive' : 'border-green-500/40 text-green-700'}`}>
+                                        {isError ? 'Error' : 'Success'}
+                                      </span>
+                                      <span>{formatTimestamp(log.startedAt)}</span>
+                                      <span>{Math.round(log.durationMs)} ms</span>
+                                      <span>{tokens.input + tokens.output} tok</span>
+                                    </div>
+                                    <div className="text-right">{log.llm?.model || 'Modell unbekannt'}</div>
+                                  </div>
+                                  <div className="text-sm font-semibold">{log.llm?.operation || 'Unbekannte Operation'}</div>
+                                  {log.error && (
+                                    <div className="text-xs text-destructive">Fehler: {log.error.message}</div>
+                                  )}
+                                  <pre className="text-[11px] leading-relaxed bg-background/60 border rounded p-2 overflow-x-auto whitespace-pre-wrap break-words">
+                                    {prettyJson(log.response?.body || log.error || log.request?.body || {})}
+                                  </pre>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </ScrollArea>
                       </Card>
                     </TabsContent>

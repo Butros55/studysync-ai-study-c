@@ -24,6 +24,8 @@ import {
   Target,
   Keyboard,
   PencilLine,
+  UploadSimple,
+  CloudArrowDown,
 } from '@phosphor-icons/react'
 import { usePreferredInputMode } from '@/hooks/use-preferred-input-mode'
 import type { InputMode } from '@/lib/analysis-types'
@@ -109,7 +111,7 @@ const STEPS: OnboardingStep[] = [
   {
     id: 'done',
     title: 'Du bist bereit! 🚀',
-    description: 'Erstelle jetzt dein erstes Modul und lade ein Skript hoch. Viel Erfolg beim Lernen!',
+    description: 'Übernimm vorhandene Daten oder starte neu: Importiere ein Backup oder lade Module vom Server.',
     icon: <CheckCircle size={48} weight="duotone" />,
     position: 'center'
   }
@@ -118,9 +120,16 @@ const STEPS: OnboardingStep[] = [
 interface OnboardingTutorialProps {
   onComplete: () => void
   onCreateModule?: () => void
+  onImportBackup?: () => void
+  onFetchServerBackup?: () => void
 }
 
-export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTutorialProps) {
+export function OnboardingTutorial({
+  onComplete,
+  onCreateModule,
+  onImportBackup,
+  onFetchServerBackup,
+}: OnboardingTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [selectedInputMode, setSelectedInputMode] = useState<InputMode | undefined>(undefined)
@@ -133,6 +142,7 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
   
   // Check if we're on the input mode step
   const isInputModeStep = step.isInputModeStep === true
+  const isFinalStep = step.id === 'done'
   
   // Pre-select existing mode if available
   useEffect(() => {
@@ -179,6 +189,11 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
     localStorage.setItem(ONBOARDING_KEY, 'true')
     setIsVisible(false)
     setTimeout(onComplete, 300)
+  }
+
+  const handleFinalAction = (action?: () => void) => {
+    action?.()
+    handleComplete()
   }
 
   // Highlight-Effekt für Elemente
@@ -319,6 +334,29 @@ export function OnboardingTutorial({ onComplete, onCreateModule }: OnboardingTut
                         Bitte wähle eine Eingabemethode aus, um fortzufahren.
                       </p>
                     )}
+                  </div>
+                )}
+
+                {isFinalStep && (
+                  <div className="grid gap-2 mb-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start gap-2"
+                      onClick={() => handleFinalAction(onImportBackup)}
+                    >
+                      <UploadSimple size={18} />
+                      Backup aus Datei importieren
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start gap-2"
+                      onClick={() => handleFinalAction(onFetchServerBackup)}
+                    >
+                      <CloudArrowDown size={18} />
+                      Module vom Server laden
+                    </Button>
                   </div>
                 )}
 

@@ -156,111 +156,16 @@ export function AdvancedDrawingCanvas({
     isAnimatingRef.current = false
   }
 
-  const cloneStrokes = useCallback((source: typeof drawing.strokes | undefined) => {
-    return (source || []).map((s) => ({
-      ...s,
-      points: s.points.map((p) => ({ ...p })),
-    }))
-  }, [])
+  // Disable animations for reliability
+  const animateErase = useCallback(async () => {
+    drawing.clearAll()
+    isAnimatingRef.current = false
+  }, [drawing])
 
-  // Sanfter "Undraw" beim Task-Wechsel
-  const animateErase = useCallback(
-    async (strokesToErase?: typeof drawing.strokes) => {
-      const source = cloneStrokes(strokesToErase ?? drawing.strokes)
-      if (!source.length) {
-        drawing.clearAll()
-        return
-      }
-
-      isAnimatingRef.current = true
-      await new Promise<void>((resolve) => {
-        const step = () => {
-          if (!isAnimatingRef.current) {
-            resolve()
-            return
-          }
-
-          const next = source
-            .map((stroke) => {
-              if (stroke.points.length <= 1) return null
-              const removeCount = Math.max(1, Math.ceil(stroke.points.length / 10))
-              return {
-                ...stroke,
-                points: stroke.points.slice(0, Math.max(1, stroke.points.length - removeCount)),
-              }
-            })
-            .filter(Boolean) as typeof source
-
-          if (next.length === 0 || next.every((s) => s.points.length <= 1)) {
-            drawing.clearAll()
-            isAnimatingRef.current = false
-            resolve()
-            return
-          }
-
-          drawing.loadStrokes(next)
-          animationFrameRef.current = requestAnimationFrame(step)
-          source.splice(0, source.length, ...next)
-        }
-        step()
-      })
-    },
-    [cloneStrokes, drawing]
-  )
-
-  // "Aufzeichnen" der gespeicherten Strokes beim Öffnen
-  const animateReplay = useCallback(
-    async (strokesToReplay: typeof drawing.strokes) => {
-      const source = cloneStrokes(strokesToReplay || [])
-      if (!source.length) {
-        drawing.clearAll()
-        return
-      }
-
-      isAnimatingRef.current = true
-      await new Promise<void>((resolve) => {
-        let strokeIndex = 0
-        let pointIndex = 0
-        const built: typeof source = []
-
-        const step = () => {
-          if (!isAnimatingRef.current) {
-            resolve()
-            return
-          }
-
-          const current = source[strokeIndex]
-          if (!current) {
-            drawing.loadStrokes(source)
-            isAnimatingRef.current = false
-            resolve()
-            return
-          }
-
-          const chunk = Math.max(1, Math.ceil(current.points.length / 20))
-          const take = Math.min(current.points.length, pointIndex + chunk)
-          const partial = { ...current, points: current.points.slice(0, take) }
-
-          const next = [...built.slice(0, strokeIndex), partial]
-          drawing.loadStrokes(next)
-
-          if (take >= current.points.length) {
-            built[strokeIndex] = current
-            strokeIndex += 1
-            pointIndex = 0
-          } else {
-            built[strokeIndex] = partial
-            pointIndex = take
-          }
-
-          animationFrameRef.current = requestAnimationFrame(step)
-        }
-
-        step()
-      })
-    },
-    [cloneStrokes, drawing]
-  )
+  const animateReplay = useCallback(async (strokesToReplay: typeof drawing.strokes) => {
+    drawing.loadStrokes(strokesToReplay || [])
+    isAnimatingRef.current = false
+  }, [drawing])
   // Handle task change: clear canvas, then load new strokes if any
   // This ensures proper per-task state management
   useEffect(() => {
@@ -272,7 +177,7 @@ export function AdvancedDrawingCanvas({
         cancelAnimation()
         initialStrokesLoadedRef.current = false
 
-        await animateErase(drawing.strokes)
+        await animateErase()
         drawing.resetView()
 
         previousTaskIdRef.current = taskId
