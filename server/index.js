@@ -30,36 +30,9 @@ const PORT = process.env.PORT || 3001;
 const JSON_LIMIT = process.env.JSON_LIMIT || "600mb";
 const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
-// CORS: erlaubte Origins + permissiver Fallback, um Uploads nicht zu blockieren
-const allowedOrigins = [
-  "http://localhost:5000",
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://butros55.github.io",
-];
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Erlaube Requests ohne Origin (z.B. Server-zu-Server, Postman)
-      if (!origin) return callback(null, true);
-
-      // Whitelist prüfen
-      if (
-        allowedOrigins.some(
-          (allowed) => origin === allowed || origin.startsWith(allowed)
-        )
-      ) {
-        return callback(null, true);
-      }
-
-      // Fallback: allow other origins to avoid CORS blocking shared-backup
-      console.warn(`CORS: allowing non-whitelisted origin ${origin}`);
-      return callback(null, true);
-    },
-    credentials: false,
-  })
-);
+// CORS: allow all origins to avoid client-side blocks (GitHub Pages etc.)
+app.use(cors({ origin: true, credentials: false, preflightContinue: false, optionsSuccessStatus: 200 }));
+app.options("*", cors({ origin: true, credentials: false, optionsSuccessStatus: 200 }));
 
 function resolveBaseUrl(req) {
   const proto = req.get("x-forwarded-proto") || req.protocol;
