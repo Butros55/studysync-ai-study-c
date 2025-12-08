@@ -21,11 +21,12 @@ import { ExamMode, type ExamGenerationState } from './components/ExamMode'
 import { ExamPreparationMinimized } from './components/ExamPreparation'
 import { AIPreparation, AIPreparationMinimized, type AIActionType, type AIActionItem } from './components/AIPreparation'
 import { OnboardingTutorial, useOnboarding, OnboardingTrigger } from './components/OnboardingTutorial'
+import { ServerBackupDialog } from './components/ServerBackupDialog'
 import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { StudyRoomView } from './components/StudyRoomView'
 import { Button } from './components/ui/button'
-import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple } from '@phosphor-icons/react'
+import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple, CloudArrowDown, UploadSimple, UserCircle } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -46,6 +47,19 @@ import { StudyRoomProvider, useStudyRoom } from './studyroom/StudyRoomProvider'
 import { StudyRoomHUD } from './studyroom/StudyRoomHUD'
 import { ensureStudyRoomIdentity, loadStudyRoomIdentity, updateStudyRoomNickname } from './lib/study-room-identity'
 import type { DocumentType } from './lib/analysis-types'
+import { useDebugMode } from './hooks/use-debug-mode'
+import { BugReportListener } from './components/BugReportListener'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './components/ui/dialog'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './components/ui/dropdown-menu'
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
@@ -132,6 +146,58 @@ function AppContent() {
     setItems: setFlashcards 
   } = useFlashcards()
 
+  const { devMode, setDevMode } = useDebugMode()
+  const [devUnlockOpen, setDevUnlockOpen] = useState(false)
+  const [devPasswordInput, setDevPasswordInput] = useState('')
+  const logoClicksRef = useRef<{ count: number; timer?: number }>({ count: 0 })
+  const devPassword = import.meta.env.VITE_DEV_MODE_PASSWORD || 'studysync'
+
+  const handleLogoClick = () => {
+    const ref = logoClicksRef.current
+    if (!ref.timer) {
+      ref.timer = window.setTimeout(() => {
+        logoClicksRef.current.count = 0
+        logoClicksRef.current.timer = undefined
+      }, 3500)
+    }
+    ref.count += 1
+    if (ref.count >= 5) {
+      ref.count = 0
+      if (ref.timer) {
+        clearTimeout(ref.timer)
+        ref.timer = undefined
+      }
+      setDevUnlockOpen(true)
+    }
+  }
+
+  const handleUnlockDevMode = () => {
+    if (devPasswordInput === devPassword) {
+      setDevMode(true)
+      toast.success('Dev Mode aktiviert')
+      setDevUnlockOpen(false)
+      setDevPasswordInput('')
+    } else {
+      toast.error('Falsches Passwort')
+    }
+  }
+
+  const applyDisplayName = (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    updateStudyRoomNickname(trimmed)
+    setStudyRoomIdentity((prev) =>
+      prev ? { ...prev, nickname: trimmed } : { userId: generateId(), nickname: trimmed }
+    )
+    setDisplayName(trimmed)
+  }
+
+  const handleSaveProfileName = () => {
+    applyDisplayName(profileNameInput)
+    toast.success('Name aktualisiert')
+    setProfileDialogOpen(false)
+  }
+
   const { standardModel, visionModel } = useLLMModel()
   
   // Onboarding Tutorial
@@ -147,6 +213,7 @@ function AppContent() {
   const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[] | null>(null)
   const [showStatistics, setShowStatistics] = useState(false)
   const [showCostTracking, setShowCostTracking] = useState(false)
+  const [serverBackupOpen, setServerBackupOpen] = useState(false)
   const [showQuizMode, setShowQuizMode] = useState(false)
   const [showExamMode, setShowExamMode] = useState(false)
   const [taskFeedback, setTaskFeedback] = useState<{
@@ -189,6 +256,9 @@ function AppContent() {
   const [studyRoomBusy, setStudyRoomBusy] = useState(false)
   const [studyRoomError, setStudyRoomError] = useState<string | null>(null)
   const [studyRoomIdentity, setStudyRoomIdentity] = useState(() => loadStudyRoomIdentity())
+  const [displayName, setDisplayName] = useState(studyRoomIdentity.nickname)
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const [profileNameInput, setProfileNameInput] = useState(studyRoomIdentity.nickname)
   const [studyRoomSolveContext, setStudyRoomSolveContext] = useState<{
     roomId: string
     roundId: string
@@ -197,6 +267,11 @@ function AppContent() {
     roomCode: string
     roundIndex: number
   } | null>(null)
+
+  useEffect(() => {
+    setDisplayName(studyRoomIdentity.nickname)
+    setProfileNameInput(studyRoomIdentity.nickname)
+  }, [studyRoomIdentity.nickname])
 
   // Prevent leaving the app with browser back (global guard)
   useEffect(() => {
@@ -2664,6 +2739,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
       <>
         {BackgroundExamGenerator}
         {renderNotificationCenter()}
+        <BugReportListener />
         <StudyRoomView
           room={studyRoom}
           currentUserId={studyRoomIdentity.userId}
@@ -2891,7 +2967,8 @@ Gib deine Antwort als JSON zurÃ¼ck:
       {BackgroundExamGenerator}
       {renderNotificationCenter()}
       
-      {/* Flex-Container fÃ¼r Sticky Footer */}
+      <BugReportListener />
+      {/* Flex-Container fuer Sticky Footer */}
       <div className="min-h-screen bg-background flex flex-col">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -2899,7 +2976,13 @@ Gib deine Antwort als JSON zurÃ¼ck:
               <div className="flex-1">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
+                    <h1
+                      className="text-2xl sm:text-3xl font-semibold tracking-tight cursor-pointer select-none"
+                      onClick={handleLogoClick}
+                      title="StudyMate"
+                    >
+                      StudyMate
+                    </h1>
                     <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                       Dein KI-gestuetzter Lernbegleiter fuer die Uni
                     </p>
@@ -2907,9 +2990,28 @@ Gib deine Antwort als JSON zurÃ¼ck:
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="sm:hidden"
+                  onClick={() => setProfileDialogOpen(true)}
+                  title="Anzeigenamen bearbeiten"
+                >
+                  <UserCircle size={16} />
+                </Button>
                 <div className="hidden sm:flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setProfileDialogOpen(true)}
+                    title="Anzeigenamen bearbeiten"
+                  >
+                    <UserCircle size={18} />
+                    <span className="truncate max-w-[120px] text-left">{displayName}</span>
+                  </Button>
                   <InputModeSettingsButton />
-                  <OnboardingTrigger onClick={resetOnboarding} />
+                  {devMode && <OnboardingTrigger onClick={resetOnboarding} />}
                   <DebugModeToggle />
                 </div>
                 <Button 
@@ -2935,12 +3037,40 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   <CurrencyDollar size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Kosten</span>
                 </Button>
-                {modules && modules.length > 0 && (
-                  <Button variant="outline" onClick={handleExportData} size="sm" className="flex-1 sm:flex-none" title="Alle Daten exportieren">
-                    <DownloadSimple size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
-                    <span className="hidden sm:inline">Backup</span>
-                  </Button>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
+                      title="Backup & Sync"
+                    >
+                      <DownloadSimple size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
+                      <span className="hidden sm:inline">Backup & Sync</span>
+                      <span className="sm:hidden">Backup</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Backup & Datenabgleich</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={triggerImportDialog} className="gap-2">
+                      <UploadSimple size={16} />
+                      Backup aus Datei importieren
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setServerBackupOpen(true)} className="gap-2">
+                      <CloudArrowDown size={16} />
+                      Module vom Server laden
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleExportData}
+                      disabled={!modules || modules.length === 0}
+                      className="gap-2"
+                    >
+                      <DownloadSimple size={16} />
+                      Backup exportieren
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button 
                   onClick={() => setCreateDialogOpen(true)} 
                   size="sm" 
@@ -2966,8 +3096,10 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   description="Erstelle dein erstes Modul, um deine Kursmaterialien, Notizen und Ãœbungsaufgaben zu organisieren."
                   actionLabel="Erstes Modul erstellen"
                   onAction={() => setCreateDialogOpen(true)}
-                  secondaryActionLabel="Backup importieren"
+                  secondaryActionLabel="Backup aus Datei importieren"
                   onSecondaryAction={triggerImportDialog}
+                  tertiaryActionLabel="Module vom Server laden"
+                  onTertiaryAction={() => setServerBackupOpen(true)}
                 />
               </>
             ) : (
@@ -3021,7 +3153,64 @@ Gib deine Antwort als JSON zurÃ¼ck:
           } : undefined}
         />
 
-        {/* Versteckter File-Input fÃ¼r Import */}
+        <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Anzeigename bearbeiten</DialogTitle>
+              <DialogDescription>
+                Dieser Name wird in Lerngruppen und im Online-Modus angezeigt.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label htmlFor="profile-name">Name</Label>
+              <Input
+                id="profile-name"
+                value={profileNameInput}
+                onChange={(e) => setProfileNameInput(e.target.value)}
+                placeholder="z.B. Alex, Lisa, Chris…"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setProfileDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSaveProfileName} disabled={!profileNameInput.trim()}>
+                  Speichern
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+
+        <Dialog open={devUnlockOpen} onOpenChange={setDevUnlockOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Dev Mode freischalten</DialogTitle>
+              <DialogDescription>
+                5 Klicks auf das Logo innerhalb weniger Sekunden oeffnen diese Abfrage. Passwort eingeben, um Dev Mode zu aktivieren.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label htmlFor="dev-password">Passwort</Label>
+              <Input
+                id="dev-password"
+                type="password"
+                value={devPasswordInput}
+                onChange={(e) => setDevPasswordInput(e.target.value)}
+              />
+              <Button onClick={handleUnlockDevMode} className="w-full">
+                Entsperren
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <ServerBackupDialog
+          open={serverBackupOpen}
+          onOpenChange={setServerBackupOpen}
+        />
+
+        {/* Versteckter File-Input fuer Import */}
         <input
           ref={importInputRef}
           type="file"
@@ -3035,6 +3224,10 @@ Gib deine Antwort als JSON zurÃ¼ck:
           <OnboardingTutorial 
             onComplete={completeOnboarding}
             onCreateModule={() => setCreateDialogOpen(true)}
+            onImportBackup={triggerImportDialog}
+            onFetchServerBackup={() => setServerBackupOpen(true)}
+            initialDisplayName={displayName}
+            onSetDisplayName={applyDisplayName}
           />
         )}
         
@@ -3094,6 +3287,12 @@ function App() {
 }
 
 export default App
+
+
+
+
+
+
 
 
 

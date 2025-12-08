@@ -27,7 +27,7 @@ export function ModelSelector() {
               <SelectTrigger id="standard-model">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-h-96">
+              <SelectContent className="max-h-96 z-[12000]">
                 {LLM_MODELS.map((model) => (
                   <SelectItem key={model.value} value={model.value}>
                     <div className="flex flex-col gap-0.5 py-1">
@@ -69,7 +69,7 @@ export function ModelSelector() {
               <SelectTrigger id="vision-model">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-h-96">
+              <SelectContent className="max-h-96 z-[12000]">
                 {VISION_MODELS.map((model) => (
                   <SelectItem key={model.value} value={model.value}>
                     <div className="flex flex-col gap-0.5 py-1">

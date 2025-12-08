@@ -4,7 +4,8 @@ import { MODEL_PRICING, FALLBACK_MODEL, calculateCost as sharedCalculateCost } f
 export function calculateCost(
   model: string,
   promptTokens: number,
-  completionTokens: number
+  completionTokens: number,
+  cachedInputTokens: number = 0
 ): number {
   return sharedCalculateCost(model, promptTokens, completionTokens)
 }
@@ -147,5 +148,6 @@ export function getModelDisplayName(model: string): string {
     'gpt-image-1': 'GPT Image 1',
     'gpt-image-1-mini': 'GPT Image 1 Mini',
   }
-  return names[model] || model
+  const normalized = normalizeModelName(model)
+  return names[model] || names[normalized] || normalized || model
 }

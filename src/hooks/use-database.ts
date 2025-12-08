@@ -253,6 +253,12 @@ export function useFlashcards() {
 
 export async function migrateFromServerIfNeeded(): Promise<boolean> {
   await storageReady
+
+  const migrationAllowed = import.meta.env.VITE_ENABLE_SERVER_MIGRATION === 'true'
+  if (!migrationAllowed) {
+    console.log('[Migration] Übersprungen (VITE_ENABLE_SERVER_MIGRATION ist nicht true)')
+    return false
+  }
   
   // Prüfe ob bereits Daten im Browser-Storage sind
   const existingModules = await getCollection<Module>(STORAGE_KEYS.modules)

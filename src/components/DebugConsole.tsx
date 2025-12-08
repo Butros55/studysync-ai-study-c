@@ -1,373 +1,569 @@
-import { useState } from 'react'
-import { useDebugLogs } from '@/hooks/use-debug-mode'
+import { useEffect, useMemo, useState } from 'react'
+import { useDebugLogs, useDebugMode } from '@/hooks/use-debug-mode'
+import { devToolsStore, type ApiLogEntry } from '@/lib/devtools-store'
+import { ModelSelector } from './ModelSelector'
+import { StorageDebugPanel } from './StorageDebugPanel'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { ScrollArea } from './ui/scroll-area'
-import { Separator } from './ui/separator'
-import { X, Trash, CaretDown, CaretRight, Bug, Database } from '@phosphor-icons/react'
-import { Badge } from './ui/badge'
-import { StorageDebugPanel } from './StorageDebugPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Separator } from './ui/separator'
+import { Switch } from './ui/switch'
+import { Label } from './ui/label'
+import {
+  Bug,
+  Copy,
+  Database,
+  Lightning,
+  ListBullets,
+  Receipt,
+  Stopwatch,
+  Trash,
+  Warning,
+  X,
+} from '@phosphor-icons/react'
+import { toast } from 'sonner'
+import { BugReportDrawer } from './BugReportDrawer'
 
-export function DebugConsole({ onClose }: { onClose: () => void }) {
-  const { logs, clearLogs } = useDebugLogs()
-  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set())
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-  const toggleLog = (id: string) => {
-    setExpandedLogs((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
-      } else {
-        newSet.add(id)
+type DebugConsoleProps = {
+  open: boolean
+  onClose: () => void
+}
+
+const formatTimestamp = (timestamp: number) => {
+  const date = new Date(timestamp)
+  return `${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}.${String(
+    date.getMilliseconds()
+  ).padStart(3, '0')}`
+}
+
+const prettyJson = (value: any) => JSON.stringify(value, null, 2)
+
+function extractTokens(log?: ApiLogEntry) {
+  if (!log?.llm?.usage) return { input: 0, output: 0, cached: 0 }
+  const usage = log.llm.usage
+  const input = usage.inputTokens ?? usage.prompt_tokens ?? usage.input_tokens ?? 0
+  const output = usage.outputTokens ?? usage.output_tokens ?? usage.completion_tokens ?? 0
+  const cached = usage.cachedInputTokens ?? usage.cache_read_input_tokens ?? usage.input_tokens_details?.cached_tokens ?? 0
+  return { input, output, cached }
+}
+
+export function DebugConsole({ open, onClose }: DebugConsoleProps) {
+  const { logs, meta, clearLogs } = useDebugLogs()
+  const { debugLogging, setEnabled } = useDebugMode()
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'api' | 'storage' | 'logs'>('api')
+  const [loadingMeta, setLoadingMeta] = useState(false)
+  const [bugLogId, setBugLogId] = useState<string | undefined>(undefined)
+  const [bugDrawerOpen, setBugDrawerOpen] = useState(false)
+
+  const selectedLog = useMemo(() => {
+    if (!logs.length) return undefined
+    if (selectedLogId) return logs.find((l) => l.id === selectedLogId) || logs[0]
+    return logs[0]
+  }, [logs, selectedLogId])
+
+  useEffect(() => {
+    if (!open) return
+    const loadMeta = async () => {
+      if (loadingMeta) return
+      setLoadingMeta(true)
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/meta`)
+        if (res.ok) {
+          const data = await res.json()
+          devToolsStore.setMeta(data)
+        }
+      } catch (e) {
+        console.warn('Failed to load /api/meta', e)
+      } finally {
+        setLoadingMeta(false)
       }
-      return newSet
+    }
+    if (!meta) {
+      loadMeta()
+    }
+  }, [open, meta, loadingMeta])
+
+  useEffect(() => {
+    if (!logs.length) {
+      setSelectedLogId(null)
+      return
+    }
+    if (!selectedLogId) {
+      setSelectedLogId(logs[0].id)
+    }
+  }, [logs, selectedLogId])
+
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [open])
+
+  const stats = useMemo(() => {
+    let totalTokens = 0
+    let totalCost = 0
+    let errors = 0
+    logs.forEach((log) => {
+      const { input, output } = extractTokens(log)
+      totalTokens += input + output
+      totalCost += log.llm?.cost?.estimatedUsd || 0
+      if (log.error || (log.response && log.response.status >= 400)) errors += 1
     })
-  }
+    return {
+      requests: logs.length,
+      errors,
+      tokens: totalTokens,
+      cost: totalCost,
+    }
+  }, [logs])
 
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }) + '.' + String(date.getMilliseconds()).padStart(3, '0')
-  }
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'llm-request':
-        return 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-      case 'llm-response':
-        return 'bg-green-500/10 text-green-600 border-green-500/20'
-      case 'llm-error':
-        return 'bg-destructive/10 text-destructive border-destructive/20'
-      case 'task-validation':
-        return 'bg-purple-500/10 text-purple-600 border-purple-500/20'
-      case 'task-repair':
-        return 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-      default:
-        return 'bg-muted text-muted-foreground'
+  const handleCopy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.success(`${label} kopiert`)
+    } catch {
+      toast.error('Konnte nicht kopieren')
     }
   }
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'llm-request':
-        return 'Anfrage'
-      case 'llm-response':
-        return 'Antwort'
-      case 'llm-error':
-        return 'Fehler'
-      case 'task-validation':
-        return 'Validierung'
-      case 'task-repair':
-        return 'Reparatur'
-      default:
-        return type
+  const renderInspector = () => {
+    if (!selectedLog) {
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          Kein Log ausgewählt
+        </div>
+      )
     }
-  }
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-sm">
-      <div className="h-full flex flex-col">
-        <div className="border-b bg-card px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Bug size={24} className="text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Debug Konsole</h2>
-                <p className="text-sm text-muted-foreground">
-                  API-Anfragen, Storage & Diagnostik
-                </p>
-              </div>
+    const tokens = extractTokens(selectedLog)
+
+    return (
+      <Card className="h-full overflow-hidden border">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <div>
+            <div className="text-sm text-muted-foreground">{formatTimestamp(selectedLog.startedAt)}</div>
+            <div className="text-base font-semibold">
+              {selectedLog.llm?.operation || 'Unbekannte Operation'}
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X size={20} />
-              </Button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setBugLogId(selectedLog.id)
+                setBugDrawerOpen(true)
+              }}
+            >
+              <Bug className="mr-2" size={16} />
+              Bug Report
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCopy(prettyJson(selectedLog), 'Log kopiert')}
+            >
+              <Copy size={14} className="mr-1.5" />
+              Full Log
+            </Button>
           </div>
         </div>
 
-        <Tabs defaultValue="api" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 border-b">
-            <TabsList className="h-11">
-              <TabsTrigger value="api" className="gap-2">
-                <Bug size={16} />
-                API-Logs
-              </TabsTrigger>
-              <TabsTrigger value="storage" className="gap-2">
-                <Database size={16} />
-                Storage
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <Tabs defaultValue="overview" className="h-[calc(100%-56px)] flex flex-col">
+          <TabsList className="h-11 rounded-none border-b px-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="request">Request</TabsTrigger>
+            <TabsTrigger value="response">Response</TabsTrigger>
+            <TabsTrigger value="raw">Raw</TabsTrigger>
+          </TabsList>
 
-          <TabsContent value="api" className="flex-1 overflow-hidden m-0 px-6 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono text-xs">
-                  API: {import.meta.env.VITE_API_URL || 'http://localhost:3001'}
-                </Badge>
-                <Badge variant={import.meta.env.PROD ? "default" : "secondary"} className="text-xs">
-                  {import.meta.env.PROD ? 'Production' : 'Development'}
-                </Badge>
-              </div>
-              <Button variant="outline" size="sm" onClick={clearLogs}>
-                <Trash size={16} className="mr-2" />
-                Logs löschen
-              </Button>
-            </div>
-            <ScrollArea className="h-[calc(100%-40px)]">
-            {logs.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <Bug size={48} className="mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">
-                    Noch keine API-Aufrufe aufgezeichnet
-                  </p>
+          <TabsContent value="overview" className="flex-1 overflow-auto p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-muted-foreground">Status</div>
+                <div className="font-medium">
+                  {selectedLog.response
+                    ? selectedLog.response.status >= 400
+                      ? `Error ${selectedLog.response.status}`
+                      : `OK ${selectedLog.response.status}`
+                    : selectedLog.error
+                      ? 'Error'
+                      : 'Unbekannt'}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3 pb-4">
-                {logs.map((log) => {
-                  const isExpanded = expandedLogs.has(log.id)
-                  return (
-                    <Card key={log.id} className="overflow-hidden">
-                      <button
-                        onClick={() => toggleLog(log.id)}
-                        className="w-full text-left p-4 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1">
-                            {isExpanded ? (
-                              <CaretDown size={16} weight="bold" />
-                            ) : (
-                              <CaretRight size={16} weight="bold" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge
-                                variant="outline"
-                                className={getTypeColor(log.type)}
-                              >
-                                {getTypeLabel(log.type)}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground font-mono">
-                                {formatTimestamp(log.timestamp)}
-                              </span>
-                              {log.data.model && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {log.data.model}
-                                </Badge>
-                              )}
-                              {log.data.jsonMode && (
-                                <Badge variant="secondary" className="text-xs">
-                                  JSON
-                                </Badge>
-                              )}
-                              {log.data.attempt && (
-                                <Badge variant="outline" className="text-xs">
-                                  Versuch {log.data.attempt}/{log.data.maxRetries}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="text-sm">
-                              {log.type === 'llm-request' && (
-                                <p className="text-muted-foreground line-clamp-2">
-                                  {log.data.prompt}
-                                </p>
-                              )}
-                              {log.type === 'llm-response' && (
-                                <p className="text-muted-foreground line-clamp-2">
-                                  {log.data.response}
-                                </p>
-                              )}
-                              {log.type === 'llm-error' && (
-                                <p className="text-destructive font-medium">
-                                  {log.data.error}
-                                </p>
-                              )}
-                              {log.type === 'task-validation' && log.data.validationResult && (
-                                <p className={log.data.validationResult.ok ? 'text-green-600' : 'text-orange-600'}>
-                                  {log.data.validationResult.ok ? '✓ Aufgabe ist gültig' : `✗ ${log.data.issues?.length || 0} Problem(e) gefunden`}
-                                  {log.data.validationResult.confidence !== undefined && 
-                                    ` (${Math.round(log.data.validationResult.confidence * 100)}% Konfidenz)`}
-                                </p>
-                              )}
-                              {log.type === 'task-repair' && (
-                                <p className="text-orange-600">
-                                  🔧 Reparaturversuch {log.data.totalAttempts || 1}
-                                  {log.data.validationResult?.ok ? ' - Erfolgreich' : ' - Fehlgeschlagen'}
-                                </p>
-                              )}
-                              {log.type === 'validation-pipeline' && (
-                                <p className={log.data.validationResult?.ok !== false ? 'text-green-600' : 'text-destructive'}>
-                                  {log.data.wasRepaired && '🔧 Repariert'}
-                                  {log.data.wasRegenerated && '🔄 Neu generiert'}
-                                  {!log.data.wasRepaired && !log.data.wasRegenerated && '✓ Direkt gültig'}
-                                  {log.data.totalAttempts !== undefined && ` (${log.data.totalAttempts} Versuch${log.data.totalAttempts !== 1 ? 'e' : ''})`}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <>
-                          <Separator />
-                          <div className="p-4 bg-muted/30 space-y-4">
-                            {log.data.prompt && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
-                                  Prompt
-                                </h4>
-                                <div className="text-xs bg-background p-3 rounded-md border max-w-full overflow-hidden">
-                                  <pre className="whitespace-pre-wrap break-words font-mono">
-                                    {log.data.prompt}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-
-                            {log.data.response && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
-                                  Antwort
-                                </h4>
-                                <div className="text-xs bg-background p-3 rounded-md border max-w-full overflow-hidden">
-                                  <pre className="whitespace-pre-wrap break-words font-mono">
-                                    {log.data.response}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-
-                            {log.data.error && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-destructive">
-                                  Fehler
-                                </h4>
-                                <div className="text-xs bg-destructive/5 p-3 rounded-md border border-destructive/20 text-destructive max-w-full overflow-hidden">
-                                  <pre className="whitespace-pre-wrap break-words font-mono">
-                                    {log.data.error}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-
-                            {log.data.errorStack && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-destructive">
-                                  Stack Trace
-                                </h4>
-                                <div className="text-xs bg-destructive/5 p-3 rounded-md border border-destructive/20 text-destructive max-w-full overflow-hidden">
-                                  <pre className="whitespace-pre-wrap break-words font-mono">
-                                    {log.data.errorStack}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Validation-specific fields */}
-                            {log.data.taskQuestion && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
-                                  Aufgabe
-                                </h4>
-                                <div className="text-xs bg-background p-3 rounded-md border max-w-full overflow-hidden">
-                                  <pre className="whitespace-pre-wrap break-words font-mono">
-                                    {log.data.taskQuestion}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-
-                            {log.data.validationResult && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-muted-foreground">
-                                  Validierungsergebnis
-                                </h4>
-                                <div className={`text-xs p-3 rounded-md border max-w-full overflow-hidden ${
-                                  log.data.validationResult.ok 
-                                    ? 'bg-green-500/10 border-green-500/30' 
-                                    : 'bg-destructive/10 border-destructive/30'
-                                }`}>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className={`font-semibold ${log.data.validationResult.ok ? 'text-green-600' : 'text-destructive'}`}>
-                                      {log.data.validationResult.ok ? '✓ Gültig' : '✗ Ungültig'}
-                                    </span>
-                                    {log.data.validationResult.confidence !== undefined && (
-                                      <span className="text-muted-foreground">
-                                        (Konfidenz: {Math.round(log.data.validationResult.confidence * 100)}%)
-                                      </span>
-                                    )}
-                                  </div>
-                                  <pre className="whitespace-pre-wrap break-words font-mono text-foreground/80">
-                                    {JSON.stringify(log.data.validationResult, null, 2)}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-
-                            {log.data.issues && log.data.issues.length > 0 && (
-                              <div>
-                                <h4 className="text-xs font-semibold mb-2 uppercase text-orange-600">
-                                  Probleme ({log.data.issues.length})
-                                </h4>
-                                <ul className="text-xs bg-orange-500/10 p-3 rounded-md border border-orange-500/30 space-y-1">
-                                  {log.data.issues.map((issue: string, idx: number) => (
-                                    <li key={idx} className="flex items-start gap-2">
-                                      <span className="text-orange-600">•</span>
-                                      <span>{issue}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {(log.data.wasRepaired !== undefined || log.data.wasRegenerated !== undefined) && (
-                              <div className="flex flex-wrap gap-2">
-                                {log.data.wasRepaired && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-500/20 text-orange-600 border border-orange-500/30">
-                                    🔧 Repariert
-                                  </span>
-                                )}
-                                {log.data.wasRegenerated && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-600 border border-blue-500/30">
-                                    🔄 Neu generiert
-                                  </span>
-                                )}
-                                {log.data.totalAttempts !== undefined && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground border">
-                                    Versuche: {log.data.totalAttempts}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </Card>
-                  )
-                })}
+              <div>
+                <div className="text-muted-foreground">Dauer</div>
+                <div className="font-medium">{Math.round(selectedLog.durationMs)} ms</div>
               </div>
-            )}
-          </ScrollArea>
+              <div>
+                <div className="text-muted-foreground">Model</div>
+                <div className="font-medium">{selectedLog.llm?.model || '-'}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Normalized</div>
+                <div className="font-medium">{selectedLog.llm?.normalizedModel || '-'}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Tokens (in/out/cached)</div>
+                <div className="font-medium">
+                  {tokens.input} / {tokens.output} / {tokens.cached}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Estimated Cost (USD)</div>
+                <div className="font-medium">
+                  {selectedLog.llm?.cost?.estimatedUsd !== undefined
+                    ? `$${selectedLog.llm.cost.estimatedUsd.toFixed(6)}`
+                    : 'Unknown pricing'}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Schätzung. Tatsächliche Kosten können abweichen.
+                </div>
+              </div>
+            </div>
+            <Separator />
+            <div className="text-xs text-muted-foreground">
+              pricingModel: {selectedLog.llm?.cost?.pricingModelKey || 'unknown'}
+            </div>
           </TabsContent>
 
-          <TabsContent value="storage" className="flex-1 overflow-hidden m-0 px-6 py-4">
-            <ScrollArea className="h-full">
-              <StorageDebugPanel />
-            </ScrollArea>
+          <TabsContent value="request" className="flex-1 overflow-auto p-4 space-y-3">
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleCopy(prettyJson(selectedLog.request.body || {}), 'Request JSON')}
+              >
+                <Copy size={14} className="mr-1.5" />
+                Copy Request JSON
+              </Button>
+              {selectedLog.request.body?.prompt && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopy(selectedLog.request.body.prompt, 'Prompt')}
+                >
+                  <Copy size={14} className="mr-1.5" />
+                  Copy Prompt Text
+                </Button>
+              )}
+            </div>
+            <pre className="bg-muted/60 border rounded-md p-3 text-xs whitespace-pre-wrap break-words">
+              {prettyJson(selectedLog.request.body || {})}
+            </pre>
+          </TabsContent>
+
+          <TabsContent value="response" className="flex-1 overflow-auto p-4 space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleCopy(prettyJson(selectedLog.response?.body || {}), 'Response JSON')}
+              >
+                <Copy size={14} className="mr-1.5" />
+                Copy Response JSON
+              </Button>
+              {selectedLog.response?.textPreview && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopy(selectedLog.response?.textPreview, 'Output Text')}
+                >
+                  <Copy size={14} className="mr-1.5" />
+                  Copy Output Text
+                </Button>
+              )}
+            </div>
+            <pre className="bg-muted/60 border rounded-md p-3 text-xs whitespace-pre-wrap break-words">
+              {prettyJson(selectedLog.response?.body || {})}
+            </pre>
+          </TabsContent>
+
+          <TabsContent value="raw" className="flex-1 overflow-auto p-4 space-y-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleCopy(prettyJson(selectedLog), 'Full Log')}
+            >
+              <Copy size={14} className="mr-1.5" />
+              Copy Full Log
+            </Button>
+            <pre className="bg-muted/60 border rounded-md p-3 text-xs whitespace-pre-wrap break-words">
+              {prettyJson(selectedLog)}
+            </pre>
           </TabsContent>
         </Tabs>
+      </Card>
+    )
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[40]">
+        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute left-0 right-0 bottom-0 transition-transform duration-300 translate-y-0">
+          <div className="mx-auto max-w-7xl px-3 pb-3">
+            <div className="bg-card border rounded-t-2xl shadow-xl h-[72vh] flex flex-col overflow-hidden">
+              <div className="flex items-start justify-between p-4 border-b">
+                <div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Bug size={16} className="text-primary" />
+                    Dev Tools
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                    <Badge variant="outline">API: {API_BASE_URL}</Badge>
+                    <Badge variant="outline">
+                      Backend: {meta?.baseUrl || (loadingMeta ? 'lädt...' : 'unbekannt')}
+                    </Badge>
+                    <Badge variant="secondary">
+                      Env: {meta?.env || (import.meta.env.PROD ? 'production' : 'development')}
+                    </Badge>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                  <X size={18} />
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 flex-1 overflow-hidden">
+                <div className="lg:col-span-2 flex flex-col overflow-hidden">
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'api' | 'storage')} className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex items-center justify-between pr-2">
+                      <TabsList className="h-10">
+                        <TabsTrigger value="api" className="gap-2">
+                          <ListBullets size={16} />
+                          API Logs
+                        </TabsTrigger>
+                        <TabsTrigger value="storage" className="gap-2">
+                          <Database size={16} />
+                          Storage
+                        </TabsTrigger>
+                        <TabsTrigger value="logs" className="gap-2">
+                          <Bug size={16} />
+                          Logs
+                        </TabsTrigger>
+                      </TabsList>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                          <Switch
+                            id="debug-logging"
+                            checked={debugLogging}
+                            onCheckedChange={(checked) => setEnabled(checked)}
+                          />
+                          <Label htmlFor="debug-logging" className="text-sm cursor-pointer">
+                            Debug-Logging
+                          </Label>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={clearLogs}>
+                          <Trash size={14} className="mr-1.5" />
+                          Logs löschen
+                        </Button>
+                      </div>
+                    </div>
+
+                    <TabsContent value="api" className="flex-1 flex flex-col overflow-hidden pt-3">
+                      {logs.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                          Keine Logs vorhanden
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 xl:grid-cols-[340px,1fr] gap-3 h-full">
+                          <Card className="h-full overflow-hidden border">
+                            <div className="flex items-center justify-between px-4 py-3 border-b">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Lightning size={16} />
+                                {logs.length} Requests
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Stopwatch size={14} />
+                                Aktuell
+                              </div>
+                            </div>
+                            <ScrollArea className="h-[calc(100%-48px)]">
+                              <div className="divide-y">
+                                {logs.map((log) => {
+                                  const tokens = extractTokens(log)
+                                  const isError = !!log.error || (log.response && log.response.status >= 400)
+                                  const isActive = selectedLog?.id === log.id
+                                  return (
+                                    <button
+                                      key={log.id}
+                                      onClick={() => setSelectedLogId(log.id)}
+                                      className={`w-full text-left px-4 py-3 hover:bg-muted/60 transition ${
+                                        isActive ? 'bg-muted/70' : ''
+                                      }`}
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] ${isError ? 'border-destructive/40 text-destructive' : 'border-green-500/40 text-green-700'}`}>
+                                              {isError ? 'Error' : 'Success'}
+                                            </span>
+                                            <span>{formatTimestamp(log.startedAt)}</span>
+                                            <span>{Math.round(log.durationMs)} ms</span>
+                                          </div>
+                                          <div className="text-sm font-medium">
+                                            {log.llm?.operation || 'Unbekannte Operation'}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {log.llm?.model} {log.llm?.jsonMode ? '(JSON)' : ''}
+                                          </div>
+                                        </div>
+                                        <div className="text-right text-xs text-muted-foreground">
+                                          <div>
+                                            {tokens.input + tokens.output} tok
+                                          </div>
+                                          <div>
+                                            {log.llm?.cost?.estimatedUsd !== undefined
+                                              ? `$${log.llm.cost.estimatedUsd.toFixed(4)}`
+                                              : 'n/a'}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </ScrollArea>
+                          </Card>
+                          <div className="h-full overflow-hidden">{renderInspector()}</div>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="storage" className="flex-1 overflow-hidden pt-3">
+                      <Card className="h-full overflow-hidden border">
+                        <ScrollArea className="h-full">
+                          <StorageDebugPanel />
+                        </ScrollArea>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="logs" className="flex-1 overflow-hidden pt-3">
+                      <Card className="h-full overflow-hidden border">
+                        <div className="flex items-center justify-between px-4 py-3 border-b">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <ListBullets size={16} />
+                            Alle Logs
+                          </div>
+                          <div className="text-xs text-muted-foreground">{logs.length} Eintr„ge</div>
+                        </div>
+                        <ScrollArea className="h-[calc(100%-48px)]">
+                          <div className="space-y-3 p-3">
+                            {logs.length === 0 && (
+                              <div className="text-sm text-muted-foreground">Keine Logs vorhanden.</div>
+                            )}
+                            {logs.map((log) => {
+                              const tokens = extractTokens(log)
+                              const isError = !!log.error || (log.response && log.response.status >= 400)
+                              return (
+                                <div key={log.id} className="rounded-md border bg-muted/40 p-3 space-y-2">
+                                  <div className="flex items-start justify-between gap-3 text-[11px] text-muted-foreground">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full border ${isError ? 'border-destructive/40 text-destructive' : 'border-green-500/40 text-green-700'}`}>
+                                        {isError ? 'Error' : 'Success'}
+                                      </span>
+                                      <span>{formatTimestamp(log.startedAt)}</span>
+                                      <span>{Math.round(log.durationMs)} ms</span>
+                                      <span>{tokens.input + tokens.output} tok</span>
+                                    </div>
+                                    <div className="text-right">{log.llm?.model || 'Modell unbekannt'}</div>
+                                  </div>
+                                  <div className="text-sm font-semibold">{log.llm?.operation || 'Unbekannte Operation'}</div>
+                                  {log.error && (
+                                    <div className="text-xs text-destructive">Fehler: {log.error.message}</div>
+                                  )}
+                                  <pre className="text-[11px] leading-relaxed bg-background/60 border rounded p-2 overflow-x-auto whitespace-pre-wrap break-words">
+                                    {prettyJson(log.response?.body || log.error || log.request?.body || {})}
+                                  </pre>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </ScrollArea>
+                      </Card>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                <div className="space-y-4 overflow-auto pr-1">
+                  <Card className="border">
+                    <div className="px-4 py-3 border-b">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Receipt size={16} />
+                        LLM Modelle
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Standard- und Vision-Modell konfigurieren
+                      </p>
+                    </div>
+                    <div className="p-4">
+                      <ModelSelector />
+                    </div>
+                  </Card>
+
+                  <Card className="border">
+                    <div className="px-4 py-3 border-b">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Stopwatch size={16} />
+                        Session Stats
+                      </div>
+                    </div>
+                    <div className="p-4 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Requests</div>
+                        <div className="font-semibold">{stats.requests}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Errors</div>
+                        <div className="font-semibold">{stats.errors}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Tokens</div>
+                        <div className="font-semibold">{stats.tokens}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Estimated Cost</div>
+                        <div className="font-semibold">
+                          ${stats.cost.toFixed(6)}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">Estimate</div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="border">
+                    <div className="px-4 py-3 border-b">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Warning size={16} />
+                        Hinweise
+                      </div>
+                    </div>
+                    <div className="p-4 text-xs text-muted-foreground space-y-2">
+                      <p>Prompts und Antworten werden lokal gespeichert (max. 200 Einträge).</p>
+                      <p>Kosten sind Schätzungen basierend auf Pricing-Table; echte Abrechnung kann abweichen.</p>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+
+      <BugReportDrawer
+        open={bugDrawerOpen}
+        onOpenChange={setBugDrawerOpen}
+        focusLogId={bugLogId}
+      />
+    </>
   )
 }

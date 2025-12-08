@@ -21,6 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 // Render hat ein Default-Limit von 100MB, wir nutzen konservativ 50MB
 const JSON_LIMIT = process.env.JSON_LIMIT || "50mb";
+const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
 // CORS-Konfiguration: Erlaubte Origins für Dev und Prod
 const allowedOrigins = [
@@ -51,6 +52,28 @@ app.use(
     credentials: false,
   })
 );
+
+function resolveBaseUrl(req) {
+  const proto = req.get("x-forwarded-proto") || req.protocol;
+  const host = req.get("x-forwarded-host") || req.get("host");
+  if (!proto || !host) return "";
+  return `${proto}://${host}`;
+}
+
+app.get("/api/meta", (req, res) => {
+  const baseUrl = resolveBaseUrl(req);
+  res.json({
+    env: DEV_META_ENV || "unknown",
+    serverTime: new Date().toISOString(),
+    baseUrl,
+    service: {
+      provider: process.env.RENDER ? "render" : "unknown",
+      port: process.env.PORT,
+      host: req.get("host"),
+      forwardedProto: req.get("x-forwarded-proto"),
+    },
+  });
+});
 
 app.use(express.json({ limit: JSON_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
@@ -236,27 +259,31 @@ app.post("/api/llm", async (req, res) => {
       usage = completion.usage || usage;
     }
 
-    const cost = calculateCost(
-      completion.model,
-      usage.prompt_tokens,
-      usage.completion_tokens
-    );
+    const estimation = estimateCost(completion.model, usage);
 
     console.log(
       `[LLM] Response - Length: ${responseText.length}, Tokens: ${
-        usage.total_tokens
-      }, Cost: $${cost.toFixed(6)}`
+        estimation.usage.totalTokens
+      }, Cost: ${
+        estimation.cost.estimatedUsd !== undefined
+          ? `$${estimation.cost.estimatedUsd.toFixed(6)}`
+          : "unknown"
+      }`
     );
 
     res.json({
       response: responseText,
       usage: {
-        promptTokens: usage.prompt_tokens,
-        completionTokens: usage.completion_tokens,
-        totalTokens: usage.total_tokens,
-        cost: cost,
+        promptTokens: estimation.usage.inputTokens,
+        completionTokens: estimation.usage.outputTokens,
+        cachedInputTokens: estimation.usage.cachedInputTokens,
+        totalTokens: estimation.usage.totalTokens,
+        cost: estimation.cost.estimatedUsd,
+        raw: usage,
       },
       model: completion.model,
+      normalizedModel: estimation.normalizedModel,
+      cost: estimation.cost,
       operation,
       moduleId,
     });

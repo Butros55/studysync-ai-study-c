@@ -12,7 +12,7 @@
  */
 
 import { llmWithRetry } from './llm-utils'
-import { debugStore } from './debug-store'
+import { devToolsStore } from './devtools-store'
 import type { Task, ExamTask, ExamStyleProfile } from './types'
 import type { InputMode } from './analysis-types'
 import type { 
@@ -633,22 +633,25 @@ function logValidationToDebug(
   task: Task | ExamTask,
   result: ValidationResult
 ): void {
-  debugStore.addLog({
-    type: 'task-validation',
-    data: {
-      validation: {
-        taskQuestion: task.question.substring(0, 200),
-        ok: result.ok,
-        issues: result.issues,
-        missingInfo: result.missingInfo,
-        styleMismatches: result.styleMismatches,
-        requiresDrawing: result.requiresDrawing,
-        confidence: result.confidence,
-        timeMs: result.validationTimeMs,
-        wasRepaired: false,
-        wasRegenerated: false
-      }
-    }
+  devToolsStore.addLog({
+    startedAt: Date.now(),
+    durationMs: result.validationTimeMs ?? 0,
+    request: {
+      url: 'local://task-validation',
+      method: 'POST',
+      body: {
+        type,
+        question: task.question,
+      },
+    },
+    response: {
+      status: result.ok ? 200 : 400,
+      body: result,
+      textPreview: result.issues?.join('; ') || (result.ok ? 'ok' : 'validation failed'),
+    },
+    llm: {
+      operation: 'task-validation',
+    },
   })
 }
 
@@ -661,24 +664,28 @@ function logRepairToDebug(
   response: string,
   validation: ValidationResult
 ): void {
-  debugStore.addLog({
-    type: 'task-repair',
-    data: {
-      prompt: prompt.substring(0, 500),
-      validation: {
-        taskQuestion: '(repair attempt)',
-        ok: validation.ok,
-        issues: validation.issues,
-        missingInfo: validation.missingInfo,
-        styleMismatches: validation.styleMismatches,
-        requiresDrawing: validation.requiresDrawing,
-        confidence: validation.confidence,
-        timeMs: validation.validationTimeMs,
-        repairAttempt: attemptNumber,
-        wasRepaired: validation.ok,
-        wasRegenerated: false
-      }
-    }
+  devToolsStore.addLog({
+    startedAt: Date.now(),
+    durationMs: validation.validationTimeMs ?? 0,
+    request: {
+      url: 'local://task-repair',
+      method: 'POST',
+      body: {
+        attemptNumber,
+        prompt,
+      },
+    },
+    response: {
+      status: validation.ok ? 200 : 400,
+      body: {
+        response,
+        validation,
+      },
+      textPreview: response.slice(0, 600),
+    },
+    llm: {
+      operation: 'task-repair',
+    },
   })
 }
 

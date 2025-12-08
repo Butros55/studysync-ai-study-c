@@ -7,6 +7,7 @@ import {
   getOperationLabel,
   getModelDisplayName,
 } from '../lib/cost-tracker'
+import { useDebugMode } from '@/hooks/use-debug-mode'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Separator } from './ui/separator'
@@ -63,6 +64,7 @@ function deleteLocalStorage(key: string): void {
 export function CostTrackingDashboard({ onBack }: CostTrackingDashboardProps) {
   const [usageRecords, setUsageRecords] = useState<TokenUsage[]>([])
   const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'week' | 'month'>('all')
+  const { devMode } = useDebugMode()
 
   // Lade usage records aus localStorage
   useEffect(() => {
@@ -153,7 +155,11 @@ export function CostTrackingDashboard({ onBack }: CostTrackingDashboardProps) {
           </Alert>
         ) : (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center justify-between">
+            <div
+              className={`flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center ${
+                devMode ? 'justify-between' : 'justify-start'
+              }`}
+            >
               <div className="flex gap-2 flex-wrap">
                 {(['all', 'today', 'week', 'month'] as const).map((filter) => (
                   <Button
@@ -169,27 +175,29 @@ export function CostTrackingDashboard({ onBack }: CostTrackingDashboardProps) {
                   </Button>
                 ))}
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash size={16} className="mr-2" />
-                    Verlauf löschen
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Verlauf wirklich löschen?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Diese Aktion kann nicht rückgängig gemacht werden. Alle Nutzungsdaten werden
-                      dauerhaft gelöscht.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearHistory}>Löschen</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {devMode && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash size={16} className="mr-2" />
+                      Verlauf löschen
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Verlauf wirklich löschen?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Diese Aktion kann nicht rückgängig gemacht werden. Alle Nutzungsdaten werden
+                        dauerhaft gelöscht.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearHistory}>Löschen</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
