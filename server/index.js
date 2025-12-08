@@ -19,6 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 // Render hat ein Default-Limit von 100MB, wir nutzen konservativ 50MB
 const JSON_LIMIT = process.env.JSON_LIMIT || "50mb";
+const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
 // CORS-Konfiguration: Erlaubte Origins für Dev und Prod
 const allowedOrigins = [
@@ -49,6 +50,28 @@ app.use(
     credentials: false,
   })
 );
+
+function resolveBaseUrl(req) {
+  const proto = req.get("x-forwarded-proto") || req.protocol;
+  const host = req.get("x-forwarded-host") || req.get("host");
+  if (!proto || !host) return "";
+  return `${proto}://${host}`;
+}
+
+app.get("/api/meta", (req, res) => {
+  const baseUrl = resolveBaseUrl(req);
+  res.json({
+    env: DEV_META_ENV || "unknown",
+    serverTime: new Date().toISOString(),
+    baseUrl,
+    service: {
+      provider: process.env.RENDER ? "render" : "unknown",
+      port: process.env.PORT,
+      host: req.get("host"),
+      forwardedProto: req.get("x-forwarded-proto"),
+    },
+  });
+});
 
 app.use(express.json({ limit: JSON_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
@@ -129,124 +152,177 @@ const openai = new OpenAI({
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 const MODEL_PRICING = {
+  // Preise in USD pro 1M Tokens
   // GPT-5 Familie
-  "gpt-5.1": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5-mini": { input: 0.25 / 1_000_000, output: 2.0 / 1_000_000 },
-  "gpt-5-nano": { input: 0.05 / 1_000_000, output: 0.4 / 1_000_000 },
-  "gpt-5.1-chat-latest": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5-chat-latest": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5.1-codex-max": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5.1-codex": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5-codex": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5.1-codex-mini": { input: 0.25 / 1_000_000, output: 2.0 / 1_000_000 },
-  "gpt-5-search-api": { input: 1.25 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-5-pro": { input: 15.0 / 1_000_000, output: 120.0 / 1_000_000 },
+  "gpt-5.1": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2.0 },
+  "gpt-5-nano": { input: 0.05, cachedInput: 0.005, output: 0.4 },
+  "gpt-5.1-chat-latest": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5-chat-latest": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5.1-codex-max": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5.1-codex": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5-codex": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5.1-codex-mini": { input: 0.25, cachedInput: 0.025, output: 2.0 },
+  "gpt-5-search-api": { input: 1.25, cachedInput: 0.125, output: 10.0 },
+  "gpt-5-pro": { input: 15.0, output: 120.0 },
 
   // GPT-4.1 Familie
-  "gpt-4.1": { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
-  "gpt-4.1-mini": { input: 0.4 / 1_000_000, output: 1.6 / 1_000_000 },
-  "gpt-4.1-nano": { input: 0.1 / 1_000_000, output: 0.4 / 1_000_000 },
-  "gpt-4.1-2025-04-14": { input: 3.0 / 1_000_000, output: 12.0 / 1_000_000 },
+  "gpt-4.1": { input: 2.0, cachedInput: 0.5, output: 8.0 },
+  "gpt-4.1-mini": { input: 0.4, cachedInput: 0.1, output: 1.6 },
+  "gpt-4.1-nano": { input: 0.1, cachedInput: 0.025, output: 0.4 },
+  "gpt-4.1-2025-04-14": { input: 3.0, output: 12.0 },
   "gpt-4.1-mini-2025-04-14": {
-    input: 0.8 / 1_000_000,
-    output: 3.2 / 1_000_000,
+    input: 0.8,
+    output: 3.2,
   },
   "gpt-4.1-nano-2025-04-14": {
-    input: 0.2 / 1_000_000,
-    output: 0.8 / 1_000_000,
+    input: 0.2,
+    output: 0.8,
   },
 
   // GPT-4o Familie
-  "gpt-4o": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-4o-2024-05-13": { input: 5.0 / 1_000_000, output: 15.0 / 1_000_000 },
-  "gpt-4o-mini": { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
-  "gpt-4o-2024-11-20": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
+  "gpt-4o": { input: 2.5, cachedInput: 1.25, output: 10.0 },
+  "gpt-4o-2024-05-13": { input: 5.0, output: 15.0 },
+  "gpt-4o-mini": { input: 0.15, cachedInput: 0.075, output: 0.6 },
+  "gpt-4o-2024-11-20": { input: 2.5, output: 10.0 },
   "gpt-4o-realtime-preview": {
-    input: 5.0 / 1_000_000,
-    output: 20.0 / 1_000_000,
+    input: 5.0,
+    output: 20.0,
   },
   "gpt-4o-mini-realtime-preview": {
-    input: 0.6 / 1_000_000,
-    output: 2.4 / 1_000_000,
+    input: 0.6,
+    output: 2.4,
   },
   "gpt-4o-mini-search-preview": {
-    input: 0.15 / 1_000_000,
-    output: 0.6 / 1_000_000,
+    input: 0.15,
+    output: 0.6,
   },
-  "gpt-4o-search-preview": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-4o-audio-preview": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
+  "gpt-4o-search-preview": { input: 2.5, output: 10.0 },
+  "gpt-4o-audio-preview": { input: 2.5, output: 10.0 },
   "gpt-4o-mini-audio-preview": {
-    input: 0.15 / 1_000_000,
-    output: 0.6 / 1_000_000,
+    input: 0.15,
+    output: 0.6,
   },
 
   // Realtime
-  "gpt-realtime": { input: 4.0 / 1_000_000, output: 16.0 / 1_000_000 },
-  "gpt-realtime-mini": { input: 0.6 / 1_000_000, output: 2.4 / 1_000_000 },
+  "gpt-realtime": { input: 4.0, output: 16.0 },
+  "gpt-realtime-mini": { input: 0.6, output: 2.4 },
 
   // Audio
-  "gpt-audio": { input: 2.5 / 1_000_000, output: 10.0 / 1_000_000 },
-  "gpt-audio-mini": { input: 0.6 / 1_000_000, output: 2.4 / 1_000_000 },
+  "gpt-audio": { input: 2.5, output: 10.0 },
+  "gpt-audio-mini": { input: 0.6, output: 2.4 },
 
   // Reasoning / O-Serie
-  o1: { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
-  "o1-pro": { input: 150.0 / 1_000_000, output: 600.0 / 1_000_000 },
-  "o1-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
-  "o1-2024-12-17": { input: 15.0 / 1_000_000, output: 60.0 / 1_000_000 },
-  "o3-pro": { input: 20.0 / 1_000_000, output: 80.0 / 1_000_000 },
-  o3: { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
-  "o3-deep-research": { input: 10.0 / 1_000_000, output: 40.0 / 1_000_000 },
-  "o3-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
-  "o4-mini": { input: 1.1 / 1_000_000, output: 4.4 / 1_000_000 },
-  "o4-mini-deep-research": { input: 2.0 / 1_000_000, output: 8.0 / 1_000_000 },
+  o1: { input: 15.0, output: 60.0 },
+  "o1-pro": { input: 150.0, output: 600.0 },
+  "o1-mini": { input: 1.1, output: 4.4 },
+  "o1-2024-12-17": { input: 15.0, output: 60.0 },
+  "o3-pro": { input: 20.0, output: 80.0 },
+  o3: { input: 2.0, output: 8.0 },
+  "o3-deep-research": { input: 10.0, output: 40.0 },
+  "o3-mini": { input: 1.1, output: 4.4 },
+  "o4-mini": { input: 1.1, output: 4.4 },
+  "o4-mini-deep-research": { input: 2.0, output: 8.0 },
 
   // Tools / Suche
-  "computer-use-preview": { input: 3.0 / 1_000_000, output: 12.0 / 1_000_000 },
+  "computer-use-preview": { input: 3.0, output: 12.0 },
 
   // GPT-4 Turbo
-  "gpt-4-turbo": { input: 10.0 / 1_000_000, output: 30.0 / 1_000_000 },
-  "gpt-4-turbo-preview": { input: 10.0 / 1_000_000, output: 30.0 / 1_000_000 },
+  "gpt-4-turbo": { input: 10.0, output: 30.0 },
+  "gpt-4-turbo-preview": { input: 10.0, output: 30.0 },
   "gpt-4-turbo-2024-04-09": {
-    input: 10.0 / 1_000_000,
-    output: 30.0 / 1_000_000,
+    input: 10.0,
+    output: 30.0,
   },
 
   // GPT-4 Classic
-  "gpt-4": { input: 30.0 / 1_000_000, output: 60.0 / 1_000_000 },
-  "gpt-4-0613": { input: 30.0 / 1_000_000, output: 60.0 / 1_000_000 },
-  "gpt-4-0125-preview": { input: 10.0 / 1_000_000, output: 30.0 / 1_000_000 },
+  "gpt-4": { input: 30.0, output: 60.0 },
+  "gpt-4-0613": { input: 30.0, output: 60.0 },
+  "gpt-4-0125-preview": { input: 10.0, output: 30.0 },
 
   // GPT-3.5
-  "gpt-3.5-turbo": { input: 0.5 / 1_000_000, output: 1.5 / 1_000_000 },
-  "gpt-3.5-turbo-16k": { input: 3.0 / 1_000_000, output: 4.0 / 1_000_000 },
-  "gpt-3.5-turbo-1106": { input: 1.0 / 1_000_000, output: 2.0 / 1_000_000 },
-  "gpt-3.5-turbo-instruct": { input: 1.5 / 1_000_000, output: 2.0 / 1_000_000 },
+  "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
+  "gpt-3.5-turbo-16k": { input: 3.0, output: 4.0 },
+  "gpt-3.5-turbo-1106": { input: 1.0, output: 2.0 },
+  "gpt-3.5-turbo-instruct": { input: 1.5, output: 2.0 },
   "gpt-3.5-turbo-instruct-0914": {
-    input: 1.5 / 1_000_000,
-    output: 2.0 / 1_000_000,
+    input: 1.5,
+    output: 2.0,
   },
 
   // Codex Mini
-  "codex-mini-latest": { input: 1.5 / 1_000_000, output: 6.0 / 1_000_000 },
+  "codex-mini-latest": { input: 1.5, output: 6.0 },
 
   // Image Tokens
-  "gpt-image-1": { input: 10.0 / 1_000_000, output: 40.0 / 1_000_000 },
-  "gpt-image-1-mini": { input: 2.5 / 1_000_000, output: 8.0 / 1_000_000 },
+  "gpt-image-1": { input: 10.0, output: 40.0 },
+  "gpt-image-1-mini": { input: 2.5, output: 8.0 },
 };
 
-function calculateCost(model, promptTokens, completionTokens) {
-  const pricing = MODEL_PRICING[model];
-
-  if (!pricing) {
-    console.warn(
-      `Unknown model pricing for: ${model}, using gpt-4o-mini as fallback`
-    );
-    const fallback = MODEL_PRICING["gpt-4o-mini"];
-    return promptTokens * fallback.input + completionTokens * fallback.output;
+function normalizeModelName(model = "") {
+  if (!model) return "";
+  const withoutDate = model.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+  if (withoutDate.endsWith("-chat-latest")) {
+    return withoutDate.replace(/-chat-latest$/, "");
   }
+  return withoutDate;
+}
 
-  return promptTokens * pricing.input + completionTokens * pricing.output;
+function estimateCost(model, usage = {}) {
+  const normalizedModel = normalizeModelName(model);
+  const pricingModelKey = MODEL_PRICING[normalizedModel]
+    ? normalizedModel
+    : MODEL_PRICING[model]
+      ? model
+      : normalizedModel;
+  const pricing = MODEL_PRICING[pricingModelKey];
+
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const cachedInputTokens =
+    usage.input_tokens_details?.cached_tokens ??
+    usage.cache_read_input_tokens ??
+    0;
+
+  const nonCachedInput = Math.max(0, inputTokens - cachedInputTokens);
+  const costInput = pricing
+    ? (nonCachedInput / 1_000_000) * pricing.input
+    : undefined;
+  const costCached =
+    pricing?.cachedInput !== undefined
+      ? (cachedInputTokens / 1_000_000) * pricing.cachedInput
+      : undefined;
+  const costOutput = pricing
+    ? (outputTokens / 1_000_000) * pricing.output
+    : undefined;
+
+  const estimatedUsd =
+    costInput !== undefined ||
+    costCached !== undefined ||
+    costOutput !== undefined
+      ? (costInput || 0) + (costCached || 0) + (costOutput || 0)
+      : undefined;
+
+  return {
+    normalizedModel,
+    pricingModelKey: pricing ? pricingModelKey : undefined,
+    usage: {
+      inputTokens,
+      outputTokens,
+      cachedInputTokens,
+      totalTokens: inputTokens + outputTokens,
+    },
+    cost: {
+      estimatedUsd,
+      breakdown: {
+        inputUsd: costInput ?? 0,
+        cachedInputUsd: costCached ?? 0,
+        outputUsd: costOutput ?? 0,
+      },
+      pricingModelKey: pricing ? pricingModelKey : undefined,
+      note: pricing ? undefined : "Unknown pricing",
+    },
+  };
 }
 
 app.post("/api/llm", async (req, res) => {
@@ -357,27 +433,31 @@ app.post("/api/llm", async (req, res) => {
       usage = completion.usage || usage;
     }
 
-    const cost = calculateCost(
-      completion.model,
-      usage.prompt_tokens,
-      usage.completion_tokens
-    );
+    const estimation = estimateCost(completion.model, usage);
 
     console.log(
       `[LLM] Response - Length: ${responseText.length}, Tokens: ${
-        usage.total_tokens
-      }, Cost: $${cost.toFixed(6)}`
+        estimation.usage.totalTokens
+      }, Cost: ${
+        estimation.cost.estimatedUsd !== undefined
+          ? `$${estimation.cost.estimatedUsd.toFixed(6)}`
+          : "unknown"
+      }`
     );
 
     res.json({
       response: responseText,
       usage: {
-        promptTokens: usage.prompt_tokens,
-        completionTokens: usage.completion_tokens,
-        totalTokens: usage.total_tokens,
-        cost: cost,
+        promptTokens: estimation.usage.inputTokens,
+        completionTokens: estimation.usage.outputTokens,
+        cachedInputTokens: estimation.usage.cachedInputTokens,
+        totalTokens: estimation.usage.totalTokens,
+        cost: estimation.cost.estimatedUsd,
+        raw: usage,
       },
       model: completion.model,
+      normalizedModel: estimation.normalizedModel,
+      cost: estimation.cost,
       operation,
       moduleId,
     });

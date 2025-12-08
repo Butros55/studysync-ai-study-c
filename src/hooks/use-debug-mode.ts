@@ -1,42 +1,45 @@
-import { useEffect, useState, useCallback } from 'react'
-import { debugStore, DebugLogEntry } from '@/lib/debug-store'
+import { useEffect, useState } from 'react'
+import { devToolsStore, type ApiLogEntry, type BackendMeta, type CapturedError } from '@/lib/devtools-store'
 
-function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T) => void] {
-  const [state, setState] = useState<T>(() => {
-    try {
-      const item = localStorage.getItem(key)
-      return item ? JSON.parse(item) : defaultValue
-    } catch {
-      return defaultValue
-    }
-  })
+type DevToolsSlice = {
+  devMode: boolean
+  debugLogging: boolean
+  logs: ApiLogEntry[]
+  meta?: BackendMeta
+  lastError?: CapturedError
+}
 
-  const setValue = useCallback((value: T) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value))
-      setState(value)
-    } catch (e) {
-      console.warn('localStorage setItem failed:', e)
-    }
-  }, [key])
+function useDevToolsSlice(): DevToolsSlice {
+  const [state, setState] = useState<DevToolsSlice>(() => devToolsStore.getState())
 
-  return [state, setValue]
+  useEffect(() => {
+    return devToolsStore.subscribe((next) => setState(next))
+  }, [])
+
+  return state
 }
 
 export function useDebugMode() {
-  const [enabled, setEnabled] = useLocalStorage<boolean>('debug-mode-enabled', false)
-  return { enabled, setEnabled }
+  const state = useDevToolsSlice()
+  return {
+    enabled: state.devMode && state.debugLogging,
+    devMode: state.devMode,
+    debugLogging: state.debugLogging,
+    setEnabled: (value: boolean) => devToolsStore.setDebugLogging(value),
+    setDevMode: (value: boolean) => devToolsStore.setDevMode(value),
+  }
 }
 
 export function useDebugLogs() {
-  const [logs, setLogs] = useState<DebugLogEntry[]>(() => debugStore.getLogs())
-
-  useEffect(() => {
-    return debugStore.subscribe(setLogs)
-  }, [])
+  const state = useDevToolsSlice()
 
   return {
-    logs,
-    clearLogs: () => debugStore.clearLogs(),
+    logs: state.logs,
+    meta: state.meta,
+    clearLogs: () => devToolsStore.clearLogs(),
   }
+}
+
+export function useDevToolsState() {
+  return useDevToolsSlice()
 }

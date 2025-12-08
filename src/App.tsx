@@ -46,6 +46,11 @@ import { StudyRoomProvider, useStudyRoom } from './studyroom/StudyRoomProvider'
 import { StudyRoomHUD } from './studyroom/StudyRoomHUD'
 import { ensureStudyRoomIdentity, loadStudyRoomIdentity, updateStudyRoomNickname } from './lib/study-room-identity'
 import type { DocumentType } from './lib/analysis-types'
+import { useDebugMode } from './hooks/use-debug-mode'
+import { BugReportListener } from './components/BugReportListener'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './components/ui/dialog'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
@@ -131,6 +136,42 @@ function AppContent() {
     remove: removeFlashcard,
     setItems: setFlashcards 
   } = useFlashcards()
+
+  const { devMode, setDevMode } = useDebugMode()
+  const [devUnlockOpen, setDevUnlockOpen] = useState(false)
+  const [devPasswordInput, setDevPasswordInput] = useState('')
+  const logoClicksRef = useRef<{ count: number; timer?: number }>({ count: 0 })
+  const devPassword = import.meta.env.VITE_DEV_MODE_PASSWORD || 'studysync'
+
+  const handleLogoClick = () => {
+    const ref = logoClicksRef.current
+    if (!ref.timer) {
+      ref.timer = window.setTimeout(() => {
+        logoClicksRef.current.count = 0
+        logoClicksRef.current.timer = undefined
+      }, 3500)
+    }
+    ref.count += 1
+    if (ref.count >= 5) {
+      ref.count = 0
+      if (ref.timer) {
+        clearTimeout(ref.timer)
+        ref.timer = undefined
+      }
+      setDevUnlockOpen(true)
+    }
+  }
+
+  const handleUnlockDevMode = () => {
+    if (devPasswordInput === devPassword) {
+      setDevMode(true)
+      toast.success('Dev Mode aktiviert')
+      setDevUnlockOpen(false)
+      setDevPasswordInput('')
+    } else {
+      toast.error('Falsches Passwort')
+    }
+  }
 
   const { standardModel, visionModel } = useLLMModel()
   
@@ -2664,6 +2705,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
       <>
         {BackgroundExamGenerator}
         {renderNotificationCenter()}
+        <BugReportListener />
         <StudyRoomView
           room={studyRoom}
           currentUserId={studyRoomIdentity.userId}
@@ -2891,7 +2933,8 @@ Gib deine Antwort als JSON zurÃ¼ck:
       {BackgroundExamGenerator}
       {renderNotificationCenter()}
       
-      {/* Flex-Container fÃ¼r Sticky Footer */}
+      <BugReportListener />
+      {/* Flex-Container fuer Sticky Footer */}
       <div className="min-h-screen bg-background flex flex-col">
         <div className="border-b bg-card">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -2899,7 +2942,13 @@ Gib deine Antwort als JSON zurÃ¼ck:
               <div className="flex-1">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">StudyMate</h1>
+                    <h1
+                      className="text-2xl sm:text-3xl font-semibold tracking-tight cursor-pointer select-none"
+                      onClick={handleLogoClick}
+                      title="StudyMate"
+                    >
+                      StudyMate
+                    </h1>
                     <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                       Dein KI-gestuetzter Lernbegleiter fuer die Uni
                     </p>
@@ -3021,7 +3070,31 @@ Gib deine Antwort als JSON zurÃ¼ck:
           } : undefined}
         />
 
-        {/* Versteckter File-Input fÃ¼r Import */}
+
+        <Dialog open={devUnlockOpen} onOpenChange={setDevUnlockOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Dev Mode freischalten</DialogTitle>
+              <DialogDescription>
+                5 Klicks auf das Logo innerhalb weniger Sekunden oeffnen diese Abfrage. Passwort eingeben, um Dev Mode zu aktivieren.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label htmlFor="dev-password">Passwort</Label>
+              <Input
+                id="dev-password"
+                type="password"
+                value={devPasswordInput}
+                onChange={(e) => setDevPasswordInput(e.target.value)}
+              />
+              <Button onClick={handleUnlockDevMode} className="w-full">
+                Entsperren
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Versteckter File-Input fuer Import */}
         <input
           ref={importInputRef}
           type="file"
@@ -3094,6 +3167,12 @@ function App() {
 }
 
 export default App
+
+
+
+
+
+
 
 
 
