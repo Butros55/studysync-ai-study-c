@@ -428,15 +428,34 @@ export function AIPreparation({
                       exit={{ opacity: 0, y: -10 }}
                       className="flex items-center gap-2 text-sm"
                     >
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                      >
-                        <Sparkle size={14} className="text-primary" />
-                      </motion.div>
-                      <span className="text-primary font-medium truncate max-w-[250px]">
-                        {currentItem.name}
-                      </span>
+                      <div className="relative flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 max-w-[320px] overflow-hidden">
+                        <div
+                          className="absolute inset-0 bg-primary/20 transition-[width]"
+                          style={{ width: `${Math.min(100, Math.max(5, currentItem.progress ?? 0))}%` }}
+                        />
+                        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.25),transparent_40%),radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.18),transparent_35%)]" />
+                        <div className="relative flex items-center gap-2 w-full">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          >
+                            <Sparkle size={14} className="text-primary" />
+                          </motion.div>
+                          <span className="font-medium truncate flex-1">{currentItem.name}</span>
+                          <span className="text-xs font-semibold tabular-nums text-primary/80">
+                            {(currentItem.progress ?? 0).toFixed(0)}%
+                          </span>
+                          <motion.span
+                            className="flex items-center gap-0.5 text-primary/80 text-xs"
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 1.2, repeat: Infinity }}
+                          >
+                            <span>•</span>
+                            <span>•</span>
+                            <span>•</span>
+                          </motion.span>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

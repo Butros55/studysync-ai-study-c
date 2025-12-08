@@ -26,7 +26,7 @@ import { InputModeSettingsButton } from './components/InputModeSettings'
 import { normalizeHandwritingOutput } from './components/MarkdownRenderer'
 import { StudyRoomView } from './components/StudyRoomView'
 import { Button } from './components/ui/button'
-import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple, CloudArrowDown, UploadSimple } from '@phosphor-icons/react'
+import { Plus, ChartLine, Sparkle, CurrencyDollar, DownloadSimple, CloudArrowDown, UploadSimple, UserCircle } from '@phosphor-icons/react'
 import { generateId, getRandomColor } from './lib/utils-app'
 import { calculateNextReview } from './lib/spaced-repetition'
 import { toast } from 'sonner'
@@ -182,6 +182,22 @@ function AppContent() {
     }
   }
 
+  const applyDisplayName = (name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    updateStudyRoomNickname(trimmed)
+    setStudyRoomIdentity((prev) =>
+      prev ? { ...prev, nickname: trimmed } : { userId: generateId(), nickname: trimmed }
+    )
+    setDisplayName(trimmed)
+  }
+
+  const handleSaveProfileName = () => {
+    applyDisplayName(profileNameInput)
+    toast.success('Name aktualisiert')
+    setProfileDialogOpen(false)
+  }
+
   const { standardModel, visionModel } = useLLMModel()
   
   // Onboarding Tutorial
@@ -240,6 +256,9 @@ function AppContent() {
   const [studyRoomBusy, setStudyRoomBusy] = useState(false)
   const [studyRoomError, setStudyRoomError] = useState<string | null>(null)
   const [studyRoomIdentity, setStudyRoomIdentity] = useState(() => loadStudyRoomIdentity())
+  const [displayName, setDisplayName] = useState(studyRoomIdentity.nickname)
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false)
+  const [profileNameInput, setProfileNameInput] = useState(studyRoomIdentity.nickname)
   const [studyRoomSolveContext, setStudyRoomSolveContext] = useState<{
     roomId: string
     roundId: string
@@ -248,6 +267,11 @@ function AppContent() {
     roomCode: string
     roundIndex: number
   } | null>(null)
+
+  useEffect(() => {
+    setDisplayName(studyRoomIdentity.nickname)
+    setProfileNameInput(studyRoomIdentity.nickname)
+  }, [studyRoomIdentity.nickname])
 
   // Prevent leaving the app with browser back (global guard)
   useEffect(() => {
@@ -2966,9 +2990,28 @@ Gib deine Antwort als JSON zurÃ¼ck:
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="sm:hidden"
+                  onClick={() => setProfileDialogOpen(true)}
+                  title="Anzeigenamen bearbeiten"
+                >
+                  <UserCircle size={16} />
+                </Button>
                 <div className="hidden sm:flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setProfileDialogOpen(true)}
+                    title="Anzeigenamen bearbeiten"
+                  >
+                    <UserCircle size={18} />
+                    <span className="truncate max-w-[120px] text-left">{displayName}</span>
+                  </Button>
                   <InputModeSettingsButton />
-                  <OnboardingTrigger onClick={resetOnboarding} />
+                  {devMode && <OnboardingTrigger onClick={resetOnboarding} />}
                   <DebugModeToggle />
                 </div>
                 <Button 
@@ -3110,6 +3153,34 @@ Gib deine Antwort als JSON zurÃ¼ck:
           } : undefined}
         />
 
+        <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Anzeigename bearbeiten</DialogTitle>
+              <DialogDescription>
+                Dieser Name wird in Lerngruppen und im Online-Modus angezeigt.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Label htmlFor="profile-name">Name</Label>
+              <Input
+                id="profile-name"
+                value={profileNameInput}
+                onChange={(e) => setProfileNameInput(e.target.value)}
+                placeholder="z.B. Alex, Lisa, Chris…"
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setProfileDialogOpen(false)}>
+                  Abbrechen
+                </Button>
+                <Button onClick={handleSaveProfileName} disabled={!profileNameInput.trim()}>
+                  Speichern
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
 
         <Dialog open={devUnlockOpen} onOpenChange={setDevUnlockOpen}>
           <DialogContent className="max-w-sm">
@@ -3155,6 +3226,8 @@ Gib deine Antwort als JSON zurÃ¼ck:
             onCreateModule={() => setCreateDialogOpen(true)}
             onImportBackup={triggerImportDialog}
             onFetchServerBackup={() => setServerBackupOpen(true)}
+            initialDisplayName={displayName}
+            onSetDisplayName={applyDisplayName}
           />
         )}
         
