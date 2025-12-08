@@ -1,5 +1,5 @@
 import { TokenUsage, CostSummary } from './types'
-import { normalizeModelName, estimateCost } from './model-pricing'
+import { MODEL_PRICING, FALLBACK_MODEL, calculateCost as sharedCalculateCost } from '../../shared/model-pricing.js'
 
 export function calculateCost(
   model: string,
@@ -7,14 +7,7 @@ export function calculateCost(
   completionTokens: number,
   cachedInputTokens: number = 0
 ): number {
-  const estimation = estimateCost(model, {
-    input_tokens: promptTokens + cachedInputTokens,
-    prompt_tokens: promptTokens + cachedInputTokens,
-    output_tokens: completionTokens,
-    completion_tokens: completionTokens,
-    cache_read_input_tokens: cachedInputTokens,
-  })
-  return estimation.cost.estimatedUsd ?? 0
+  return sharedCalculateCost(model, promptTokens, completionTokens)
 }
 
 export function generateCostSummary(usageRecords: TokenUsage[]): CostSummary {
