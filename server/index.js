@@ -31,7 +31,18 @@ const JSON_LIMIT = process.env.JSON_LIMIT || "600mb";
 const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
 // CORS: allow all origins to avoid client-side blocks (GitHub Pages etc.)
-app.use(cors({ origin: true, credentials: false, preflightContinue: false, optionsSuccessStatus: 200 }));
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  credentials: false,
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+};
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 function resolveBaseUrl(req) {
   const proto = req.get("x-forwarded-proto") || req.protocol;
