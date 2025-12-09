@@ -188,19 +188,106 @@ export async function importSharedBackup(backup: StudySyncExportData): Promise<R
   return counts
 }
 
-export async function uploadSharedBackupToServer(apiBase: string = API_BASE_URL) {
+const FIVE_MIB = 5 * 1024 * 1024
+const TEN_MIB = 10 * 1024 * 1024
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function uploadChunk(
+  apiBase: string,
+  uploadId: string,
+  index: number,
+  total: number,
+  chunk: Blob,
+  attempt = 1
+): Promise<void> {
+  const response = await fetch(
+    `${apiBase}/api/shared-backup/upload/chunk?uploadId=${encodeURIComponent(uploadId)}&index=${index}&total=${total}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+      body: chunk,
+    }
+  )
+
+  if (response.ok) return
+
+  if (attempt >= 3) {
+    const text = await response.text()
+    throw new Error(text || `Chunk ${index + 1} konnte nicht hochgeladen werden`)
+  }
+
+  const backoff = [400, 900, 2000][attempt - 1] ?? 1000
+  await sleep(backoff)
+  return uploadChunk(apiBase, uploadId, index, total, chunk, attempt + 1)
+}
+
+export async function uploadSharedBackupToServer(apiBase: string = API_BASE_URL, onProgress?: (progress: number) => void) {
   const exportData = await exportAllData()
   const sanitized = sanitizeBackupForSharing(exportData)
-  const response = await fetch(`${apiBase}/api/shared-backup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sanitized),
-  })
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(text || 'Upload fehlgeschlagen')
+  const json = JSON.stringify(sanitized)
+  const blob = new Blob([json], { type: 'application/json' })
+
+  if (blob.size <= FIVE_MIB) {
+    const response = await fetch(`${apiBase}/api/shared-backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: json,
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || 'Upload fehlgeschlagen')
+    }
+    return response.json()
   }
-  return response.json()
+
+  const initResponse = await fetch(`${apiBase}/api/shared-backup/upload/init`, { method: 'POST' })
+  if (!initResponse.ok) {
+    const text = await initResponse.text()
+    throw new Error(text || 'Upload-Initialisierung fehlgeschlagen')
+  }
+  const initPayload = await initResponse.json()
+  const uploadId: string = initPayload.uploadId
+  const serverChunkSize: number = initPayload.chunkSizeBytes ?? FIVE_MIB
+  const chunkSize = Math.min(Math.max(serverChunkSize, FIVE_MIB), TEN_MIB)
+
+  const totalChunks = Math.ceil(blob.size / chunkSize)
+  let uploadedBytes = 0
+
+  try {
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * chunkSize
+      const end = Math.min(start + chunkSize, blob.size)
+      const chunk = blob.slice(start, end)
+
+      await uploadChunk(apiBase, uploadId, i, totalChunks, chunk)
+
+      uploadedBytes += chunk.size
+      if (onProgress) {
+        onProgress(uploadedBytes / blob.size)
+      }
+    }
+
+    const completeResponse = await fetch(
+      `${apiBase}/api/shared-backup/upload/complete?uploadId=${encodeURIComponent(uploadId)}&total=${totalChunks}`,
+      { method: 'POST' }
+    )
+    if (!completeResponse.ok) {
+      const text = await completeResponse.text()
+      throw new Error(text || 'Upload konnte nicht abgeschlossen werden')
+    }
+
+    return completeResponse.json()
+  } catch (error) {
+    await fetch(`${apiBase}/api/shared-backup/upload/abort?uploadId=${encodeURIComponent(uploadId)}`, { method: 'POST' }).catch(() =>
+      console.warn('Abort failed')
+    )
+    throw error
+  }
 }
 
 export async function fetchSharedBackupFromServer(apiBase: string = API_BASE_URL) {
