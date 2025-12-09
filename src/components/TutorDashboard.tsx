@@ -8,7 +8,7 @@
  */
 
 import { Module, Task, Recommendation } from '@/lib/types'
-import { generateRecommendations, getWeakTopics, getModuleProgress, formatExamDate, getDaysUntilExam } from '@/lib/recommendations'
+import { generateRecommendations, getWeakTopics, formatExamDate, getDaysUntilExam } from '@/lib/recommendations'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -58,6 +58,35 @@ interface TaskBlock {
   icon: React.ReactNode
   tasks: Task[]
   color: string
+}
+
+/**
+ * Extrahiert einen sinnvollen Vorschautitel aus einer Aufgabe
+ */
+function getTaskPreview(task: Task): string {
+  // Prüfe ob title vorhanden und nicht nur Nummerierung ist
+  if (task.title?.trim() && task.title.trim().length > 3 && !/^\d+$/.test(task.title.trim())) {
+    return task.title
+  }
+  
+  // Fallback: Extrahiere sinnvollen Text aus der Frage
+  const lines = task.question.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+  for (const line of lines) {
+    // Entferne Nummerierung wie "1.", "a)", etc.
+    const cleaned = line
+      .replace(/^#+\s*/, '')
+      .replace(/^\d+[\.\)]\s*/, '')
+      .replace(/^[a-zA-Z][\.\)]\s*/, '')
+      .replace(/^\*+\s*/, '')
+      .replace(/^-\s*/, '')
+      .trim()
+    
+    if (cleaned.length >= 10) {
+      return cleaned.length > 80 ? cleaned.substring(0, 77) + '...' : cleaned
+    }
+  }
+  
+  return lines[0] || task.question
 }
 
 export function TutorDashboard({ 
@@ -233,10 +262,11 @@ export function TutorDashboard({
       {/* Module mit integriertem Lernplan */}
       <div className="space-y-4">
         {sortedModules.map(module => {
-          const progress = getModuleProgress(module.id)
           const weakTopics = getWeakTopics(module.id)
           const moduleTasks = tasks.filter(t => t.moduleId === module.id)
           const completedTasks = moduleTasks.filter(t => t.completed).length
+          // Fortschritt basierend auf erledigten Aufgaben (nicht Quiz-Statistik)
+          const progress = moduleTasks.length > 0 ? completedTasks / moduleTasks.length : 0
           const taskBlocks = getTaskBlocks(module)
           const isExpanded = expandedModules.has(module.id)
           const daysUntilExam = getDaysUntilExam(module.examDate)
@@ -365,7 +395,7 @@ export function TutorDashboard({
                                 >
                                   <div className="flex-1 min-w-0">
                                     <MarkdownRenderer
-                                      content={task.title || task.question}
+                                      content={getTaskPreview(task)}
                                       compact
                                       truncateLines={2}
                                       className="font-medium text-xs sm:text-sm"

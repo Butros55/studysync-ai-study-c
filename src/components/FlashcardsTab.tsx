@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Flashcard, StudyNote } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,7 +9,6 @@ import {
   Trash,
   Lightning,
   Clock,
-  IdentificationCard,
   Sparkle,
 } from '@phosphor-icons/react'
 import { formatDistanceToNow } from 'date-fns'
@@ -19,18 +17,17 @@ import { useBulkSelection } from '@/hooks/use-bulk-selection'
 
 interface FlashcardsTabProps {
   flashcards: Flashcard[]
-  notes: StudyNote[]
-  onGenerateFlashcards: (noteId: string) => void
   onDeleteFlashcard: (flashcardId: string) => void
   onBulkDeleteFlashcards: (ids: string[]) => void
   onStartStudy: () => void
   onGenerateAllFlashcards: () => void
+  // Legacy-Props (optional, für Debug-Modus)
+  notes?: StudyNote[]
+  onGenerateFlashcards?: (noteId: string) => void
 }
 
 export function FlashcardsTab({
   flashcards,
-  notes,
-  onGenerateFlashcards,
   onDeleteFlashcard,
   onBulkDeleteFlashcards,
   onStartStudy,
@@ -67,10 +64,6 @@ export function FlashcardsTab({
     ? formatDistanceToNow(upcomingDates[0], { addSuffix: true, locale: de })
     : 'Keine geplant'
 
-  const getCardsByNote = (noteId: string) => {
-    return flashcards.filter((card) => card.noteId === noteId)
-  }
-
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedCards)
     if (ids.length === 0) return
@@ -79,70 +72,35 @@ export function FlashcardsTab({
     clearSelection()
   }
 
-  if (flashcards.length === 0 && notes.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center max-w-md">
-          <Cards size={48} className="text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Noch keine Karteikarten</h3>
-          <p className="text-muted-foreground">
-            Erstelle zuerst Notizen aus deinen Skripten, um Karteikarten zu generieren.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (flashcards.length === 0 && notes.length > 0) {
+  if (flashcards.length === 0) {
     return (
       <div className="space-y-6">
-        <Card className="p-8 text-center bg-muted/30">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Sparkle size={32} className="text-primary" />
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Cards size={20} weight="duotone" />
+              Lernkarteikarten
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              KI-generierte Karteikarten zum aktiven Lernen
+            </p>
           </div>
-          <h3 className="text-lg font-semibold mb-2">Karteikarten generieren</h3>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Erstelle automatisch Lernkarten aus deinen vorhandenen Notizen.
+        </div>
+
+        {/* Empty State ohne Box */}
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+            <Cards size={32} className="text-muted-foreground" weight="duotone" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Noch keine Karteikarten</h3>
+          <p className="text-muted-foreground max-w-md mb-6">
+            Lade Skripte hoch und generiere automatisch Karteikarten zum Lernen.
           </p>
           <Button onClick={onGenerateAllFlashcards}>
-            <Sparkle size={18} className="mr-2" />
-            Alle Karteikarten generieren
+            <Sparkle size={18} className="mr-2" weight="fill" />
+            Karteikarten generieren
           </Button>
-        </Card>
-
-        <div className="space-y-3">
-          {notes.map((note) => {
-            const noteCards = getCardsByNote(note.id)
-            const hasCards = noteCards.length > 0
-
-            return (
-              <Card key={note.id} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <IdentificationCard size={18} className="text-muted-foreground shrink-0" />
-                      <h4 className="font-medium truncate">
-                        Notiz vom {new Date(note.generatedAt).toLocaleDateString('de-DE')}
-                      </h4>
-                    </div>
-                    {hasCards ? (
-                      <p className="text-sm text-muted-foreground">
-                        {noteCards.length} Karteikarte{noteCards.length !== 1 ? 'n' : ''}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Noch keine Karteikarten generiert</p>
-                    )}
-                  </div>
-                  {!hasCards && (
-                    <Button onClick={() => onGenerateFlashcards(note.id)} size="sm">
-                      <Sparkle size={16} className="mr-2" />
-                      Generieren
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
         </div>
       </div>
     )
@@ -169,12 +127,10 @@ export function FlashcardsTab({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {notes.some((note) => getCardsByNote(note.id).length === 0) && (
-            <Button variant="outline" onClick={onGenerateAllFlashcards}>
-              <Sparkle size={18} className="mr-2" />
-              Fehlende generieren
-            </Button>
-          )}
+          <Button variant="outline" onClick={onGenerateAllFlashcards}>
+            <Sparkle size={18} className="mr-2" />
+            Mehr generieren
+          </Button>
           {dueCards.length > 0 && (
             <Button onClick={onStartStudy}>
               <Lightning size={18} className="mr-2" />

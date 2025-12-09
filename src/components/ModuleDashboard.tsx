@@ -210,9 +210,29 @@ export function ModuleDashboard({
   }, [daysUntilExam, staleTopics, tasks, weakTopics])
   
   const getTaskPreview = (task: Task) => {
-    if (task.title?.trim()) return task.title
-    const firstContentLine = task.question.split('\n').find(line => line.trim().length > 0)
-    return firstContentLine || task.question
+    // Prüfe ob title vorhanden und nicht nur Nummerierung ist
+    if (task.title?.trim() && task.title.trim().length > 3 && !/^\d+$/.test(task.title.trim())) {
+      return task.title
+    }
+    
+    // Fallback: Extrahiere sinnvollen Text aus der Frage
+    const lines = task.question.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+    for (const line of lines) {
+      // Entferne Nummerierung wie "1.", "a)", etc.
+      const cleaned = line
+        .replace(/^#+\s*/, '')
+        .replace(/^\d+[\.\)]\s*/, '')
+        .replace(/^[a-zA-Z][\.\)]\s*/, '')
+        .replace(/^\*+\s*/, '')
+        .replace(/^-\s*/, '')
+        .trim()
+      
+      if (cleaned.length >= 10) {
+        return cleaned.length > 80 ? cleaned.substring(0, 77) + '...' : cleaned
+      }
+    }
+    
+    return lines[0] || task.question
   }
 
   const startBlockSequence = (block: ModuleLearningBlock) => {

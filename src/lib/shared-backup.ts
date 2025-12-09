@@ -42,9 +42,9 @@ export function sanitizeBackupForSharing(exportData: StudySyncExportData): Study
   clone.data.modules = (clone.data.modules || []).map(stripModuleUserState)
   clone.data.tasks = (clone.data.tasks || []).map(stripTaskUserState)
   clone.data.flashcards = (clone.data.flashcards || []).map(stripFlashcardUserState)
-  // Analysis/User-Preferences nicht mitsenden
-  if ('analysisData' in clone) {
-    delete (clone as any).analysisData
+  // User-Preferences nicht mitsenden, aber documentAnalyses und moduleProfiles behalten
+  if ('analysisData' in clone && (clone as any).analysisData) {
+    delete (clone as any).analysisData.userPreferences
   }
   return clone
 }

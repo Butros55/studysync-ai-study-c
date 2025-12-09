@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import { ErrorBoundary } from "react-error-boundary";
 import "@github/spark/spark"
 import { setupGlobalErrorListeners } from './lib/error-monitor'
@@ -29,9 +30,11 @@ createRoot(document.getElementById('root')!).render(
       })
     }}
   >
-    <>
-      <Toaster richColors closeButton duration={2500} />
-      <App />
-    </>
+    <BrowserRouter basename={import.meta.env.BASE_URL?.replace(/\/$/, '') || ''}>
+      <>
+        <Toaster richColors closeButton duration={2500} />
+        <App />
+      </>
+    </BrowserRouter>
    </ErrorBoundary>
 )

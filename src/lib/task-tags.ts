@@ -123,14 +123,44 @@ export function extractTagsFromQuestion(questionText: string): ExtractedTags {
  * Generiert einen kurzen Titel aus der Aufgabenstellung
  */
 export function generateTaskTitle(question: string): string {
-  // Erste Zeile oder ersten Satz extrahieren
-  const firstLine = question.split('\n')[0].trim()
-  const firstSentence = firstLine.split(/[.!?]/)[0].trim()
+  // Bereinige Markdown und führende Nummerierungen
+  const lines = question.split('\n').map(l => l.trim()).filter(l => l.length > 0)
   
-  // Kürzen wenn zu lang
-  if (firstSentence.length > 60) {
-    return firstSentence.substring(0, 57) + '...'
+  // Suche die erste sinnvolle Zeile (nicht nur Nummerierung)
+  let titleLine = ''
+  for (const line of lines) {
+    // Entferne führende Nummerierung wie "1.", "1)", "a)", "a.", "#", "##", etc.
+    const cleaned = line
+      .replace(/^#+\s*/, '') // Markdown headers
+      .replace(/^\d+[\.\)]\s*/, '') // "1." oder "1)"
+      .replace(/^[a-zA-Z][\.\)]\s*/, '') // "a." oder "a)"
+      .replace(/^\*+\s*/, '') // Aufzählungszeichen
+      .replace(/^-\s*/, '') // Dash-Aufzählungen
+      .trim()
+    
+    // Ignoriere Zeilen die nur aus kurzer Nummerierung bestehen
+    if (cleaned.length >= 10) {
+      titleLine = cleaned
+      break
+    } else if (cleaned.length > 0 && !titleLine) {
+      // Fallback auf die erste nicht-leere Zeile nach Bereinigung
+      titleLine = cleaned
+    }
   }
   
-  return firstSentence || 'Aufgabe'
+  // Wenn keine gute Zeile gefunden, nimm die ursprüngliche erste Zeile
+  if (!titleLine) {
+    titleLine = lines[0] || 'Aufgabe'
+  }
+  
+  // Ersten Satz extrahieren (aber nur bei Punkt nach mindestens 15 Zeichen)
+  const sentenceMatch = titleLine.match(/^(.{15,}?)[.!?]/)
+  const title = sentenceMatch ? sentenceMatch[1].trim() : titleLine
+  
+  // Kürzen wenn zu lang
+  if (title.length > 80) {
+    return title.substring(0, 77) + '...'
+  }
+  
+  return title || 'Aufgabe'
 }

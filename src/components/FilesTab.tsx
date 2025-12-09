@@ -57,6 +57,7 @@ import { useBulkSelection } from '@/hooks/use-bulk-selection'
 import { useFileUpload } from '@/hooks/use-file-upload'
 import { AnalysisStatusBadge } from './AnalysisStatusBadge'
 import { ModuleProfileStatus } from './ModuleProfileStatus'
+import { useDebugMode } from '@/hooks/use-debug-mode'
 import { listDocumentAnalyses } from '@/lib/analysis-storage'
 import type { DocumentAnalysisRecord } from '@/lib/analysis-types'
 
@@ -136,6 +137,7 @@ export function FilesTab({
   onGenerateNotesForSelected,
   onGenerateTasksForSelected,
 }: FilesTabProps) {
+  const { enabled: debugMode } = useDebugMode()
   const [previewScript, setPreviewScript] = useState<Script | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<FileCategory>>(
     new Set(['script', 'exercise', 'solution', 'exam'])
@@ -406,10 +408,12 @@ export function FilesTab({
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                   Alle Dateien
                 </div>
-                <DropdownMenuItem onClick={onGenerateAllNotes}>
-                  <Note className="w-4 h-4 mr-2" />
-                  Alle Notizen generieren
-                </DropdownMenuItem>
+                {debugMode && (
+                  <DropdownMenuItem onClick={onGenerateAllNotes}>
+                    <Note className="w-4 h-4 mr-2" />
+                    Alle Notizen generieren
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={onGenerateAllTasks}>
                   <ListChecks className="w-4 h-4 mr-2" />
                   Alle Aufgaben generieren
@@ -429,13 +433,15 @@ export function FilesTab({
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                       Ausgewählt ({selectedIds.size})
                     </div>
-                    <DropdownMenuItem 
-                      onClick={() => onGenerateNotesForSelected?.(Array.from(selectedIds))}
-                      disabled={!onGenerateNotesForSelected}
-                    >
-                      <Note className="w-4 h-4 mr-2" />
-                      Notizen für Auswahl
-                    </DropdownMenuItem>
+                    {debugMode && (
+                      <DropdownMenuItem 
+                        onClick={() => onGenerateNotesForSelected?.(Array.from(selectedIds))}
+                        disabled={!onGenerateNotesForSelected}
+                      >
+                        <Note className="w-4 h-4 mr-2" />
+                        Notizen für Auswahl
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem 
                       onClick={() => onGenerateTasksForSelected?.(Array.from(selectedIds))}
                       disabled={!onGenerateTasksForSelected}
@@ -605,10 +611,12 @@ export function FilesTab({
                                   {category === 'script' && (
                                     <>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => onGenerateNotes(script.id)}>
-                                        <Sparkle className="w-4 h-4 mr-2" />
-                                        Notizen generieren
-                                      </DropdownMenuItem>
+                                      {debugMode && (
+                                        <DropdownMenuItem onClick={() => onGenerateNotes(script.id)}>
+                                          <Sparkle className="w-4 h-4 mr-2" />
+                                          Notizen generieren
+                                        </DropdownMenuItem>
+                                      )}
                                       <DropdownMenuItem onClick={() => onGenerateTasks(script.id)}>
                                         <Sparkle className="w-4 h-4 mr-2" />
                                         Aufgaben generieren

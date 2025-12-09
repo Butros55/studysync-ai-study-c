@@ -18,6 +18,7 @@ import { FlashcardsTab } from './FlashcardsTab'
 import { DebugModeToggle } from './DebugModeToggle'
 import { LocalStorageIndicator } from './LocalStorageIndicator'
 import { formatExamDate } from '@/lib/recommendations'
+import { useDebugMode } from '@/hooks/use-debug-mode'
 
 interface ModuleViewProps {
   module: Module
@@ -95,9 +96,12 @@ export function ModuleView({
   studyRoomBusy,
   studyRoomNickname,
 }: ModuleViewProps) {
+  const { enabled: debugMode } = useDebugMode()
   const [activeTab, setActiveTab] = useState(() => {
     try {
       const saved = localStorage.getItem(`module-active-tab:${module.id}`)
+      // Wenn Notizen-Tab gespeichert aber Debug deaktiviert, Fallback auf Dashboard
+      if (saved === 'notes' && !debugMode) return 'dashboard'
       return saved || 'dashboard'
     } catch {
       return 'dashboard'
@@ -184,7 +188,7 @@ export function ModuleView({
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-safe">
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4 sm:mb-6 w-full grid grid-cols-5 sm:w-auto sm:inline-flex h-auto">
+          <TabsList className={`mb-4 sm:mb-6 w-full grid sm:w-auto sm:inline-flex h-auto ${debugMode ? 'grid-cols-5' : 'grid-cols-4'}`}>
             <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
               <House className="w-4 h-4 sm:mr-1.5" weight="duotone" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -194,11 +198,13 @@ export function ModuleView({
               <span className="hidden sm:inline">Dateien ({scripts.length})</span>
               <span className="sm:hidden">{scripts.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
-              <Note className="w-4 h-4 sm:mr-1.5" weight="duotone" />
-              <span className="hidden sm:inline">Notizen ({notes.length})</span>
-              <span className="sm:hidden">{notes.length}</span>
-            </TabsTrigger>
+            {debugMode && (
+              <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
+                <Note className="w-4 h-4 sm:mr-1.5" weight="duotone" />
+                <span className="hidden sm:inline">Notizen ({notes.length})</span>
+                <span className="sm:hidden">{notes.length}</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="flashcards" className="text-xs sm:text-sm px-2 sm:px-3 py-2">
               <Cards className="w-4 h-4 sm:mr-1.5" weight="duotone" />
               <span className="hidden sm:inline">Karteikarten ({flashcards.length})</span>
@@ -247,20 +253,20 @@ export function ModuleView({
             />
           </TabsContent>
 
-          <TabsContent value="notes">
-            <NotesTab
-              notes={notes}
-              scripts={scripts}
-              onDeleteNote={onDeleteNote}
-              onBulkDeleteNotes={onBulkDeleteNotes}
-            />
-          </TabsContent>
+          {debugMode && (
+            <TabsContent value="notes">
+              <NotesTab
+                notes={notes}
+                scripts={scripts}
+                onDeleteNote={onDeleteNote}
+                onBulkDeleteNotes={onBulkDeleteNotes}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="flashcards">
             <FlashcardsTab
               flashcards={flashcards}
-              notes={notes}
-              onGenerateFlashcards={onGenerateFlashcards}
               onDeleteFlashcard={onDeleteFlashcard}
               onBulkDeleteFlashcards={onBulkDeleteFlashcards}
               onStartStudy={onStartFlashcardStudy}

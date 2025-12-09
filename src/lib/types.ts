@@ -223,7 +223,8 @@ export interface TaskAttempt {
 
 export interface Flashcard {
   id: string
-  noteId: string
+  noteId?: string  // Optional: Nur gesetzt wenn aus Notiz generiert
+  scriptId?: string  // Optional: Nur gesetzt wenn aus Skript generiert
   moduleId: string
   front: string
   back: string

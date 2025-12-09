@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useModules, useScripts, useNotes, useTasks, useFlashcards, migrateFromServerIfNeeded } from './hooks/use-database'
 import { storageReady, downloadExportFile, importData } from './lib/storage'
@@ -60,6 +61,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './components/ui/dropdown-menu'
+import { buildModulePath, buildTaskPath, buildFlashcardsPath, buildQuizPath, buildExamPath, buildStudyRoomPath } from './lib/router'
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
@@ -106,6 +108,10 @@ AUSGABEFORMAT:
 - NUR die Transkription, keine Kommentare oder Bewertung`
 
 function AppContent() {
+  // Router für URL-basierte Navigation
+  const navigate = useNavigate()
+  const location = useLocation()
+  
   // Datenbank-Hooks mit SQLite-Backend
   const { 
     data: modules, 
@@ -273,44 +279,112 @@ function AppContent() {
     setProfileNameInput(studyRoomIdentity.nickname)
   }, [studyRoomIdentity.nickname])
 
-  // Prevent leaving the app with browser back (global guard)
+  // ===== URL-ROUTING SYNC =====
+  // Synchronisiere URL -> App-State beim Laden und bei Browser-Navigation
   useEffect(() => {
-    const guard = () => {
-      try {
-        window.history.pushState({ guard: true }, '')
-      } catch {
-        // ignore
-      }
-    }
-    guard()
-    const onPopState = (e: PopStateEvent) => {
-      e.preventDefault()
-      guard()
-    }
-    window.addEventListener('popstate', onPopState)
-    return () => window.removeEventListener('popstate', onPopState)
-  }, [])
-
-  // Prevent browser back from exiting the app while a task modal is open
-  useEffect(() => {
-    if (!activeTask) return
-
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault()
+    const path = location.pathname
+    
+    // Home
+    if (path === '/') {
+      setSelectedModuleId(null)
       setActiveTask(null)
       setTaskFeedback(null)
-      setTaskSequence(null)
-      setActiveSequenceIndex(null)
-      setStudyRoomSolveContext(null)
+      setShowStatistics(false)
+      setShowCostTracking(false)
+      setShowQuizMode(false)
+      setShowExamMode(false)
+      setActiveFlashcards(null)
+      return
     }
-
-    window.history.pushState({ modal: 'task' }, '')
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [activeTask])
+    
+    // Statistics
+    if (path === '/statistics') {
+      setShowStatistics(true)
+      setShowCostTracking(false)
+      return
+    }
+    
+    // Cost Tracking
+    if (path === '/costs') {
+      setShowCostTracking(true)
+      setShowStatistics(false)
+      return
+    }
+    
+    // Study Room - /room/:roomCode
+    const roomMatch = path.match(/^\/room\/([^/]+)$/)
+    if (roomMatch) {
+      // StudyRoom wird separat über handleJoinStudyRoom gehandhabt
+      return
+    }
+    
+    // Module Routes - /module/:moduleId/...
+    const moduleMatch = path.match(/^\/module\/([^/]+)(?:\/(.+))?$/)
+    if (moduleMatch) {
+      const moduleId = moduleMatch[1]
+      const rest = moduleMatch[2]
+      
+      // Modul existiert?
+      if (!modules?.find(m => m.id === moduleId)) {
+        // Wenn Modul nicht existiert, zur Home navigieren
+        navigate('/', { replace: true })
+        return
+      }
+      
+      setSelectedModuleId(moduleId)
+      setShowStatistics(false)
+      setShowCostTracking(false)
+      
+      if (!rest) {
+        // Nur Modul-Ansicht
+        setActiveTask(null)
+        setActiveFlashcards(null)
+        setShowQuizMode(false)
+        setShowExamMode(false)
+        return
+      }
+      
+      // Task - /module/:moduleId/task/:taskId
+      const taskMatch = rest.match(/^task\/(.+)$/)
+      if (taskMatch) {
+        const taskId = taskMatch[1]
+        const task = tasks?.find(t => t.id === taskId)
+        if (task) {
+          setActiveTask(task)
+        } else {
+          // Task nicht gefunden, zurück zum Modul
+          navigate(buildModulePath(moduleId), { replace: true })
+        }
+        return
+      }
+      
+      // Flashcards
+      if (rest === 'flashcards') {
+        const moduleFlashcards = flashcards?.filter(f => f.moduleId === moduleId) || []
+        if (moduleFlashcards.length > 0) {
+          setActiveFlashcards(moduleFlashcards)
+        } else {
+          navigate(buildModulePath(moduleId), { replace: true })
+        }
+        return
+      }
+      
+      // Quiz
+      if (rest === 'quiz') {
+        setShowQuizMode(true)
+        return
+      }
+      
+      // Exam
+      if (rest === 'exam') {
+        setShowExamMode(true)
+        return
+      }
+    }
+  }, [location.pathname, modules, tasks, flashcards, navigate])
   
-  // Ref fÃ¼r das Modul/Scripts wÃ¤hrend einer laufenden Exam-Generierung
-  // Damit die Generierung weiterlÃ¤uft, auch wenn der User das Modul wechselt
+  // Ref für das Modul/Scripts während einer laufenden Exam-Generierung
+  // Damit die Generierung weiterläuft, auch wenn der User das Modul wechselt
   const examGenerationModuleRef = useRef<{ module: Module; scripts: Script[] } | null>(null)
   
   // Ref fÃ¼r versteckten File-Input (Import)
@@ -535,6 +609,7 @@ function AppContent() {
     if (!studyRoom || !studyRoomIdentity) {
       setStudyRoom(null)
       setStudyRoomSolveContext(null)
+      navigate('/')
       return
     }
 
@@ -548,6 +623,7 @@ function AppContent() {
       setStudyRoomError(null)
       setActiveTask(null)
       setTaskFeedback(null)
+      navigate('/')
     }
   }
 
@@ -938,7 +1014,7 @@ function AppContent() {
       
       // Falls gerade in diesem Modul, zurÃ¼ck zur Hauptseite
       if (selectedModuleId === moduleId) {
-        setSelectedModuleId(null)
+        navigate('/')
       }
       
       toast.success('Modul und alle Inhalte gelÃ¶scht')
@@ -1695,7 +1771,6 @@ Gib deine Antwort als JSON zurueck:
 
 
   const openTask = (task: Task, sequence?: Task[], startTaskId?: string) => {
-    setSelectedModuleId(task.moduleId)
     setStudyRoomSolveContext(null)
 
     // Stelle sicher, dass der Aufgaben-Tab aktiv bleibt, wenn wir zurückgehen
@@ -1716,6 +1791,9 @@ Gib deine Antwort als JSON zurueck:
 
     setActiveTask(task)
     setTaskFeedback(null)
+    
+    // Navigate to task URL
+    navigate(buildTaskPath(task.moduleId, task.id))
   }
 
   const startTaskSequence = (sequence: Task[], startTaskId?: string) => {
@@ -2059,6 +2137,122 @@ const handleDeleteTask = async (taskId: string) => {
     })
   }
 
+  const handleGenerateFlashcardsFromScript = async (scriptId: string) => {
+    const script = scripts?.find((s) => s.id === scriptId)
+    if (!script) return
+
+    const taskId = generateId()
+    
+    const execute = async () => {
+      setPipelineTasks((current) => [
+        ...current,
+        {
+          id: taskId,
+          type: 'generate-flashcards',
+          name: script.name,
+          progress: 0,
+          status: 'processing',
+          timestamp: Date.now(),
+        },
+      ])
+
+      try {
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
+        )
+
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten. Analysiere den folgenden Inhalt und erstelle daraus Karteikarten.
+
+Inhalt (${script.name}):
+${script.content.substring(0, 15000)}${script.content.length > 15000 ? '\n\n[... weitere Inhalte gekürzt ...]' : ''}
+
+Erstelle 8-15 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthält. Jede Karteikarte muss diese exakten Felder haben:
+- front: Die Frage oder das Konzept (kurz und prägnant, AUF DEUTSCH) (string)
+- back: Die Antwort oder Erklärung (klar und vollständig, AUF DEUTSCH) (string)
+
+Erstelle Karten, die Schlüsselkonzepte, Definitionen, Formeln und wichtige Zusammenhänge abdecken.
+
+Beispielformat:
+{
+  "flashcards": [
+    {
+      "front": "Was ist die Formel für die Kreisfläche?",
+      "back": "A = π × r²\\n\\nDabei ist:\\n- A = Fläche\\n- r = Radius\\n- π ≈ 3,14159"
+    }
+  ]
+}`
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
+        )
+
+        const response = await llmWithRetry(prompt, standardModel, true, 1, 'generate-flashcards', script.moduleId)
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 70 } : t))
+        )
+
+        let parsed
+        try {
+          parsed = JSON.parse(response)
+        } catch (parseError) {
+          throw new Error('Ungültiges Antwortformat von der KI')
+        }
+
+        if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
+          throw new Error('Antwort enthält kein flashcards-Array')
+        }
+
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 85 } : t))
+        )
+
+        const newFlashcards: Flashcard[] = parsed.flashcards.map((f: any) => ({
+          id: generateId(),
+          scriptId: script.id,
+          moduleId: script.moduleId,
+          front: f.front,
+          back: f.back,
+          createdAt: new Date().toISOString(),
+          ease: 2.5,
+          interval: 0,
+          repetitions: 0,
+        }))
+
+        // Alle Flashcards in die Datenbank speichern
+        await Promise.all(newFlashcards.map(flashcard => createFlashcard(flashcard)))
+        
+        setPipelineTasks((current) =>
+          current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
+        )
+
+        toast.success(`${newFlashcards.length} Karteikarten erstellt`)
+      } catch (error) {
+        console.error('Fehler bei Karteikarten-Erstellung:', error)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorStack = error instanceof Error ? error.stack : undefined
+        
+        setPipelineTasks((current) =>
+          current.map((t) =>
+            t.id === taskId ? { 
+              ...t, 
+              status: 'error', 
+              error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
+              timestamp: Date.now()
+            } : t
+          )
+        )
+        toast.error('Fehler beim Erstellen der Karteikarten')
+      }
+    }
+
+    await taskQueue.add({ id: taskId, execute })
+  }
+
+  // Legacy-Funktion für Notizen (wird nur noch im Debug-Modus verwendet)
   const handleGenerateFlashcards = async (noteId: string) => {
     const note = notes?.find((n) => n.id === noteId)
     if (!note) return
@@ -2085,23 +2279,23 @@ const handleDeleteTask = async (taskId: string) => {
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        const prompt = `Du bist ein Experte fÃ¼r das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
+        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
 
 Notizen:
 ${note.content}
 
-Erstelle 5-10 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthÃ¤lt. Jede Karteikarte muss diese exakten Felder haben:
-- front: Die Frage oder das Konzept (kurz und prÃ¤gnant, AUF DEUTSCH) (string)
-- back: Die Antwort oder ErklÃ¤rung (klar und vollstÃ¤ndig, AUF DEUTSCH) (string)
+Erstelle 5-10 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthält. Jede Karteikarte muss diese exakten Felder haben:
+- front: Die Frage oder das Konzept (kurz und prägnant, AUF DEUTSCH) (string)
+- back: Die Antwort oder Erklärung (klar und vollständig, AUF DEUTSCH) (string)
 
-Erstelle Karten, die SchlÃ¼sselkonzepte, Definitionen, Formeln und wichtige ZusammenhÃ¤nge abdecken.
+Erstelle Karten, die Schlüsselkonzepte, Definitionen, Formeln und wichtige Zusammenhänge abdecken.
 
 Beispielformat:
 {
   "flashcards": [
     {
-      "front": "Was ist die Formel fÃ¼r die KreisflÃ¤che?",
-      "back": "A = Ï€ Ã— rÂ²\n\nDabei ist:\n- A = FlÃ¤che\n- r = Radius\n- Ï€ â‰ˆ 3,14159"
+      "front": "Was ist die Formel für die Kreisfläche?",
+      "back": "A = π × r²\\n\\nDabei ist:\\n- A = Fläche\\n- r = Radius\\n- π ≈ 3,14159"
     }
   ]
 }`
@@ -2120,11 +2314,11 @@ Beispielformat:
         try {
           parsed = JSON.parse(response)
         } catch (parseError) {
-          throw new Error('UngÃ¼ltiges Antwortformat von der KI')
+          throw new Error('Ungültiges Antwortformat von der KI')
         }
 
         if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
-          throw new Error('Antwort enthÃ¤lt kein flashcards-Array')
+          throw new Error('Antwort enthält kein flashcards-Array')
         }
 
         setPipelineTasks((current) =>
@@ -2162,7 +2356,7 @@ Beispielformat:
               ...t, 
               status: 'error', 
               error: error instanceof Error ? error.message : 'Erstellung fehlgeschlagen',
-              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfÃ¼gbar'}`,
+              errorDetails: `Fehler: ${errorMessage}\n\nStack Trace:\n${errorStack || 'Nicht verfügbar'}`,
               timestamp: Date.now()
             } : t
           )
@@ -2176,14 +2370,32 @@ Beispielformat:
 
   const handleGenerateAllFlashcards = () => {
     if (!selectedModuleId) return
-    const moduleNotes = notes?.filter((n) => n.moduleId === selectedModuleId) || []
+    // Generiere Karteikarten direkt aus Skripten (nur Lehrskripte, keine Übungen/Klausuren)
+    const moduleScripts = scripts?.filter((s) => 
+      s.moduleId === selectedModuleId && 
+      (s.category === 'script' || !s.category)
+    ) || []
     
-    moduleNotes.forEach((note) => {
-      const hasFlashcards = flashcards?.some((f) => f.noteId === note.id)
-      if (!hasFlashcards) {
-        handleGenerateFlashcards(note.id)
-      }
+    if (moduleScripts.length === 0) {
+      toast.info('Keine Skripte vorhanden. Lade zuerst Skripte hoch.')
+      return
+    }
+    
+    // Nur Skripte ohne Karteikarten verarbeiten
+    const scriptsWithoutFlashcards = moduleScripts.filter((script) => 
+      !flashcards?.some((f) => f.scriptId === script.id)
+    )
+    
+    if (scriptsWithoutFlashcards.length === 0) {
+      toast.info('Für alle Skripte wurden bereits Karteikarten generiert.')
+      return
+    }
+    
+    scriptsWithoutFlashcards.forEach((script) => {
+      handleGenerateFlashcardsFromScript(script.id)
     })
+    
+    toast.success(`Generiere Karteikarten für ${scriptsWithoutFlashcards.length} Skript(e)...`)
   }
 
   const handleDeleteFlashcard = async (flashcardId: string) => {
@@ -2282,6 +2494,7 @@ Beispielformat:
     }
     
     setActiveFlashcards(dueCards)
+    navigate(buildFlashcardsPath(selectedModuleId))
   }
 
   const handleReviewFlashcard = async (flashcardId: string, quality: number) => {
@@ -2510,7 +2723,10 @@ Gib deine Antwort als JSON zurÃ¼ck:
         {renderNotificationCenter()}
         <FlashcardStudy
           flashcards={activeFlashcards}
-          onClose={() => setActiveFlashcards(null)}
+          onClose={() => {
+            setActiveFlashcards(null)
+            navigate(-1)
+          }}
           onReview={handleReviewFlashcard}
         />
         {examGenerationState && (
@@ -2519,7 +2735,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
             isComplete={examGenerationState.isComplete}
             onClick={() => {
               setActiveFlashcards(null)
-              setShowExamMode(true)
+              navigate(selectedModuleId ? buildExamPath(selectedModuleId) : '/')
             }}
           />
         )}
@@ -2567,6 +2783,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
           onClose={() => {
             setShowQuizMode(false)
             setTaskFeedback(null)
+            navigate('/')
           }}
           onSubmit={handleQuizSubmit}
           feedback={taskFeedback || undefined}
@@ -2624,13 +2841,14 @@ Gib deine Antwort als JSON zurÃ¼ck:
           scripts={moduleScripts}
           formulaSheets={moduleScripts.filter(s => s.category === 'formula')}
           onBack={() => {
-            // Wenn gerade generiert wird, nicht den State lÃ¶schen
+            // Wenn gerade generiert wird, nicht den State löschen
             if (examGenerationState?.phase === 'preparing' || examGenerationState?.phase === 'ready') {
               setShowExamMode(false)
             } else {
               setShowExamMode(false)
               setExamGenerationState(null)
             }
+            navigate(`/module/${selectedModule.id}`)
           }}
           generationState={examGenerationState}
           onGenerationStateChange={setExamGenerationState}
@@ -2670,6 +2888,12 @@ Gib deine Antwort als JSON zurÃ¼ck:
             setTaskSequence(null)
             setActiveSequenceIndex(null)
             setStudyRoomSolveContext(null)
+            // Navigiere zurück zur Modul-Ansicht oder Home
+            if (selectedModuleId) {
+              navigate(`/module/${selectedModuleId}`)
+            } else {
+              navigate('/')
+            }
           }}
           onSubmit={handleSubmitTaskAnswer}
           feedback={taskFeedback || undefined}
@@ -2769,7 +2993,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
           flashcards={flashcards || []}
           scripts={scripts || []}
           notes={notes || []}
-          onBack={() => setShowStatistics(false)}
+          onBack={() => navigate(-1)}
           selectedModuleId={selectedModuleId || undefined}
         />
         {examGenerationState && (
@@ -2820,7 +3044,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
       <>
         {BackgroundExamGenerator}
         {renderNotificationCenter()}
-        <CostTrackingDashboard onBack={() => setShowCostTracking(false)} />
+                <CostTrackingDashboard onBack={() => navigate(-1)} />
         {examGenerationState && (
           <ExamPreparationMinimized
             progress={examGenerationState.progress}
@@ -2875,7 +3099,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
           notes={moduleNotes}
           tasks={moduleTasks}
           flashcards={moduleFlashcards}
-          onBack={() => setSelectedModuleId(null)}
+          onBack={() => navigate('/')}
           onUploadScript={handleUploadScript}
           onGenerateNotes={handleGenerateNotes}
           onGenerateTasks={handleGenerateTasks}
@@ -2895,7 +3119,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
           onGenerateAllFlashcards={handleGenerateAllFlashcards}
           onStartFlashcardStudy={handleStartFlashcardStudy}
           onEditModule={handleEditModule}
-          onStartExamMode={() => setShowExamMode(true)}
+          onStartExamMode={() => navigate(buildExamPath(selectedModule.id))}
           onAnalyzeScript={handleAnalyzeScript}
           onReanalyzeAllScripts={handleReanalyzeAllScripts}
           onReanalyzeSelectedScripts={handleReanalyzeSelectedScripts}
@@ -3029,11 +3253,11 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   <Sparkle size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Quiz-Modus</span>
                 </Button>
-                <Button variant="outline" onClick={() => setShowStatistics(true)} size="sm" className="flex-1 sm:flex-none">
+                <Button variant="outline" onClick={() => navigate('/statistics')} size="sm" className="flex-1 sm:flex-none">
                   <ChartLine size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Statistiken</span>
                 </Button>
-                <Button variant="outline" onClick={() => setShowCostTracking(true)} size="sm" className="flex-1 sm:flex-none">
+                <Button variant="outline" onClick={() => navigate('/costs')} size="sm" className="flex-1 sm:flex-none">
                   <CurrencyDollar size={16} className="sm:mr-2 sm:w-[18px] sm:h-[18px]" />
                   <span className="hidden sm:inline">Kosten</span>
                 </Button>
@@ -3113,7 +3337,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
                   isGenerating={pipelineTasks.some(t => t.type === 'generate-tasks' && t.status === 'processing')}
                   onSolveTask={(task) => openTask(task)}
                   onStartTaskSequence={(sequence, startTaskId) => startTaskSequence(sequence, startTaskId)}
-                  onSelectModule={setSelectedModuleId}
+                  onSelectModule={(moduleId) => navigate(`/module/${moduleId}`)}
                   onEditModule={handleEditModule}
                 />
               </>
