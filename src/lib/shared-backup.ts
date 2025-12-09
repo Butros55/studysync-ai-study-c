@@ -191,16 +191,62 @@ export async function importSharedBackup(backup: StudySyncExportData): Promise<R
 export async function uploadSharedBackupToServer(apiBase: string = API_BASE_URL) {
   const exportData = await exportAllData()
   const sanitized = sanitizeBackupForSharing(exportData)
-  const response = await fetch(`${apiBase}/api/shared-backup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(sanitized),
-  })
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(text || 'Upload fehlgeschlagen')
+  const payload = JSON.stringify(sanitized)
+
+  // Keep individual requests comfortably under the Cloudflare 100MB cap.
+  const MAX_CHUNK_BYTES = 25 * 1024 * 1024
+  const encoder = new TextEncoder()
+  const data = encoder.encode(payload)
+
+  if (data.byteLength <= MAX_CHUNK_BYTES) {
+    const response = await fetch(`${apiBase}/api/shared-backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    })
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || 'Upload fehlgeschlagen')
+    }
+    return response.json()
   }
-  return response.json()
+
+  const totalChunks = Math.ceil(data.byteLength / MAX_CHUNK_BYTES)
+  const backupId = (globalThis.crypto as any)?.randomUUID?.() ||
+    Math.random().toString(36).slice(2)
+
+  let lastResponse: Response | null = null
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * MAX_CHUNK_BYTES
+    const end = Math.min(start + MAX_CHUNK_BYTES, data.byteLength)
+    const chunk = data.slice(start, end)
+
+    const response = await fetch(`${apiBase}/api/shared-backup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-Backup-Id': backupId,
+        'X-Backup-Chunk-Index': String(i),
+        'X-Backup-Total-Chunks': String(totalChunks),
+        'X-Backup-Version': sanitized.version,
+        'X-Backup-Exported-At': sanitized.exportedAt ?? '',
+      },
+      body: chunk,
+    })
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(text || `Upload fehlgeschlagen (Chunk ${i + 1}/${totalChunks})`)
+    }
+
+    lastResponse = response
+  }
+
+  if (!lastResponse) {
+    throw new Error('Upload fehlgeschlagen')
+  }
+
+  return lastResponse.json()
 }
 
 export async function fetchSharedBackupFromServer(apiBase: string = API_BASE_URL) {

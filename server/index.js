@@ -35,7 +35,10 @@ const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-Backup-Id, X-Backup-Chunk-Index, X-Backup-Total-Chunks, X-Backup-Version, X-Backup-Exported-At'
+  );
   res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24h
   
   // Handle preflight requests immediately
@@ -49,12 +52,177 @@ app.use((req, res, next) => {
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'X-Backup-Id',
+    'X-Backup-Chunk-Index',
+    'X-Backup-Total-Chunks',
+    'X-Backup-Version',
+    'X-Backup-Exported-At',
+  ],
   credentials: false,
   optionsSuccessStatus: 200
 }));
 
-// Body parsers - MUST come before routes
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SHARED_BACKUP_PATH = path.join(__dirname, "shared-backup.json");
+const SHARED_BACKUP_UPLOAD_DIR = path.join(__dirname, "shared-backup-uploads");
+
+// Shared Backup Endpoints (einfacher JSON-Store auf dem Server)
+// We put them behind a dedicated router so we can use a raw-body parser that
+// supports large uploads without exhausting memory by double-parsing.
+const sharedBackupRouter = express.Router();
+
+// Accept large JSON or binary uploads (e.g. compressed) up to JSON_LIMIT
+sharedBackupRouter.use(
+  express.raw({
+    type: ["application/json", "application/octet-stream", "text/plain", "*/*"],
+    limit: JSON_LIMIT,
+  })
+);
+
+sharedBackupRouter.get("/", async (_req, res) => {
+  try {
+    await fs.access(SHARED_BACKUP_PATH);
+    const raw = await fs.readFile(SHARED_BACKUP_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    res.json({ backup: parsed });
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return res.status(404).json({ error: "Kein Server-Backup vorhanden" });
+    }
+    console.error("[SharedBackup] read failed:", error);
+    res.status(500).json({ error: "Backup konnte nicht gelesen werden" });
+  }
+});
+
+sharedBackupRouter.post("/", async (req, res) => {
+  try {
+    const uploadId = req.header("x-backup-id");
+    const chunkIndexRaw = req.header("x-backup-chunk-index");
+    const totalChunksRaw = req.header("x-backup-total-chunks");
+    const isChunkedUpload = uploadId && chunkIndexRaw && totalChunksRaw;
+
+    const bodyBuffer = Buffer.isBuffer(req.body)
+      ? req.body
+      : typeof req.body === "string"
+        ? Buffer.from(req.body)
+        : Buffer.from(JSON.stringify(req.body ?? ""));
+
+    if (!bodyBuffer.length) {
+      return res.status(400).json({ error: "Leeres Backup-Payload" });
+    }
+
+    if (isChunkedUpload) {
+      const chunkIndex = Number(chunkIndexRaw);
+      const totalChunks = Number(totalChunksRaw);
+
+      if (
+        Number.isNaN(chunkIndex) ||
+        Number.isNaN(totalChunks) ||
+        chunkIndex < 0 ||
+        totalChunks < 1 ||
+        chunkIndex >= totalChunks
+      ) {
+        return res.status(400).json({ error: "Ungültige Chunk-Metadaten" });
+      }
+
+      await fs.mkdir(SHARED_BACKUP_UPLOAD_DIR, { recursive: true });
+      const partPath = path.join(
+        SHARED_BACKUP_UPLOAD_DIR,
+        `shared-backup-${uploadId}.part`
+      );
+
+      if (chunkIndex === 0) {
+        await fs.writeFile(partPath, bodyBuffer);
+      } else {
+        await fs.appendFile(partPath, bodyBuffer);
+      }
+
+      const isLast = chunkIndex === totalChunks - 1;
+      if (!isLast) {
+        return res.json({
+          status: "chunk-received",
+          chunkIndex,
+          totalChunks,
+        });
+      }
+
+      const raw = await fs.readFile(partPath, "utf-8");
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (error) {
+        await fs.rm(partPath, { force: true });
+        return res.status(400).json({ error: "Ungültiges JSON-Backup" });
+      }
+
+      if (!parsed?.version || !parsed?.data) {
+        await fs.rm(partPath, { force: true });
+        return res.status(400).json({ error: "Ungültiges Backup-Payload" });
+      }
+
+      const payload = {
+        ...parsed,
+        savedAt: new Date().toISOString(),
+      };
+
+      await fs.writeFile(
+        SHARED_BACKUP_PATH,
+        JSON.stringify(payload),
+        "utf-8"
+      );
+      await fs.rm(partPath, { force: true });
+
+      return res.json({
+        status: "saved",
+        version: parsed.version,
+        exportedAt: parsed.exportedAt,
+        chunks: totalChunks,
+      });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(bodyBuffer.toString("utf-8"));
+    } catch (e) {
+      return res.status(400).json({ error: "Ungültiges JSON-Backup" });
+    }
+
+    if (!parsed?.version || !parsed?.data) {
+      return res.status(400).json({ error: "Ungültiges Backup-Payload" });
+    }
+
+    const payload = {
+      ...parsed,
+      savedAt: new Date().toISOString(),
+    };
+
+    await fs.writeFile(
+      SHARED_BACKUP_PATH,
+      JSON.stringify(payload, null, 2),
+      "utf-8"
+    );
+
+    res.json({
+      status: "saved",
+      version: parsed.version,
+      exportedAt: parsed.exportedAt,
+    });
+  } catch (error) {
+    console.error("[SharedBackup] save failed:", error);
+    res.status(500).json({ error: "Backup konnte nicht gespeichert werden" });
+  }
+});
+
+app.use("/api/shared-backup", sharedBackupRouter);
+
+// Body parsers - MUST come before remaining routes
 app.use(express.json({ limit: JSON_LIMIT }));
 app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
 
@@ -81,10 +249,6 @@ app.get("/api/meta", (req, res) => {
 });
 
 app.use("/api/rooms", roomsRouter);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const SHARED_BACKUP_PATH = path.join(__dirname, "shared-backup.json");
 
 function estimateCost(model, usage) {
   const pricing = MODEL_PRICING[model] || MODEL_PRICING[FALLBACK_MODEL];
@@ -123,70 +287,6 @@ function estimateCost(model, usage) {
     },
   };
 }
-
-// Shared Backup Endpoints (einfacher JSON-Store auf dem Server)
-app.get("/api/shared-backup", async (_req, res) => {
-  try {
-    await fs.access(SHARED_BACKUP_PATH);
-    res.sendFile(SHARED_BACKUP_PATH);
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return res.status(404).json({ error: "Kein Server-Backup vorhanden" });
-    }
-    console.error("[SharedBackup] read failed:", error);
-    res.status(500).json({ error: "Backup konnte nicht gelesen werden" });
-  }
-});
-
-app.post("/api/shared-backup", async (req, res) => {
-  try {
-    // Accept body from express.json (object) or raw buffer/string
-    let rawBody = "";
-    if (Buffer.isBuffer(req.body)) {
-      rawBody = req.body.toString("utf-8");
-    } else if (typeof req.body === "string") {
-      rawBody = req.body;
-    } else if (req.body && typeof req.body === "object") {
-      // Already parsed by express.json
-      rawBody = JSON.stringify(req.body);
-    }
-
-    if (!rawBody) {
-      return res.status(400).json({ error: "Leeres Backup-Payload" });
-    }
-
-    let parsed;
-    try {
-      parsed = JSON.parse(rawBody);
-    } catch (e) {
-      return res.status(400).json({ error: "Ungültiges JSON-Backup" });
-    }
-
-    if (!parsed?.version || !parsed?.data) {
-      return res.status(400).json({ error: "Ungültiges Backup-Payload" });
-    }
-
-    const payload = {
-      ...parsed,
-      savedAt: new Date().toISOString(),
-    };
-
-    await fs.writeFile(
-      SHARED_BACKUP_PATH,
-      JSON.stringify(payload, null, 2),
-      "utf-8"
-    );
-
-    res.json({
-      status: "saved",
-      version: parsed.version,
-      exportedAt: parsed.exportedAt,
-    });
-  } catch (error) {
-    console.error("[SharedBackup] save failed:", error);
-    res.status(500).json({ error: "Backup konnte nicht gespeichert werden" });
-  }
-});
 
 // Root-Route
 app.get("/", (req, res) => {
