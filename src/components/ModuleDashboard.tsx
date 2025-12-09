@@ -163,6 +163,22 @@ export function ModuleDashboard({
   const totalTasks = tasks.length
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
   
+  // Fällige Karteikarten berechnen
+  const { dueFlashcards, upcomingFlashcards } = useMemo(() => {
+    const now = new Date()
+    const due = flashcards.filter(card => {
+      if (!card.nextReview) return true // Noch nie gelernt = fällig
+      return new Date(card.nextReview) <= now
+    })
+    const upcoming = flashcards.filter(card => {
+      if (!card.nextReview) return false
+      return new Date(card.nextReview) > now
+    }).sort((a, b) => 
+      new Date(a.nextReview!).getTime() - new Date(b.nextReview!).getTime()
+    )
+    return { dueFlashcards: due, upcomingFlashcards: upcoming }
+  }, [flashcards])
+  
   // Schwache und stale Themen
   const weakTopics = topicsData.filter(t => t.isWeak)
   const staleTopics = topicsData.filter(t => t.isStale)
@@ -332,6 +348,57 @@ export function ModuleDashboard({
                 <Button onClick={() => startTopicSequence(recommendedTopic)} className="gap-2">
                   <ArrowRight size={18} />
                   Jetzt üben
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Fällige Karteikarten - Prioritäts-Anzeige */}
+      {dueFlashcards.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-transparent">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Cards size={20} className="text-blue-500" weight="fill" />
+                Karteikarten fällig
+                <Badge variant="secondary" className="ml-2">{dueFlashcards.length}</Badge>
+              </CardTitle>
+              <CardDescription>
+                Diese Karten solltest du heute wiederholen
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                    <span className="flex items-center gap-2">
+                      <Fire size={16} className="text-red-500" weight="fill" />
+                      {dueFlashcards.length} fällig
+                    </span>
+                    {upcomingFlashcards.length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <Clock size={16} className="text-muted-foreground" />
+                        {upcomingFlashcards.length} geplant
+                      </span>
+                    )}
+                  </div>
+                  <Progress 
+                    value={flashcards.length > 0 ? ((flashcards.length - dueFlashcards.length) / flashcards.length) * 100 : 0} 
+                    className="h-2" 
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {flashcards.length - dueFlashcards.length} von {flashcards.length} Karten auf dem neuesten Stand
+                  </p>
+                </div>
+                <Button onClick={onStartFlashcardStudy} className="gap-2 bg-blue-500 hover:bg-blue-600">
+                  <Brain size={18} />
+                  Jetzt lernen
                 </Button>
               </div>
             </CardContent>

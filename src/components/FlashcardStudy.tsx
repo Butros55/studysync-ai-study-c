@@ -37,20 +37,25 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
   const progress = ((reviewedCount) / flashcards.length) * 100
 
   const handleReview = useCallback((quality: number) => {
+    if (!currentCard) return
+    
     onReview(currentCard.id, quality)
     setReviewedCount((prev) => prev + 1)
     
     // Animation direction based on quality
-    setExitDirection(quality >= 4 ? 'right' : 'left')
+    const direction = quality >= 4 ? 'right' : 'left'
+    setExitDirection(direction)
     
+    // Move to next card after animation
     setTimeout(() => {
+      setExitDirection(null)
+      setIsFlipped(false)
+      x.set(0)
+      
       if (currentIndex < flashcards.length - 1) {
         setCurrentIndex((prev) => prev + 1)
-        setIsFlipped(false)
-        x.set(0)
       }
-      setExitDirection(null)
-    }, 200)
+    }, 250)
   }, [currentCard, currentIndex, flashcards.length, onReview, x])
 
   useEffect(() => {
@@ -225,23 +230,23 @@ export function FlashcardStudy({ flashcards, onClose, onReview }: FlashcardStudy
         </motion.div>
 
         <div className="w-full max-w-2xl">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             <motion.div
               key={currentIndex}
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0, x: 100 }}
               animate={{ 
                 scale: 1, 
                 opacity: 1,
-                x: exitDirection === 'left' ? -300 : exitDirection === 'right' ? 300 : 0,
+                x: 0,
               }}
               exit={{ 
                 scale: 0.9, 
                 opacity: 0,
-                x: exitDirection === 'left' ? -300 : exitDirection === 'right' ? 300 : 0,
+                x: exitDirection === 'left' ? -400 : exitDirection === 'right' ? 400 : -200,
               }}
-              transition={{ duration: 0.2 }}
-              style={{ x: exitDirection ? undefined : x, rotate, opacity: cardOpacity }}
-              drag={isFlipped ? 'x' : false}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              style={{ x: !exitDirection ? x : undefined, rotate: !exitDirection ? rotate : undefined }}
+              drag={isFlipped && !exitDirection ? 'x' : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.7}
               onDragEnd={handleDragEnd}
