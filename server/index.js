@@ -54,81 +54,29 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// Body parsers - MUST come before routes
-app.use(express.json({ limit: JSON_LIMIT }));
-app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
-
-function resolveBaseUrl(req) {
-  const proto = req.get("x-forwarded-proto") || req.protocol;
-  const host = req.get("x-forwarded-host") || req.get("host");
-  if (!proto || !host) return "";
-  return `${proto}://${host}`;
-}
-
-app.get("/api/meta", (req, res) => {
-  const baseUrl = resolveBaseUrl(req);
-  res.json({
-    env: DEV_META_ENV || "unknown",
-    serverTime: new Date().toISOString(),
-    baseUrl,
-    service: {
-      provider: process.env.RENDER ? "render" : "unknown",
-      port: process.env.PORT,
-      host: req.get("host"),
-      forwardedProto: req.get("x-forwarded-proto"),
-    },
-  });
-});
-
-app.use("/api/rooms", roomsRouter);
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SHARED_BACKUP_PATH = path.join(__dirname, "shared-backup.json");
 
-function estimateCost(model, usage) {
-  const pricing = MODEL_PRICING[model] || MODEL_PRICING[FALLBACK_MODEL];
-  const normalizedModel = model?.replace(/-\d{4}-\d{2}-\d{2}$/, "") || model;
-  const inputTokens =
-    usage?.prompt_tokens ??
-    usage?.input_tokens ??
-    usage?.cache_read_input_tokens ??
-    0;
-  const outputTokens = usage?.completion_tokens ?? usage?.output_tokens ?? 0;
-  const cachedInputTokens = usage?.cache_read_input_tokens ?? 0;
-  const totalTokens = inputTokens + outputTokens;
-
-  const inputUsd = pricing ? inputTokens * pricing.input : undefined;
-  const outputUsd = pricing ? outputTokens * pricing.output : undefined;
-  const estimatedUsd =
-    inputUsd !== undefined || outputUsd !== undefined
-      ? (inputUsd || 0) + (outputUsd || 0)
-      : undefined;
-
-  return {
-    normalizedModel,
-    usage: {
-      inputTokens,
-      outputTokens,
-      cachedInputTokens,
-      totalTokens,
-    },
-    cost: {
-      estimatedUsd,
-      breakdown: {
-        inputUsd,
-        outputUsd,
-      },
-      pricingModelKey: pricing ? model : undefined,
-    },
-  };
-}
-
 // Shared Backup Endpoints (einfacher JSON-Store auf dem Server)
-app.get("/api/shared-backup", async (_req, res) => {
+// We put them behind a dedicated router so we can use a raw-body parser that
+// supports large uploads without exhausting memory by double-parsing.
+const sharedBackupRouter = express.Router();
+
+// Accept large JSON or binary uploads (e.g. compressed) up to JSON_LIMIT
+sharedBackupRouter.use(
+  express.raw({
+    type: ["application/json", "application/octet-stream", "text/plain", "*/*"],
+    limit: JSON_LIMIT,
+  })
+);
+
+sharedBackupRouter.get("/", async (_req, res) => {
   try {
     await fs.access(SHARED_BACKUP_PATH);
-    res.sendFile(SHARED_BACKUP_PATH);
+    const raw = await fs.readFile(SHARED_BACKUP_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    res.json({ backup: parsed });
   } catch (error) {
     if (error?.code === "ENOENT") {
       return res.status(404).json({ error: "Kein Server-Backup vorhanden" });
@@ -138,16 +86,15 @@ app.get("/api/shared-backup", async (_req, res) => {
   }
 });
 
-app.post("/api/shared-backup", async (req, res) => {
+sharedBackupRouter.post("/", async (req, res) => {
   try {
-    // Accept body from express.json (object) or raw buffer/string
+    // Accept body from raw parser (Buffer) or pre-parsed object/string
     let rawBody = "";
     if (Buffer.isBuffer(req.body)) {
       rawBody = req.body.toString("utf-8");
     } else if (typeof req.body === "string") {
       rawBody = req.body;
     } else if (req.body && typeof req.body === "object") {
-      // Already parsed by express.json
       rawBody = JSON.stringify(req.body);
     }
 
@@ -187,6 +134,74 @@ app.post("/api/shared-backup", async (req, res) => {
     res.status(500).json({ error: "Backup konnte nicht gespeichert werden" });
   }
 });
+
+app.use("/api/shared-backup", sharedBackupRouter);
+
+// Body parsers - MUST come before remaining routes
+app.use(express.json({ limit: JSON_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
+
+function resolveBaseUrl(req) {
+  const proto = req.get("x-forwarded-proto") || req.protocol;
+  const host = req.get("x-forwarded-host") || req.get("host");
+  if (!proto || !host) return "";
+  return `${proto}://${host}`;
+}
+
+app.get("/api/meta", (req, res) => {
+  const baseUrl = resolveBaseUrl(req);
+  res.json({
+    env: DEV_META_ENV || "unknown",
+    serverTime: new Date().toISOString(),
+    baseUrl,
+    service: {
+      provider: process.env.RENDER ? "render" : "unknown",
+      port: process.env.PORT,
+      host: req.get("host"),
+      forwardedProto: req.get("x-forwarded-proto"),
+    },
+  });
+});
+
+app.use("/api/rooms", roomsRouter);
+
+function estimateCost(model, usage) {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING[FALLBACK_MODEL];
+  const normalizedModel = model?.replace(/-\d{4}-\d{2}-\d{2}$/, "") || model;
+  const inputTokens =
+    usage?.prompt_tokens ??
+    usage?.input_tokens ??
+    usage?.cache_read_input_tokens ??
+    0;
+  const outputTokens = usage?.completion_tokens ?? usage?.output_tokens ?? 0;
+  const cachedInputTokens = usage?.cache_read_input_tokens ?? 0;
+  const totalTokens = inputTokens + outputTokens;
+
+  const inputUsd = pricing ? inputTokens * pricing.input : undefined;
+  const outputUsd = pricing ? outputTokens * pricing.output : undefined;
+  const estimatedUsd =
+    inputUsd !== undefined || outputUsd !== undefined
+      ? (inputUsd || 0) + (outputUsd || 0)
+      : undefined;
+
+  return {
+    normalizedModel,
+    usage: {
+      inputTokens,
+      outputTokens,
+      cachedInputTokens,
+      totalTokens,
+    },
+    cost: {
+      estimatedUsd,
+      breakdown: {
+        inputUsd,
+        outputUsd,
+      },
+      pricingModelKey: pricing ? model : undefined,
+    },
+  };
+}
 
 // Root-Route
 app.get("/", (req, res) => {
