@@ -2142,23 +2142,35 @@ const handleDeleteTask = async (taskId: string) => {
     if (!script) return
 
     const taskId = generateId()
-    
-    const execute = async () => {
-      setPipelineTasks((current) => [
+    const taskName = script.name
+
+    // Pre-register task so the queue size is correct before execution starts
+    setPipelineTasks((current) => {
+      if (current.some((t) => t.id === taskId)) return current
+      return [
         ...current,
         {
           id: taskId,
           type: 'generate-flashcards',
-          name: script.name,
+          name: taskName,
           progress: 0,
-          status: 'processing',
+          status: 'pending',
           timestamp: Date.now(),
         },
-      ])
+      ]
+    })
+    
+    const execute = async () => {
+      // Switch the pre-registered task to processing when it actually runs
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'processing', timestamp: Date.now() } : t
+        )
+      )
 
       try {
         setPipelineTasks((current) =>
-          current.map((t) => (t.id === taskId ? { ...t, progress: 10 } : t))
+          current.map((t) => (t.id === taskId ? { ...t, progress: 5 } : t))
         )
 
         await new Promise(resolve => setTimeout(resolve, 100))
@@ -2258,19 +2270,31 @@ Beispielformat:
     if (!note) return
 
     const taskId = generateId()
-    
-    const execute = async () => {
-      setPipelineTasks((current) => [
+    const taskName = `Notiz vom ${new Date(note.generatedAt).toLocaleDateString('de-DE')}`
+
+    // Pre-register task so the queue size is correct before execution starts
+    setPipelineTasks((current) => {
+      if (current.some((t) => t.id === taskId)) return current
+      return [
         ...current,
         {
           id: taskId,
           type: 'generate-flashcards',
-          name: `Notiz vom ${new Date(note.generatedAt).toLocaleDateString('de-DE')}`,
+          name: taskName,
           progress: 0,
-          status: 'processing',
+          status: 'pending',
           timestamp: Date.now(),
         },
-      ])
+      ]
+    })
+    
+    const execute = async () => {
+      // Switch the pre-registered task to processing when it actually runs
+      setPipelineTasks((current) =>
+        current.map((t) =>
+          t.id === taskId ? { ...t, status: 'processing', timestamp: Date.now() } : t
+        )
+      )
 
       try {
         setPipelineTasks((current) =>
