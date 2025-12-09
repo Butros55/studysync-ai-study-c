@@ -1,5 +1,6 @@
 import { TokenUsage, CostSummary } from './types'
 import { MODEL_PRICING, FALLBACK_MODEL, calculateCost as sharedCalculateCost } from '../../shared/model-pricing.js'
+import { normalizeModelName } from './model-pricing'
 
 export function calculateCost(
   model: string,

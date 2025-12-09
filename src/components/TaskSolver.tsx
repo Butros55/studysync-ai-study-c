@@ -470,6 +470,7 @@ export function TaskSolver({
                         // Speichere Strokes bei jeder Änderung
                         onTaskUpdate?.({ savedStrokes: strokes })
                       }}
+                      formulaSheets={formulaSheets}
                     />
                     {isSubmitting && (
                       <div className="absolute inset-0 bg-background/60 rounded-lg pointer-events-none z-10" />

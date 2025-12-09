@@ -6,7 +6,8 @@ import { useDrawingPreferences } from '@/hooks/use-drawing-preferences'
 import { Button } from '@/components/ui/button'
 import { X, PaperPlaneTilt, ArrowRight, Eraser, CaretDown, CaretUp } from '@phosphor-icons/react'
 import { FullscreenBottomPanel } from './FullscreenBottomPanel'
-import { TaskFeedback, Task } from '@/lib/types'
+import { FormulaSheetPanel } from './FormulaSheetPanel'
+import { TaskFeedback, Task, Script } from '@/lib/types'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -52,6 +53,8 @@ interface AdvancedDrawingCanvasProps {
     width: number
     tool: 'pen' | 'eraser'
   }>
+  /** Formelsammlungen für Fullscreen-Modus */
+  formulaSheets?: Script[]
 }
 
 export function AdvancedDrawingCanvas({
@@ -71,6 +74,7 @@ export function AdvancedDrawingCanvas({
   examMode = false,
   onStrokesChange,
   initialStrokes,
+  formulaSheets,
 }: AdvancedDrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1322,6 +1326,11 @@ export function AdvancedDrawingCanvas({
             Touch: Pan/Zoom | Stift: Zeichnen
           </span>
         </div>
+      )}
+
+      {/* Formelsammlung-Panel im Fullscreen-Modus */}
+      {isFullscreen && formulaSheets && formulaSheets.length > 0 && (
+        <FormulaSheetPanel formulaSheets={formulaSheets} />
       )}
 
       {/* Fullscreen Bottom Panel mit Tabs für Feedback/Lösung */}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { CaretLeft, CaretRight } from '@phosphor-icons/react'
@@ -6,17 +6,32 @@ import { Button } from './ui/button'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
-interface PDFViewerProps {
-  fileData: string
+// Globaler Cache für geladene PDFs und gerenderte Seiten
+const pdfCache = new Map<string, pdfjsLib.PDFDocumentProxy>()
+const pageImageCache = new Map<string, string>()
+
+function getCacheKey(fileData: string): string {
+  // Verwende Hash der ersten 1000 Zeichen als Key für Performance
+  return fileData.slice(0, 1000)
 }
 
-export function PDFViewer({ fileData }: PDFViewerProps) {
+interface PDFViewerProps {
+  fileData: string
+  /** Höhere Render-Qualität für bessere Lesbarkeit */
+  highQuality?: boolean
+}
+
+export function PDFViewer({ fileData, highQuality = true }: PDFViewerProps) {
   const [pdf, setPdf] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageImages, setPageImages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [longLoad, setLongLoad] = useState(false)
+  
+  const cacheKey = useMemo(() => getCacheKey(fileData), [fileData])
+  // Höhere Scale für bessere Lesbarkeit (2.5 für highQuality, 1.5 für Standard)
+  const renderScale = highQuality ? 2.5 : 1.5
 
   useEffect(() => {
     loadPDF()
@@ -42,6 +57,21 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
       setLoading(true)
       setError(null)
       
+      // Check Cache first
+      const cachedPdf = pdfCache.get(cacheKey)
+      if (cachedPdf) {
+        setPdf(cachedPdf)
+        // Lade gecachte Seiten-Bilder
+        const images: string[] = []
+        for (let i = 1; i <= cachedPdf.numPages; i++) {
+          const pageKey = `${cacheKey}-page-${i}-scale-${renderScale}`
+          images.push(pageImageCache.get(pageKey) || '')
+        }
+        setPageImages(images)
+        setLoading(false)
+        return
+      }
+      
       const base64Data = fileData.split(',')[1]
       const binaryString = atob(base64Data)
       const bytes = new Uint8Array(binaryString.length)
@@ -50,11 +80,16 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
       }
 
       const loadedPdf = await pdfjsLib.getDocument({ data: bytes }).promise
+      
+      // Cache the PDF
+      pdfCache.set(cacheKey, loadedPdf)
       setPdf(loadedPdf)
       
       const images: string[] = []
       for (let i = 1; i <= loadedPdf.numPages; i++) {
-        images.push('')
+        // Check if page is already cached
+        const pageKey = `${cacheKey}-page-${i}-scale-${renderScale}`
+        images.push(pageImageCache.get(pageKey) || '')
       }
       setPageImages(images)
       
@@ -67,11 +102,27 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
   }
 
   const renderPage = async (pageNumber: number) => {
-    if (!pdf || pageImages[pageNumber - 1]) return
+    if (!pdf) return
+    
+    const pageKey = `${cacheKey}-page-${pageNumber}-scale-${renderScale}`
+    
+    // Check cache first
+    const cachedImage = pageImageCache.get(pageKey)
+    if (cachedImage && pageImages[pageNumber - 1] === cachedImage) {
+      return // Already have this image
+    }
+    if (cachedImage) {
+      setPageImages((prev) => {
+        const newImages = [...prev]
+        newImages[pageNumber - 1] = cachedImage
+        return newImages
+      })
+      return
+    }
 
     try {
       const page = await pdf.getPage(pageNumber)
-      const viewport = page.getViewport({ scale: 1.5 })
+      const viewport = page.getViewport({ scale: renderScale })
 
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
@@ -85,7 +136,11 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
         viewport: viewport,
       } as any).promise
 
-      const imageUrl = canvas.toDataURL()
+      const imageUrl = canvas.toDataURL('image/png', 1.0)
+      
+      // Cache the rendered page
+      pageImageCache.set(pageKey, imageUrl)
+      
       setPageImages((prev) => {
         const newImages = [...prev]
         newImages[pageNumber - 1] = imageUrl
@@ -127,6 +182,7 @@ export function PDFViewer({ fileData }: PDFViewerProps) {
             src={pageImages[currentPage - 1]}
             alt={`Page ${currentPage}`}
             className="w-full h-auto"
+            draggable={false}
           />
         ) : (
           <div className={`w-full ${longLoad ? 'h-[460px]' : 'h-[620px]'} rounded-lg border border-muted bg-gradient-to-b from-sky-50 to-slate-100 flex items-center justify-center transition-all duration-300`}>

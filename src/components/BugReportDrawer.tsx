@@ -46,7 +46,7 @@ export function BugReportDrawer({ open, onOpenChange, focusLogId }: BugReportDra
         reproductionSteps: steps,
       })
       await navigator.clipboard.writeText(result.markdown)
-      toast.success('Bug Report kopiert – jetzt in GitHub/Email einfügen')
+      toast.success('Bug Report kopiert – jetzt in GitHub/Email einfügen', { duration: 6000 })
       return result
     } catch (e) {
       console.error('Bug report failed', e)
