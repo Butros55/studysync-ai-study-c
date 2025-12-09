@@ -71,7 +71,6 @@ app.use(cors({
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SHARED_BACKUP_PATH = path.join(__dirname, "shared-backup.json");
-const SHARED_BACKUP_UPLOAD_DIR = path.join(__dirname, "shared-backup-uploads");
 
 // Shared Backup Endpoints (einfacher JSON-Store auf dem Server)
 // We put them behind a dedicated router so we can use a raw-body parser that
@@ -103,93 +102,23 @@ sharedBackupRouter.get("/", async (_req, res) => {
 
 sharedBackupRouter.post("/", async (req, res) => {
   try {
-    const uploadId = req.header("x-backup-id");
-    const chunkIndexRaw = req.header("x-backup-chunk-index");
-    const totalChunksRaw = req.header("x-backup-total-chunks");
-    const isChunkedUpload = uploadId && chunkIndexRaw && totalChunksRaw;
-
-    const bodyBuffer = Buffer.isBuffer(req.body)
-      ? req.body
-      : typeof req.body === "string"
-        ? Buffer.from(req.body)
-        : Buffer.from(JSON.stringify(req.body ?? ""));
-
-    if (!bodyBuffer.length) {
-      return res.status(400).json({ error: "Leeres Backup-Payload" });
+    // Accept body from raw parser (Buffer) or pre-parsed object/string
+    let rawBody = "";
+    if (Buffer.isBuffer(req.body)) {
+      rawBody = req.body.toString("utf-8");
+    } else if (typeof req.body === "string") {
+      rawBody = req.body;
+    } else if (req.body && typeof req.body === "object") {
+      rawBody = JSON.stringify(req.body);
     }
 
-    if (isChunkedUpload) {
-      const chunkIndex = Number(chunkIndexRaw);
-      const totalChunks = Number(totalChunksRaw);
-
-      if (
-        Number.isNaN(chunkIndex) ||
-        Number.isNaN(totalChunks) ||
-        chunkIndex < 0 ||
-        totalChunks < 1 ||
-        chunkIndex >= totalChunks
-      ) {
-        return res.status(400).json({ error: "Ungültige Chunk-Metadaten" });
-      }
-
-      await fs.mkdir(SHARED_BACKUP_UPLOAD_DIR, { recursive: true });
-      const partPath = path.join(
-        SHARED_BACKUP_UPLOAD_DIR,
-        `shared-backup-${uploadId}.part`
-      );
-
-      if (chunkIndex === 0) {
-        await fs.writeFile(partPath, bodyBuffer);
-      } else {
-        await fs.appendFile(partPath, bodyBuffer);
-      }
-
-      const isLast = chunkIndex === totalChunks - 1;
-      if (!isLast) {
-        return res.json({
-          status: "chunk-received",
-          chunkIndex,
-          totalChunks,
-        });
-      }
-
-      const raw = await fs.readFile(partPath, "utf-8");
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (error) {
-        await fs.rm(partPath, { force: true });
-        return res.status(400).json({ error: "Ungültiges JSON-Backup" });
-      }
-
-      if (!parsed?.version || !parsed?.data) {
-        await fs.rm(partPath, { force: true });
-        return res.status(400).json({ error: "Ungültiges Backup-Payload" });
-      }
-
-      const payload = {
-        ...parsed,
-        savedAt: new Date().toISOString(),
-      };
-
-      await fs.writeFile(
-        SHARED_BACKUP_PATH,
-        JSON.stringify(payload),
-        "utf-8"
-      );
-      await fs.rm(partPath, { force: true });
-
-      return res.json({
-        status: "saved",
-        version: parsed.version,
-        exportedAt: parsed.exportedAt,
-        chunks: totalChunks,
-      });
+    if (!rawBody) {
+      return res.status(400).json({ error: "Leeres Backup-Payload" });
     }
 
     let parsed;
     try {
-      parsed = JSON.parse(bodyBuffer.toString("utf-8"));
+      parsed = JSON.parse(rawBody);
     } catch (e) {
       return res.status(400).json({ error: "Ungültiges JSON-Backup" });
     }
