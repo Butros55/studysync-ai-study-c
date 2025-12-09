@@ -14,6 +14,7 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { useBulkSelection } from '@/hooks/use-bulk-selection'
+import { cn } from '@/lib/utils'
 
 interface FlashcardsTabProps {
   flashcards: Flashcard[]
@@ -182,11 +183,24 @@ export function FlashcardsTab({
           const dueLabel = card.nextReview
             ? formatDistanceToNow(new Date(card.nextReview), { addSuffix: true, locale: de })
             : 'sofort'
+          
+          // Lernstatus basierend auf ease und repetitions berechnen
+          const repetitions = card.repetitions || 0
+          const ease = card.ease || 2.5
+          const isNew = repetitions === 0
+          const isStruggling = ease < 2.0 // Niedrige ease = oft falsch
+          const isMastered = ease >= 2.8 && repetitions >= 3 // Hohe ease + viele Wiederholungen
+          const isLearning = !isNew && !isStruggling && !isMastered
 
           return (
             <Card
               key={card.id}
-              className={`p-5 border transition-shadow ${isDue ? 'bg-primary/5 border-primary/30 shadow-sm' : 'bg-card shadow-sm hover:shadow-md'}`}
+              className={cn(
+                'p-5 border transition-shadow',
+                isDue ? 'bg-primary/5 border-primary/30 shadow-sm' : 'bg-card shadow-sm hover:shadow-md',
+                isStruggling && 'border-l-4 border-l-red-500',
+                isMastered && 'border-l-4 border-l-green-500'
+              )}
             >
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -200,6 +214,28 @@ export function FlashcardsTab({
                       {isDue ? 'Faellig' : 'Geplant'}
                     </Badge>
                     <span className="text-xs text-muted-foreground">Review {dueLabel}</span>
+                    
+                    {/* Lernstatus-Indikator */}
+                    {isNew && (
+                      <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/30">
+                        Neu
+                      </Badge>
+                    )}
+                    {isStruggling && (
+                      <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 border-red-500/30">
+                        Schwierig
+                      </Badge>
+                    )}
+                    {isMastered && (
+                      <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-600 border-green-500/30">
+                        Gemeistert
+                      </Badge>
+                    )}
+                    {isLearning && repetitions > 0 && (
+                      <Badge variant="outline" className="text-[10px] bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                        Lernend ({repetitions}x)
+                      </Badge>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <Badge variant="outline" className="text-[11px]">Front</Badge>
