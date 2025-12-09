@@ -30,18 +30,33 @@ const PORT = process.env.PORT || 3001;
 const JSON_LIMIT = process.env.JSON_LIMIT || "600mb";
 const DEV_META_ENV = process.env.NODE_ENV || "unknown";
 
-// CORS: allow all origins to avoid client-side blocks (GitHub Pages etc.)
-const corsOptions = {
+// CORS: Manually set headers on EVERY response to ensure cross-origin works
+// This runs before any other middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24h
+  
+  // Handle preflight requests immediately
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// Also use cors middleware as backup
+app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   credentials: false,
-  optionsSuccessStatus: 200,
-  preflightContinue: false
-};
+  optionsSuccessStatus: 200
+}));
 
-// CORS middleware handles preflight (OPTIONS) requests automatically
-app.use(cors(corsOptions));
+// Body parsers - MUST come before routes
+app.use(express.json({ limit: JSON_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
 
 function resolveBaseUrl(req) {
   const proto = req.get("x-forwarded-proto") || req.protocol;
@@ -65,8 +80,6 @@ app.get("/api/meta", (req, res) => {
   });
 });
 
-app.use(express.json({ limit: JSON_LIMIT }));
-app.use(express.urlencoded({ extended: true, limit: JSON_LIMIT }));
 app.use("/api/rooms", roomsRouter);
 
 const __filename = fileURLToPath(import.meta.url);
