@@ -280,6 +280,7 @@ export function ModuleView({
               onSolveTask={onSolveTask}
               onDeleteTask={onDeleteTask}
               onBulkDeleteTasks={onBulkDeleteTasks}
+              onGenerateAllTasks={onGenerateAllTasks}
             />
           </TabsContent>
         </Tabs>

@@ -324,6 +324,49 @@ export function clearCompletedActions(type: AIActionType) {
 }
 
 /**
+ * Eine einzelne Aktion abbrechen (aus Queue entfernen)
+ */
+export function cancelAction(actionId: string): boolean {
+  let found = false
+  
+  const newStacks = Object.fromEntries(
+    Object.entries(state.stacks).map(([type, actions]) => [
+      type,
+      actions.filter(action => {
+        if (action.id === actionId) {
+          found = true
+          return false // Entfernen
+        }
+        return true
+      })
+    ])
+  ) as Record<AIActionType, AIAction[]>
+  
+  if (found) {
+    state = { ...state, stacks: newStacks }
+    saveState()
+    notifyListeners()
+  }
+  
+  return found
+}
+
+/**
+ * Alle Aktionen eines Stack-Typs abbrechen
+ */
+export function cancelAllActions(type: AIActionType) {
+  state = {
+    ...state,
+    stacks: {
+      ...state.stacks,
+      [type]: [],
+    },
+  }
+  saveState()
+  notifyListeners()
+}
+
+/**
  * Aktiven Stack setzen
  */
 export function setActiveStack(type: AIActionType | null) {

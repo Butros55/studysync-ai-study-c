@@ -1361,6 +1361,13 @@ WICHTIG - Aufgaben sollen KURZ und PRÃ„ZISE sein:
 - medium = 3-5 Minuten, mittlere Interpretationsaufgaben  
 - hard = 5-10 Minuten, maximal 2-3 Teilaufgaben
 
+STRIKT VERBOTEN - Keine Nummerierung im Aufgabentext:
+- KEINE "1.", "2.", "3." vor der Aufgabe oder als Prefix
+- KEINE rÃ¶mischen Ziffern (I., II., III.)
+- Teilaufgaben NUR mit Kleinbuchstaben: a), b), c), d)
+- Die Aufgabe beginnt DIREKT mit dem Text, NICHT mit einer Nummer
+- Der Aufgabentext beginnt NIEMALS mit einer Zahl gefolgt von Punkt (z.B. "2." oder "3.")
+
 Variation: Mische kurze Berechnungen, VerstÃ¤ndnisfragen und ab und zu komplexere Aufgaben.
 
 ${contentSection}
@@ -1383,7 +1390,7 @@ ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 Regeln:
 - Fragen in Markdown formatieren (### fÃ¼r Titel, - fÃ¼r Listen)
 - Keine TextwÃ¼sten - maximal 3-4 SÃ¤tze pro Aufgabe
-- Teilaufgaben als a), b), c) formatieren
+- Teilaufgaben als a), b), c) formatieren - NIEMALS mit Zahlen wie 1., 2., 3.
 - Alles auf DEUTSCH
 - Nutze die analysierten Themen, Definitionen und Formeln aus dem Kontext`
 
@@ -1812,54 +1819,57 @@ Gib deine Antwort als JSON zurueck:
     openTask(startTask, uniqueSequence, startTask.id)
   }
 
+  const handlePrevTask = () => {
+    if (!activeTask) return
+
+    if (taskSequence && taskSequence.length > 0 && activeSequenceIndex !== null) {
+      const syncedSequence = taskSequence.map(seqTask => tasks?.find(t => t.id === seqTask.id) || seqTask)
+      
+      // Finde die vorherige Aufgabe (auch wenn schon erledigt)
+      if (activeSequenceIndex > 0) {
+        const prevTask = syncedSequence[activeSequenceIndex - 1]
+        setTaskSequence(syncedSequence)
+        setActiveSequenceIndex(activeSequenceIndex - 1)
+        setActiveTask(prevTask)
+        setTaskFeedback(null)
+        return
+      }
+      return
+    }
+
+    // Ohne Sequenz: Einfach zur vorherigen in der Liste
+    const currentIndex = moduleTasks.findIndex((t) => t.id === activeTask.id)
+    if (currentIndex > 0) {
+      const prevTask = moduleTasks[currentIndex - 1]
+      setActiveTask(prevTask)
+      setTaskFeedback(null)
+    }
+  }
+
   const handleNextTask = () => {
     if (!activeTask) return
 
     if (taskSequence && taskSequence.length > 0 && activeSequenceIndex !== null) {
       const syncedSequence = taskSequence.map(seqTask => tasks?.find(t => t.id === seqTask.id) || seqTask)
 
-      const nextInSequence = syncedSequence.find((t, idx) => idx > activeSequenceIndex && !t.completed)
-
-      if (nextInSequence) {
+      // Einfach zur nächsten Aufgabe in der Sequenz (auch wenn schon erledigt)
+      if (activeSequenceIndex < syncedSequence.length - 1) {
+        const nextTask = syncedSequence[activeSequenceIndex + 1]
         setTaskSequence(syncedSequence)
-        setActiveSequenceIndex(syncedSequence.findIndex(t => t.id === nextInSequence.id))
-        setActiveTask(nextInSequence)
+        setActiveSequenceIndex(activeSequenceIndex + 1)
+        setActiveTask(nextTask)
         setTaskFeedback(null)
         return
       }
-
-      const remaining = syncedSequence.find(t => !t.completed && t.id !== activeTask.id)
-
-      if (remaining) {
-        setTaskSequence(syncedSequence)
-        setActiveSequenceIndex(syncedSequence.findIndex(t => t.id === remaining.id))
-        setActiveTask(remaining)
-        setTaskFeedback(null)
-        return
-      }
-
-      setTaskSequence(null)
-      setActiveSequenceIndex(null)
-      setActiveTask(null)
-      setTaskFeedback(null)
-      toast.success('Alle Aufgaben im Block abgeschlossen! ðŸŽ‰')
       return
     }
 
+    // Ohne Sequenz: Einfach zur nächsten in der Liste
     const currentIndex = moduleTasks.findIndex((t) => t.id === activeTask.id)
-    const incompleteTasks = moduleTasks.filter((t) => !t.completed)
-    const nextTask = incompleteTasks.find((t) => {
-      const taskIndex = moduleTasks.indexOf(t)
-      return taskIndex > currentIndex
-    })
-
-    if (nextTask) {
+    if (currentIndex < moduleTasks.length - 1) {
+      const nextTask = moduleTasks[currentIndex + 1]
       setActiveTask(nextTask)
       setTaskFeedback(null)
-    } else {
-      setActiveTask(null)
-      setTaskFeedback(null)
-      toast.success('Alle Aufgaben abgeschlossen! Sehr gut!')
     }
   }
 
@@ -2175,26 +2185,49 @@ const handleDeleteTask = async (taskId: string) => {
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten. Analysiere den folgenden Inhalt und erstelle daraus Karteikarten.
+        // ============================================================================
+        // KARTEIKARTEN-PROMPT (separat von Task-Generation und Prüfungs-Generation!)
+        // ============================================================================
+        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten (Flashcards).
+
+WICHTIG - KARTEIKARTEN-REGELN:
+1. Karteikarten sind zum SCHNELLEN Lernen - Antworten müssen KURZ und PRÄGNANT sein!
+2. MAXIMALE Antwortlänge: 3-5 Zeilen (ca. 50-100 Wörter)
+3. Nutze Stichpunkte statt Fließtext
+4. Bei Formeln: Nur die Formel + kurze Variablenerklärung
+5. Bei Definitionen: Nur den Kern, keine ausschweifenden Erklärungen
+6. KEINE langen Beispiele oder Herleitungen - das ist keine Aufgabe!
 
 Inhalt (${script.name}):
 ${script.content.substring(0, 15000)}${script.content.length > 15000 ? '\n\n[... weitere Inhalte gekürzt ...]' : ''}
 
-Erstelle 8-15 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthält. Jede Karteikarte muss diese exakten Felder haben:
-- front: Die Frage oder das Konzept (kurz und prägnant, AUF DEUTSCH) (string)
-- back: Die Antwort oder Erklärung (klar und vollständig, AUF DEUTSCH) (string)
+Erstelle 8-15 Karteikarten als JSON-Objekt:
 
-Erstelle Karten, die Schlüsselkonzepte, Definitionen, Formeln und wichtige Zusammenhänge abdecken.
+STILREGELN FÜR KARTEIKARTEN:
+- Vorderseite: Klare, kurze Frage oder Begriff (max. 1 Zeile)
+- Rückseite: Knackige Antwort (max. 3-5 Zeilen/Stichpunkte)
+- Jede Karte testet EINE Sache (nicht mehrere vermischen)
+- Nutze \\n für Zeilenumbrüche, - für Aufzählungen
 
-Beispielformat:
+BEISPIELE FÜR GUTE KARTEIKARTEN:
 {
   "flashcards": [
     {
-      "front": "Was ist die Formel für die Kreisfläche?",
-      "back": "A = π × r²\\n\\nDabei ist:\\n- A = Fläche\\n- r = Radius\\n- π ≈ 3,14159"
+      "front": "Was ist ein Bit?",
+      "back": "- Kleinste Informationseinheit\\n- Zwei Zustände: 0 oder 1\\n- 8 Bit = 1 Byte"
+    },
+    {
+      "front": "Formel: Kreisfläche",
+      "back": "A = π × r²\\n\\nr = Radius"
+    },
+    {
+      "front": "Was ist der Unterschied zwischen Stack und Heap?",
+      "back": "Stack: Automatisch, LIFO, schnell\\nHeap: Manuell, beliebige Größe, langsamer"
     }
   ]
-}`
+}
+
+Gib NUR das JSON zurück.`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -2303,26 +2336,40 @@ Beispielformat:
 
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten. Analysiere die folgenden Notizen und erstelle daraus Karteikarten.
+        // ============================================================================
+        // KARTEIKARTEN-PROMPT für Notizen (separat von Task-Generation!)
+        // ============================================================================
+        const prompt = `Du bist ein Experte für das Erstellen von Lernkarten (Flashcards).
+
+WICHTIG - KARTEIKARTEN-REGELN:
+1. Karteikarten sind zum SCHNELLEN Lernen - Antworten müssen KURZ und PRÄGNANT sein!
+2. MAXIMALE Antwortlänge: 3-5 Zeilen (ca. 50-100 Wörter)
+3. Nutze Stichpunkte statt Fließtext
+4. Bei Formeln: Nur die Formel + kurze Variablenerklärung
+5. Bei Definitionen: Nur den Kern, keine ausschweifenden Erklärungen
 
 Notizen:
 ${note.content}
 
-Erstelle 5-10 Karteikarten als JSON-Objekt mit einer einzelnen Eigenschaft "flashcards", die ein Array von Karteikarten-Objekten enthält. Jede Karteikarte muss diese exakten Felder haben:
-- front: Die Frage oder das Konzept (kurz und prägnant, AUF DEUTSCH) (string)
-- back: Die Antwort oder Erklärung (klar und vollständig, AUF DEUTSCH) (string)
+Erstelle 5-10 Karteikarten als JSON-Objekt:
 
-Erstelle Karten, die Schlüsselkonzepte, Definitionen, Formeln und wichtige Zusammenhänge abdecken.
+STILREGELN FÜR KARTEIKARTEN:
+- Vorderseite: Klare, kurze Frage oder Begriff (max. 1 Zeile)
+- Rückseite: Knackige Antwort (max. 3-5 Zeilen/Stichpunkte)
+- Jede Karte testet EINE Sache
+- Nutze \\n für Zeilenumbrüche, - für Aufzählungen
 
-Beispielformat:
+BEISPIEL:
 {
   "flashcards": [
     {
-      "front": "Was ist die Formel für die Kreisfläche?",
-      "back": "A = π × r²\\n\\nDabei ist:\\n- A = Fläche\\n- r = Radius\\n- π ≈ 3,14159"
+      "front": "Was ist ein Bit?",
+      "back": "- Kleinste Informationseinheit\\n- Zwei Zustände: 0 oder 1\\n- 8 Bit = 1 Byte"
     }
   ]
-}`
+}
+
+Gib NUR das JSON zurück.`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
@@ -2425,10 +2472,10 @@ Beispielformat:
   const handleDeleteFlashcard = async (flashcardId: string) => {
     try {
       await removeFlashcard(flashcardId)
-      toast.success('Karteikarte gelÃ¶scht')
+      toast.success('Karteikarte gelöscht')
     } catch (error) {
-      console.error('Fehler beim LÃ¶schen:', error)
-      toast.error('Fehler beim LÃ¶schen der Karteikarte')
+      console.error('Fehler beim Löschen:', error)
+      toast.error('Fehler beim Löschen der Karteikarte')
     }
   }
 
@@ -2490,7 +2537,7 @@ Beispielformat:
       await Promise.all(ids.map((id) => removeTask(id)))
       toast.success(`${ids.length} Aufgaben gelÃ¶scht`)
     } catch (error) {
-      console.error('Fehler beim Bulk-LÃ¶schen der Aufgaben:', error)
+      console.error('Fehler beim Bulk-Löschen der Aufgaben:', error)
       toast.error('Fehler beim LÃ¶schen der Aufgaben')
     }
   }
@@ -2498,10 +2545,10 @@ Beispielformat:
   const handleBulkDeleteFlashcards = async (ids: string[]) => {
     try {
       await Promise.all(ids.map((id) => removeFlashcard(id)))
-      toast.success(`${ids.length} Karteikarten gelÃ¶scht`)
+      toast.success(`${ids.length} Karteikarten gelöscht`)
     } catch (error) {
-      console.error('Fehler beim Bulk-LÃ¶schen der Karteikarten:', error)
-      toast.error('Fehler beim LÃ¶schen der Karteikarten')
+      console.error('Fehler beim Bulk-Löschen der Karteikarten:', error)
+      toast.error('Fehler beim Löschen der Karteikarten')
     }
   }
 
@@ -2883,9 +2930,6 @@ Gib deine Antwort als JSON zurÃ¼ck:
   }
 
   if (activeTask) {
-    const hasNextTask =
-      (taskSequence && taskSequence.some(t => !t.completed && t.id !== activeTask.id)) ||
-      moduleTasks.filter((t) => !t.completed && t.id !== activeTask.id).length > 0
     const isStudyRoomTask = !!studyRoomSolveContext && studyRoomSolveContext.taskId === activeTask.id
     const hudRound = isStudyRoomTask ? studyRoom?.currentRound : null
     const hudData = hudRound && studyRoom ? {
@@ -2900,6 +2944,30 @@ Gib deine Antwort als JSON zurÃ¼ck:
       lockCountdownStartAt: hudRound.lockCountdownStartAt,
     } : undefined
 
+    // Berechne Task-Index und Gesamtanzahl für Navigation
+    const getTaskNavigation = () => {
+      if (isStudyRoomTask) return { taskIndex: undefined, totalTasks: undefined, hasPrev: false, hasNext: false }
+      
+      if (taskSequence && taskSequence.length > 0 && activeSequenceIndex !== null) {
+        return {
+          taskIndex: activeSequenceIndex,
+          totalTasks: taskSequence.length,
+          hasPrev: activeSequenceIndex > 0,
+          hasNext: activeSequenceIndex < taskSequence.length - 1
+        }
+      }
+      
+      const currentIndex = moduleTasks.findIndex((t) => t.id === activeTask.id)
+      return {
+        taskIndex: currentIndex >= 0 ? currentIndex : undefined,
+        totalTasks: moduleTasks.length,
+        hasPrev: currentIndex > 0,
+        hasNext: currentIndex >= 0 && currentIndex < moduleTasks.length - 1
+      }
+    }
+    
+    const { taskIndex, totalTasks, hasPrev, hasNext } = getTaskNavigation()
+
     return (
       <>
         {BackgroundExamGenerator}
@@ -2912,16 +2980,15 @@ Gib deine Antwort als JSON zurÃ¼ck:
             setTaskSequence(null)
             setActiveSequenceIndex(null)
             setStudyRoomSolveContext(null)
-            // Navigiere zurück zur Modul-Ansicht oder Home
-            if (selectedModuleId) {
-              navigate(`/module/${selectedModuleId}`)
-            } else {
-              navigate('/')
-            }
+            // Navigiere zurück zur vorherigen Seite (korrekter Tab)
+            navigate(-1)
           }}
           onSubmit={handleSubmitTaskAnswer}
           feedback={taskFeedback || undefined}
-          onNextTask={isStudyRoomTask ? undefined : hasNextTask ? handleNextTask : undefined}
+          onNextTask={isStudyRoomTask ? undefined : hasNext ? handleNextTask : undefined}
+          onPrevTask={isStudyRoomTask ? undefined : hasPrev ? handlePrevTask : undefined}
+          taskIndex={taskIndex}
+          totalTasks={totalTasks}
           onTaskUpdate={
             isStudyRoomTask
               ? undefined
