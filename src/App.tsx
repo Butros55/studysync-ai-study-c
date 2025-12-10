@@ -1342,6 +1342,15 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX fÃ¼r alle m
         const allowedTags = await getModuleAllowedTags(script.moduleId)
         const allowedTagsSection = formatAllowedTagsForPrompt(allowedTags)
 
+        // Lade existierende Aufgaben für dieses Modul um Duplikate zu vermeiden
+        const existingModuleTasks = tasks?.filter(t => t.moduleId === script.moduleId) || []
+        const existingTasksSummary = existingModuleTasks.length > 0
+          ? `\n\nBEREITS EXISTIERENDE AUFGABEN (VERMEIDE ÄHNLICHE THEMEN/FRAGESTELLUNGEN):\n${existingModuleTasks
+              .slice(0, 100) // Maximal 30 um Kontext nicht zu überladen
+              .map(t => `- ${t.topic || 'Allgemein'}: ${t.title || t.question.substring(0, 80)}`)
+              .join('\n')}`
+          : ''
+
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 15 } : t))
         )
@@ -1354,32 +1363,39 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX fÃ¼r alle m
           ? moduleContext
           : `Kursmaterial:\n${script.content.substring(0, 8000)}`
 
-        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Ãœbungsaufgaben basierend auf dem bereitgestellten Kontext.
+        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Übungsaufgaben basierend auf dem bereitgestellten Kontext.
 
-WICHTIG - Aufgaben sollen KURZ und PRÃ„ZISE sein:
-- easy = 1-2 Minuten LÃ¶sungszeit, sehr kurze Rechenaufgaben
+WICHTIG - KEINE DUPLIKATE:
+- Schaue dir die bereits existierenden Aufgaben an und erstelle NEUE, ANDERE Fragestellungen
+- Variiere die Themen - wenn es schon viele "Binär nach Dezimal" Aufgaben gibt, erstelle andere Themen
+- Nutze das GESAMTE Kursmaterial, nicht nur einen kleinen Teil
+- Erstelle Aufgaben zu verschiedenen Aspekten des Materials
+
+WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
+- easy = 1-2 Minuten Lösungszeit, sehr kurze Rechenaufgaben
 - medium = 3-5 Minuten, mittlere Interpretationsaufgaben  
 - hard = 5-10 Minuten, maximal 2-3 Teilaufgaben
 
 STRIKT VERBOTEN - Keine Nummerierung im Aufgabentext:
 - KEINE "1.", "2.", "3." vor der Aufgabe oder als Prefix
-- KEINE rÃ¶mischen Ziffern (I., II., III.)
+- KEINE römischen Ziffern (I., II., III.)
 - Teilaufgaben NUR mit Kleinbuchstaben: a), b), c), d)
 - Die Aufgabe beginnt DIREKT mit dem Text, NICHT mit einer Nummer
 - Der Aufgabentext beginnt NIEMALS mit einer Zahl gefolgt von Punkt (z.B. "2." oder "3.")
 
-Variation: Mische kurze Berechnungen, VerstÃ¤ndnisfragen und ab und zu komplexere Aufgaben.
+Variation: Mische kurze Berechnungen, Verständnisfragen und ab und zu komplexere Aufgaben.
 
 ${contentSection}
 ${contextPack.inputModeConstraints}
 ${allowedTagsSection}
+${existingTasksSummary}
 
 ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 {
   "tasks": [
     {
-      "question": "### Kurzer Titel\n\nKlare, prÃ¤zise Aufgabenstellung auf Deutsch.",
-      "solution": "Kurze, strukturierte LÃ¶sung",
+      "question": "### Kurzer Titel\n\nKlare, präzise Aufgabenstellung auf Deutsch.",
+      "solution": "Kurze, strukturierte Lösung",
       "difficulty": "easy" | "medium" | "hard",
       "topic": "Hauptthema der Aufgabe",
       "tags": ["tag1", "tag2"]
@@ -1388,11 +1404,12 @@ ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
 }
 
 Regeln:
-- Fragen in Markdown formatieren (### fÃ¼r Titel, - fÃ¼r Listen)
-- Keine TextwÃ¼sten - maximal 3-4 SÃ¤tze pro Aufgabe
+- Fragen in Markdown formatieren (### für Titel, - für Listen)
+- Keine Textwüsten - maximal 3-4 Sätze pro Aufgabe
 - Teilaufgaben als a), b), c) formatieren - NIEMALS mit Zahlen wie 1., 2., 3.
 - Alles auf DEUTSCH
-- Nutze die analysierten Themen, Definitionen und Formeln aus dem Kontext`
+- Nutze die analysierten Themen, Definitionen und Formeln aus dem Kontext
+- ERSTELLE KEINE AUFGABEN DIE DEN EXISTIERENDEN ÄHNELN`
 
         setPipelineTasks((current) =>
           current.map((t) => (t.id === taskId ? { ...t, progress: 30 } : t))
