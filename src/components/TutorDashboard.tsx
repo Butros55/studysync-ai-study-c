@@ -35,10 +35,106 @@ import {
   Clock,
   Exam,
   Sparkle,
-  ArrowsClockwise
+  ArrowsClockwise,
+  Play
 } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+// localStorage Key für expandierte Module
+const EXPANDED_MODULES_KEY = 'tutorDashboard_expandedModules'
+
+/**
+ * Animierter Task-Rotator - zeigt Aufgaben im Wechsel an
+ */
+function AnimatedTaskRotator({ 
+  tasks, 
+  onSolveTask,
+  getDifficultyBadge
+}: { 
+  tasks: Task[]
+  onSolveTask: (task: Task) => void
+  getDifficultyBadge: (difficulty: Task['difficulty']) => React.ReactNode
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  
+  useEffect(() => {
+    if (tasks.length <= 1) return
+    
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % tasks.length)
+    }, 4000)
+    
+    return () => clearInterval(interval)
+  }, [tasks.length])
+  
+  if (tasks.length === 0) return null
+  
+  const currentTask = tasks[currentIndex]
+  
+  return (
+    <div className="relative h-[80px] overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentTask.id}
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -40, opacity: 0 }}
+          transition={{ duration: 0.4, ease: 'easeInOut' }}
+          className="absolute inset-0"
+        >
+          <div 
+            className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20 cursor-pointer hover:bg-primary/10 transition-colors h-full"
+            onClick={() => onSolveTask(currentTask)}
+          >
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 shrink-0">
+              <Play size={18} className="text-primary ml-0.5" weight="fill" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">
+                {getTaskPreview(currentTask)}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                {getDifficultyBadge(currentTask.difficulty)}
+                {currentTask.tags?.[0] && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    {currentTask.tags[0]}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+              <span>{currentIndex + 1}/{tasks.length}</span>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+      
+      {/* Progress dots */}
+      {tasks.length > 1 && (
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-1.5 pb-1">
+          {tasks.slice(0, Math.min(5, tasks.length)).map((_, idx) => (
+            <button
+              key={idx}
+              className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                idx === currentIndex % Math.min(5, tasks.length)
+                  ? 'bg-primary' 
+                  : 'bg-muted-foreground/30'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                setCurrentIndex(idx)
+              }}
+            />
+          ))}
+          {tasks.length > 5 && (
+            <span className="text-[10px] text-muted-foreground">+{tasks.length - 5}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface TutorDashboardProps {
   modules: Module[]
@@ -99,7 +195,31 @@ export function TutorDashboard({
   onGenerateTasks,
   isGenerating = false
 }: TutorDashboardProps) {
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(modules.slice(0, 2).map(m => m.id)))
+  // Lade expanded state aus localStorage oder nutze Default (erste 2 Module)
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(EXPANDED_MODULES_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          return new Set(parsed)
+        }
+      }
+    } catch (e) {
+      console.warn('Fehler beim Laden des expandedModules State:', e)
+    }
+    // Default: Erste 2 Module expandiert
+    return new Set(modules.slice(0, 2).map(m => m.id))
+  })
+
+  // Speichere expanded state in localStorage bei Änderungen
+  useEffect(() => {
+    try {
+      localStorage.setItem(EXPANDED_MODULES_KEY, JSON.stringify([...expandedModules]))
+    } catch (e) {
+      console.warn('Fehler beim Speichern des expandedModules State:', e)
+    }
+  }, [expandedModules])
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev => {
@@ -251,17 +371,107 @@ export function TutorDashboard({
     return daysA - daysB
   })
 
+  // Tages-Statistiken
+  const totalOpenTasks = tasks.filter(t => !t.completed).length
+  const totalCompletedToday = tasks.filter(t => {
+    if (!t.completed) return false
+    // Hier könnte man lastAttempt oder completedAt prüfen
+    return true
+  }).length
+  const nextExam = sortedModules.find(m => getDaysUntilExam(m.examDate) !== null)
+  const nextExamDays = nextExam ? getDaysUntilExam(nextExam.examDate) : null
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Animierter Hero-Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="p-6 bg-gradient-to-br from-primary/5 via-background to-primary/10 border-primary/20">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <GraduationCap size={28} className="text-primary" weight="fill" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Dein Lernplan</h2>
+                <p className="text-sm text-muted-foreground">
+                  {new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+              </div>
+            </div>
+            
+            {nextExamDays !== null && nextExamDays <= 14 && (
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              >
+                <Badge 
+                  variant={nextExamDays <= 3 ? 'destructive' : 'secondary'}
+                  className="text-sm px-3 py-1.5 gap-1.5"
+                >
+                  <Fire size={14} weight="fill" />
+                  Prüfung in {nextExamDays} {nextExamDays === 1 ? 'Tag' : 'Tagen'}
+                </Badge>
+              </motion.div>
+            )}
+          </div>
+          
+          {/* Statistik-Cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <motion.div 
+              className="p-3 rounded-lg bg-background/60 border"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Target size={16} className="text-blue-500" />
+                <span className="text-2xl font-bold">{totalOpenTasks}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">Offene Aufgaben</span>
+            </motion.div>
+            
+            <motion.div 
+              className="p-3 rounded-lg bg-background/60 border"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <BookOpen size={16} className="text-purple-500" />
+                <span className="text-2xl font-bold">{modules.length}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">Module</span>
+            </motion.div>
+            
+            <motion.div 
+              className="p-3 rounded-lg bg-background/60 border"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Lightning size={16} className="text-yellow-500" weight="fill" />
+                <span className="text-2xl font-bold">
+                  {Math.round((tasks.filter(t => t.completed).length / Math.max(1, tasks.length)) * 100)}%
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">Fortschritt</span>
+            </motion.div>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Modul-Überschrift */}
       <div className="flex items-center gap-2">
-        <GraduationCap size={24} className="text-primary" weight="fill" />
-        <h2 className="text-xl font-semibold">Deine Module & Lernplan</h2>
+        <Sparkle size={18} className="text-primary" weight="fill" />
+        <h3 className="font-semibold">Deine Module</h3>
       </div>
 
       {/* Module mit integriertem Lernplan */}
       <div className="space-y-4">
-        {sortedModules.map(module => {
+        {sortedModules.map((module, moduleIndex) => {
           const weakTopics = getWeakTopics(module.id)
           const moduleTasks = tasks.filter(t => t.moduleId === module.id)
           const completedTasks = moduleTasks.filter(t => t.completed).length
@@ -272,24 +482,32 @@ export function TutorDashboard({
           const daysUntilExam = getDaysUntilExam(module.examDate)
           
           return (
-            <Card key={module.id} className="overflow-hidden">
-              {/* Modul-Header */}
-              <div 
-                className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                onClick={() => toggleModule(module.id)}
-              >
+            <motion.div
+              key={module.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: moduleIndex * 0.1 }}
+            >
+              <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                {/* Modul-Header */}
                 <div 
-                  className="w-12 h-12 rounded-lg flex items-center justify-center text-white shrink-0"
-                  style={{ backgroundColor: module.color }}
+                  className="p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                  onClick={() => toggleModule(module.id)}
                 >
-                  <span className="font-semibold text-lg">
-                    {module.code.substring(0, 2).toUpperCase()}
-                  </span>
-                </div>
+                  <motion.div 
+                    className="w-12 h-12 rounded-lg flex items-center justify-center text-white shrink-0"
+                    style={{ backgroundColor: module.color }}
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  >
+                    <span className="font-semibold text-lg">
+                      {module.code.substring(0, 2).toUpperCase()}
+                    </span>
+                  </motion.div>
                 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold truncate">{module.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold truncate">{module.name}</h3>
                     {daysUntilExam !== null && daysUntilExam <= 7 && (
                       <Badge variant="destructive" className="text-[10px] shrink-0">
                         <Clock size={10} className="mr-1" />
@@ -351,6 +569,21 @@ export function TutorDashboard({
                   </Button>
                 </div>
               </div>
+
+              {/* Animierter Quick-Start Task-Rotator */}
+              {!isExpanded && moduleTasks.filter(t => !t.completed).length > 0 && (
+                <div className="px-4 pb-4 -mt-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lightning size={14} className="text-primary" weight="fill" />
+                    <span className="text-xs font-medium text-muted-foreground">Nächste Aufgabe</span>
+                  </div>
+                  <AnimatedTaskRotator
+                    tasks={moduleTasks.filter(t => !t.completed).slice(0, 8)}
+                    onSolveTask={onSolveTask}
+                    getDifficultyBadge={getDifficultyBadge}
+                  />
+                </div>
+              )}
 
               {/* Lernplan (ausklappbar) */}
               <AnimatePresence>
@@ -488,20 +721,27 @@ export function TutorDashboard({
                   })()}
                 </div>
               )}
-            </Card>
+              </Card>
+            </motion.div>
           )
         })}
       </div>
 
       {/* Leerer State */}
       {modules.length === 0 && (
-        <Card className="p-8 text-center">
-          <GraduationCap size={48} className="mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Noch keine Module</h3>
-          <p className="text-muted-foreground">
-            Erstelle dein erstes Modul, um deinen Lernplan zu starten.
-          </p>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Card className="p-8 text-center">
+            <GraduationCap size={48} className="mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Noch keine Module</h3>
+            <p className="text-muted-foreground">
+              Erstelle dein erstes Modul, um deinen Lernplan zu starten.
+            </p>
+          </Card>
+        </motion.div>
       )}
     </div>
   )

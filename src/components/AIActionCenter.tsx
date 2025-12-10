@@ -23,6 +23,7 @@ import {
   Exam,
   CircleNotch,
   Queue,
+  Stop,
 } from '@phosphor-icons/react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,8 @@ import {
   subscribeToQueue,
   getActiveStacks,
   clearCompletedActions,
+  cancelAction,
+  cancelAllActions,
   STACK_CONFIG,
 } from '@/lib/ai-action-queue'
 
@@ -304,9 +307,10 @@ interface StackCardProps {
   isExpanded: boolean
   onToggle: () => void
   onDismiss: () => void
+  onCancel: () => void
 }
 
-function StackCard({ stack, isExpanded, onToggle, onDismiss }: StackCardProps) {
+function StackCard({ stack, isExpanded, onToggle, onDismiss, onCancel }: StackCardProps) {
   const config = STACK_CONFIG[stack.type]
   const Icon = getStackIcon(config.icon)
   
@@ -384,6 +388,22 @@ function StackCard({ stack, isExpanded, onToggle, onDismiss }: StackCardProps) {
               </p>
             )}
           </div>
+          
+          {/* Cancel Button (when active) */}
+          {stack.isActive && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={(e) => {
+                e.stopPropagation()
+                onCancel()
+              }}
+              title="Abbrechen"
+            >
+              <Stop size={16} weight="fill" />
+            </Button>
+          )}
           
           {/* Expand Icon */}
           <motion.div
@@ -490,8 +510,16 @@ export function AIActionCenter({ className }: AIActionCenterProps) {
     }
   }, [expandedStack])
 
-  // Calculate overall progress
+  const handleCancelStack = useCallback((type: AIActionType) => {
+    cancelAllActions(type)
+    if (expandedStack === type) {
+      setExpandedStack(null)
+    }
+  }, [expandedStack])
+
+  // Calculate overall progress and category counts
   const hasActiveStacks = stacks.some(s => s.isActive)
+  const activeStackCount = stacks.filter(s => s.isActive).length
   const overallProgress = hasActiveStacks
     ? stacks.filter(s => s.isActive).reduce((sum, s) => sum + s.totalProgress, 0) / stacks.filter(s => s.isActive).length
     : 0
@@ -555,16 +583,27 @@ export function AIActionCenter({ className }: AIActionCenterProps) {
           )}
         </div>
         
-        {/* Badge */}
+        {/* Badge - zeigt Anzahl aktiver Kategorien */}
         {stacks.length > 0 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
-            {stacks.length}
+          <div className="absolute -top-1 -right-1 flex items-center gap-0.5">
+            {/* Hauptzahl - Gesamtanzahl aktiver Tasks */}
+            <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
+              {stacks.reduce((sum, s) => sum + s.actions.filter(a => a.status === 'processing' || a.status === 'queued').length, 0) || stacks.length}
+            </div>
+            {/* Zusätzliches Badge wenn mehr als 1 Kategorie aktiv */}
+            {activeStackCount > 1 && (
+              <div className="w-4 h-4 -ml-1.5 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center font-medium border-2 border-background">
+                +{activeStackCount - 1}
+              </div>
+            )}
           </div>
         )}
         
         {/* Hover Tooltip */}
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover border rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          {hasActiveStacks ? `${Math.round(overallProgress)}% - KI arbeitet...` : 'Fertig!'}
+          {hasActiveStacks 
+            ? `${Math.round(overallProgress)}% - ${activeStackCount} Kategorie${activeStackCount > 1 ? 'n' : ''} aktiv` 
+            : 'Fertig!'}
         </div>
       </motion.button>
     )
@@ -632,6 +671,7 @@ export function AIActionCenter({ className }: AIActionCenterProps) {
                     expandedStack === stack.type ? null : stack.type
                   )}
                   onDismiss={() => handleDismissStack(stack.type)}
+                  onCancel={() => handleCancelStack(stack.type)}
                 />
               ))}
             </AnimatePresence>

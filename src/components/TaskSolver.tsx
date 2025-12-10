@@ -22,6 +22,8 @@ import {
   Info,
   ArrowLeft,
   Confetti,
+  CaretLeft,
+  CaretRight,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,6 +35,10 @@ interface TaskSolverProps {
   onSubmit: (answer: string, isHandwritten: boolean, canvasDataUrl?: string) => Promise<void>
   feedback?: TaskFeedback
   onNextTask?: () => void
+  onPrevTask?: () => void
+  /** Aktuelle Position und Gesamtanzahl für Navigation */
+  taskIndex?: number
+  totalTasks?: number
   onTaskUpdate?: (updates: Partial<Task>) => void
   /** Formelsammlungen aus dem aktuellen Modul */
   formulaSheets?: Script[]
@@ -171,6 +177,9 @@ export function TaskSolver({
   onSubmit,
   feedback,
   onNextTask,
+  onPrevTask,
+  taskIndex,
+  totalTasks,
   onTaskUpdate,
   formulaSheets = [],
   hideSolution = false,
@@ -187,6 +196,75 @@ export function TaskSolver({
   const [canvasDataUrl, setCanvasDataUrl] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFeedbackOverlay, setShowFeedbackOverlay] = useState(false)
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right')
+  
+  // Touch/Swipe State
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const minSwipeDistance = 50
+  
+  // Navigation erlaubt? (NICHT im StudyRoom/Multiplayer!)
+  const canNavigate = !studyRoomHud && (onNextTask || onPrevTask)
+  // onNextTask/onPrevTask werden nur übergeben, wenn Navigation möglich ist
+  const hasPrev = !!onPrevTask
+  const hasNext = !!onNextTask
+
+  // Reset Input State - definiert vor den Navigation-Handlern
+  const resetInputState = () => {
+    setTextAnswer('')
+    setHasCanvasContent(false)
+    setCanvasDataUrl('')
+    setClearCanvasTrigger(prev => prev + 1)
+    setShowFeedbackOverlay(false)
+  }
+  
+  // Touch Handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (!canNavigate) return
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+  
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!canNavigate) return
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+  
+  const onTouchEnd = () => {
+    if (!canNavigate || !touchStart || !touchEnd) return
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+    
+    if (isLeftSwipe && hasNext) {
+      handleNextWithAnimation()
+    } else if (isRightSwipe && hasPrev) {
+      handlePrevWithAnimation()
+    }
+    
+    setTouchStart(null)
+    setTouchEnd(null)
+  }
+  
+  const handleNextWithAnimation = () => {
+    if (!onNextTask) return
+    setSlideDirection('left')
+    // Kurzer Delay für Animation
+    setTimeout(() => {
+      onNextTask()
+      resetInputState()
+    }, 50)
+  }
+  
+  const handlePrevWithAnimation = () => {
+    if (!onPrevTask) return
+    setSlideDirection('right')
+    setTimeout(() => {
+      onPrevTask()
+      resetInputState()
+    }, 50)
+  }
+  
   const [hudRemaining, setHudRemaining] = useState<string>('00:00')
   const [lockCountdown, setLockCountdown] = useState<number | null>(null)
 
@@ -227,6 +305,16 @@ export function TaskSolver({
       setShowFeedbackOverlay(true)
     }
   }, [feedback])
+
+  // Nach erfolgreicher Aufgabe automatisch zur nächsten wechseln (nach kurzer Verzögerung)
+  useEffect(() => {
+    if (feedback?.isCorrect && hasNext) {
+      const timer = setTimeout(() => {
+        handleNextWithAnimation()
+      }, 1500) // 1.5 Sekunden warten, damit User das Ergebnis sieht
+      return () => clearTimeout(timer)
+    }
+  }, [feedback?.isCorrect, hasNext])
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
@@ -285,6 +373,15 @@ export function TaskSolver({
             </Button>
             <h2 className="font-semibold text-sm sm:text-base truncate">Aufgabe lösen</h2>
             
+            {/* Aufgaben-Counter (nur wenn Navigation möglich) */}
+            {canNavigate && taskIndex !== undefined && totalTasks !== undefined && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{taskIndex + 1}</span>
+                <span>/</span>
+                <span>{totalTasks}</span>
+              </div>
+            )}
+            
             {/* Mini Feedback Badge im Header */}
             {feedback && !showFeedbackOverlay && (
               <motion.div
@@ -308,6 +405,31 @@ export function TaskSolver({
             )}
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Navigation Buttons (nur wenn erlaubt) */}
+            {canNavigate && (
+              <div className="flex items-center gap-1 mr-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={!hasPrev}
+                  onClick={handlePrevWithAnimation}
+                  title="Vorherige Aufgabe"
+                >
+                  <CaretLeft size={18} weight="bold" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  disabled={!hasNext}
+                  onClick={handleNextWithAnimation}
+                  title="Nächste Aufgabe"
+                >
+                  <CaretRight size={18} weight="bold" />
+                </Button>
+              </div>
+            )}
             <DebugModeToggle />
           </div>
         </div>
@@ -334,8 +456,47 @@ export function TaskSolver({
         </div>
       )}
 
-      {/* Collapsible Question Panel */}
-      <TaskQuestionPanel task={task} isFullscreen={true} defaultExpanded={!feedback} />
+      {/* Collapsible Question Panel mit Touch-Navigation */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className="relative"
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={task.id}
+            initial={{ 
+              x: slideDirection === 'left' ? 100 : -100, 
+              opacity: 0 
+            }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ 
+              x: slideDirection === 'left' ? -100 : 100, 
+              opacity: 0 
+            }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+          >
+            <TaskQuestionPanel task={task} isFullscreen={true} defaultExpanded={!feedback} />
+          </motion.div>
+        </AnimatePresence>
+        
+        {/* Swipe-Hinweise an den Seiten (nur wenn Navigation möglich) */}
+        {canNavigate && (
+          <>
+            {hasPrev && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-16 flex items-center justify-center opacity-20 hover:opacity-60 transition-opacity pointer-events-none">
+                <CaretLeft size={24} className="text-muted-foreground" />
+              </div>
+            )}
+            {hasNext && (
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-16 flex items-center justify-center opacity-20 hover:opacity-60 transition-opacity pointer-events-none">
+                <CaretRight size={24} className="text-muted-foreground" />
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-6 pb-safe">
