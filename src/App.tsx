@@ -62,6 +62,10 @@ import {
   DropdownMenuTrigger,
 } from './components/ui/dropdown-menu'
 import { buildModulePath, buildTaskPath, buildFlashcardsPath, buildQuizPath, buildExamPath, buildStudyRoomPath } from './lib/router'
+// Dedup & Migration imports
+import { runTaskMigration } from './lib/task-migration'
+import { checkTaskIsDuplicate } from './lib/practice-task-generator'
+import { taskFingerprint } from './lib/dedupe/taskFingerprint'
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
@@ -675,6 +679,13 @@ function AppContent() {
           // Seite neu laden um die migrierten Daten anzuzeigen
           window.location.reload()
         }
+        
+        // Task-Migration: Fingerprints hinzufügen (für Dedup)
+        const taskMigrationResult = await runTaskMigration()
+        if (taskMigrationResult.migrationNeeded) {
+          console.log(`[App] Task fingerprint migration: ${taskMigrationResult.migratedCount}/${taskMigrationResult.totalTasks} tasks migrated in ${taskMigrationResult.durationMs}ms`)
+        }
+        
         setStorageInitialized(true)
       } catch (e) {
         console.error('[App] Storage initialization failed:', e)
@@ -1465,11 +1476,50 @@ Regeln:
           })
         }
 
-        // Validate each task with quality gate
-        const validatedTasks: Task[] = []
-        let validationStats = { passed: 0, repaired: 0, failed: 0 }
-
+        // ========================================
+        // DEDUP CHECK: Filter out duplicate tasks
+        // ========================================
+        const dedupedTasks: Task[] = []
+        let duplicateCount = 0
+        
         for (const task of initialTasks) {
+          // Compute fingerprint
+          const fpData = await taskFingerprint(task.question, task.solution, task.tags)
+          task.fingerprint = fpData.fingerprint
+          
+          // Check against existing tasks in module
+          const dupCheck = await checkTaskIsDuplicate(
+            task.question,
+            task.solution,
+            task.tags || [],
+            existingModuleTasks,
+            script.moduleId
+          )
+          
+          if (dupCheck.isDuplicate) {
+            console.log(`[App] Duplicate task filtered: ${dupCheck.reason}`)
+            duplicateCount++
+          } else {
+            // Also check against tasks we're about to add in this batch
+            const batchDup = dedupedTasks.some(dt => dt.fingerprint === task.fingerprint)
+            if (batchDup) {
+              console.log('[App] Duplicate task in batch filtered')
+              duplicateCount++
+            } else {
+              dedupedTasks.push(task)
+            }
+          }
+        }
+        
+        if (duplicateCount > 0) {
+          console.log(`[App] Filtered ${duplicateCount} duplicate tasks`)
+        }
+
+        // Validate each deduped task with quality gate
+        const validatedTasks: Task[] = []
+        let validationStats = { passed: 0, repaired: 0, failed: 0, duplicatesFiltered: duplicateCount }
+
+        for (const task of dedupedTasks) {
           const validationResult = await runValidationPipeline({
             task,
             preferredInputMode,
@@ -1527,7 +1577,7 @@ ANTWORTE NUR MIT VALIDEM JSON:
         }
 
         // Log validation summary
-        if (validationStats.repaired > 0 || validationStats.failed > 0) {
+        if (validationStats.repaired > 0 || validationStats.failed > 0 || validationStats.duplicatesFiltered > 0) {
           console.log('[App] Task validation summary:', validationStats)
         }
 
@@ -1538,15 +1588,18 @@ ANTWORTE NUR MIT VALIDEM JSON:
           current.map((t) => (t.id === taskId ? { ...t, progress: 100, status: 'completed' } : t))
         )
 
-        // Show validation info in toast if repairs/failures occurred
-        if (validationStats.repaired > 0 || validationStats.failed > 0) {
+        // Show validation info in toast if repairs/failures/duplicates occurred
+        const extras: string[] = []
+        if (validationStats.repaired > 0) extras.push(`${validationStats.repaired} repariert`)
+        if (validationStats.failed > 0) extras.push(`${validationStats.failed} mit Warnungen`)
+        if (validationStats.duplicatesFiltered > 0) extras.push(`${validationStats.duplicatesFiltered} Duplikate gefiltert`)
+        
+        if (extras.length > 0) {
           toast.success(
-            `${validatedTasks.length} Aufgaben fÃ¼r "${script.name}" erstellt` +
-            (validationStats.repaired > 0 ? ` (${validationStats.repaired} repariert)` : '') +
-            (validationStats.failed > 0 ? ` (${validationStats.failed} mit Warnungen)` : '')
+            `${validatedTasks.length} Aufgaben für "${script.name}" erstellt (${extras.join(', ')})`
           )
         } else {
-          toast.success(`${validatedTasks.length} Aufgaben fÃ¼r "${script.name}" erstellt`)
+          toast.success(`${validatedTasks.length} Aufgaben für "${script.name}" erstellt`)
         }
       } catch (error) {
         console.error('Fehler bei Aufgabenerstellung:', error)

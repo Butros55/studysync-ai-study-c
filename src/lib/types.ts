@@ -154,6 +154,22 @@ export interface TaskSubtask {
   prompt: string
 }
 
+// =========================================
+// GENERATION METADATA FÜR TASK-TRACKING
+// =========================================
+export interface TaskGenerationMeta {
+  /** LLM model used for generation */
+  model?: string
+  /** Prompt version/identifier */
+  promptVersion?: string
+  /** Timestamp when generated */
+  createdAt?: number
+  /** Blueprint item index (if generated via blueprint) */
+  blueprintIndex?: number
+  /** Whether this was a regeneration attempt */
+  regenerationAttempt?: number
+}
+
 export interface Task {
   id: string
   moduleId: string
@@ -172,6 +188,26 @@ export interface Task {
   completed: boolean
   completedAt?: string
   viewedSolution?: boolean  // Wurde die Musterlösung angesehen?
+  
+  // =========================================
+  // NEUE FELDER FÜR DEDUP & COVERAGE (v2.0)
+  // =========================================
+  
+  /** SHA256 fingerprint for exact duplicate detection */
+  fingerprint?: string
+  
+  /** Topic ID for coverage tracking (stable hash) */
+  topicId?: string
+  
+  /** Source document IDs that contributed to this task */
+  sourceDocIds?: string[]
+  
+  /** Embedding vector for semantic similarity (optional) */
+  embedding?: number[]
+  
+  /** Generation metadata */
+  generationMeta?: TaskGenerationMeta
+  
   // Gespeicherte Zeichnung
   savedCanvasDataUrl?: string
   savedStrokes?: Array<{
