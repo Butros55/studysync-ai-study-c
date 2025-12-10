@@ -130,7 +130,7 @@ export interface GenerationDebugReport {
 // ============================================================================
 
 const MAX_REGENERATION_ATTEMPTS = 3
-const SEMANTIC_SIMILARITY_THRESHOLD = 0.85
+const SEMANTIC_SIMILARITY_THRESHOLD = 0.65  // Niedriger Threshold um mehr Varianten zu erkennen
 const TOP_K_SIMILAR = 10
 
 /**
@@ -538,6 +538,11 @@ export async function migrateTasksAddFingerprints(
 
 /**
  * Check if a single task is a duplicate (for use in existing generators)
+ * 
+ * Uses 3-tier check:
+ * 1. Fingerprint (exact match)
+ * 2. Title similarity (quick check for variations like "UTF-8 und ISO 8859" vs "UTF-8 und ISO-8859-1")
+ * 3. Semantic similarity (full content)
  */
 export async function checkTaskIsDuplicate(
   question: string,
@@ -549,6 +554,7 @@ export async function checkTaskIsDuplicate(
   isDuplicate: boolean
   reason?: string
   matchingTaskId?: string
+  similarity?: number
 }> {
   // Compute fingerprint
   const fpData = await taskFingerprint(question, solution, tags)
@@ -563,11 +569,43 @@ export async function checkTaskIsDuplicate(
     return {
       isDuplicate: true,
       reason: 'Exaktes Duplikat (identischer Fingerprint)',
-      matchingTaskId: fpCheck.matchingTaskId
+      matchingTaskId: fpCheck.matchingTaskId,
+      similarity: 1.0
     }
   }
 
-  // Check semantic similarity
+  // ========================================
+  // Tier 2: Title-based similarity check
+  // Catches variations like "UTF-8 und ISO 8859" vs "UTF-8 und ISO-8859-1"
+  // ========================================
+  const titleFromQuestion = extractTitleFromQuestion(question)
+  const TITLE_SIMILARITY_THRESHOLD = 0.55  // Niedrig um Varianten zu fangen
+  
+  for (const existing of existingTasks) {
+    const existingTitle = existing.title || extractTitleFromQuestion(existing.question)
+    const titleSim = softSemanticSimilarity(titleFromQuestion, existingTitle)
+    
+    if (titleSim >= TITLE_SIMILARITY_THRESHOLD) {
+      // Title is very similar - also check topic overlap
+      const topicSim = existing.topic && tags.some(tag => 
+        existing.topic!.toLowerCase().includes(tag.toLowerCase()) ||
+        tag.toLowerCase().includes(existing.topic!.toLowerCase())
+      )
+      
+      if (topicSim || titleSim >= 0.7) {
+        return {
+          isDuplicate: true,
+          reason: `Ähnlicher Titel (${Math.round(titleSim * 100)}% Übereinstimmung): "${existingTitle}"`,
+          matchingTaskId: existing.id,
+          similarity: titleSim
+        }
+      }
+    }
+  }
+
+  // ========================================
+  // Tier 3: Full semantic similarity
+  // ========================================
   const taskText = `${question} ${solution}`
   const semanticCheck = await findSemanticDuplicates(
     taskText,
@@ -585,9 +623,25 @@ export async function checkTaskIsDuplicate(
     return {
       isDuplicate: true,
       reason: `Semantisches Duplikat (${Math.round(semanticCheck.similarity * 100)}% Ähnlichkeit)`,
-      matchingTaskId: semanticCheck.matchingTaskId
+      matchingTaskId: semanticCheck.matchingTaskId,
+      similarity: semanticCheck.similarity
     }
   }
 
   return { isDuplicate: false }
+}
+
+/**
+ * Extract title from question (first heading or first line)
+ */
+function extractTitleFromQuestion(question: string): string {
+  // Try to find markdown heading
+  const headingMatch = question.match(/^###?\s+(.+?)\n/)
+  if (headingMatch) {
+    return headingMatch[1].trim()
+  }
+  
+  // Fall back to first line
+  const firstLine = question.split('\n')[0].trim()
+  return firstLine.substring(0, 100)
 }

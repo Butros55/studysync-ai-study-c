@@ -66,6 +66,59 @@ import { buildModulePath, buildTaskPath, buildFlashcardsPath, buildQuizPath, bui
 import { runTaskMigration } from './lib/task-migration'
 import { checkTaskIsDuplicate } from './lib/practice-task-generator'
 import { taskFingerprint } from './lib/dedupe/taskFingerprint'
+import { getModuleTopics, buildTaskBlueprint, type Topic } from './lib/dedupe/topicCoverage'
+import { softSemanticSimilarity } from './lib/dedupe/semanticSimilarity'
+import { listDocumentAnalyses } from './lib/analysis-storage'
+
+// ========================================
+// DYNAMISCHE TASK-ANZAHL BASIEREND AUF DOKUMENTGRÖSSE
+// ========================================
+/**
+ * Berechne wie viele Tasks für ein Dokument generiert werden sollen
+ * basierend auf Content-Länge und extrahierten Themen
+ */
+function calculateDynamicTaskCount(
+  contentLength: number,
+  topicsFromAnalysis: string[],
+  existingTasksForScript: number
+): { count: number; reason: string } {
+  // Basis: 1 Task pro ~3000 Zeichen (ca. 1 Folie = 500-1000 Zeichen)
+  const charBasedEstimate = Math.ceil(contentLength / 3000)
+  
+  // Wenn wir Themen aus der Analyse haben, nutze diese
+  const topicBasedEstimate = topicsFromAnalysis.length
+  
+  // Nimm den größeren Wert, aber mindestens 2, maximal 20
+  let estimate = Math.max(charBasedEstimate, topicBasedEstimate)
+  estimate = Math.max(2, Math.min(estimate, 20))
+  
+  // Reduziere um bereits existierende Tasks für dieses Skript
+  const remaining = Math.max(1, estimate - existingTasksForScript)
+  
+  const reason = topicsFromAnalysis.length > 0
+    ? `${topicsFromAnalysis.length} Themen erkannt, ${remaining} neue Tasks`
+    : `${charBasedEstimate} Tasks basierend auf Dokumentgröße (${Math.round(contentLength / 1000)}k Zeichen)`
+  
+  return { count: remaining, reason }
+}
+
+/**
+ * Extrahiere Themen aus einem Skript via DocumentAnalysis
+ */
+async function getScriptTopics(scriptId: string, moduleId: string): Promise<string[]> {
+  try {
+    const analyses = await listDocumentAnalyses(moduleId)
+    const scriptAnalysis = analyses.find(a => a.documentId === scriptId)
+    
+    if (scriptAnalysis?.analysisJson) {
+      const parsed = JSON.parse(scriptAnalysis.analysisJson)
+      return parsed.topics || parsed.canonicalTopics || []
+    }
+  } catch (e) {
+    console.warn('[App] Could not load script topics:', e)
+  }
+  return []
+}
 
 // Key for tracking tag migration
 const TAG_MIGRATION_KEY = 'studysync_tag_migration_v1'
@@ -1355,11 +1408,42 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX fÃ¼r alle m
 
         // Lade existierende Aufgaben für dieses Modul um Duplikate zu vermeiden
         const existingModuleTasks = tasks?.filter(t => t.moduleId === script.moduleId) || []
+        const existingScriptTasks = existingModuleTasks.filter(t => t.scriptId === script.id)
+        
+        // ========================================
+        // DYNAMISCHE TASK-ANZAHL BASIEREND AUF THEMEN
+        // ========================================
+        const scriptTopics = await getScriptTopics(script.id, script.moduleId)
+        const { count: targetTaskCount, reason: taskCountReason } = calculateDynamicTaskCount(
+          script.content.length,
+          scriptTopics,
+          existingScriptTasks.length
+        )
+        
+        console.log(`[App] Dynamische Task-Anzahl: ${targetTaskCount} (${taskCountReason})`)
+        
+        // Baue Themen-Liste für den Prompt
+        const topicsSection = scriptTopics.length > 0
+          ? `\n\nERKANNTE THEMEN IM DOKUMENT (erstelle für JEDES Thema mindestens eine Aufgabe):\n${scriptTopics.map((t, i) => `${i + 1}. ${t}`).join('\n')}`
+          : ''
+        
+        // Bessere Avoid-Liste: Gruppiere nach Thema und zeige Titel
+        const existingByTopic = new Map<string, string[]>()
+        existingModuleTasks.forEach(t => {
+          const topic = t.topic || 'Allgemein'
+          if (!existingByTopic.has(topic)) {
+            existingByTopic.set(topic, [])
+          }
+          existingByTopic.get(topic)!.push(t.title || t.question.substring(0, 60))
+        })
+        
         const existingTasksSummary = existingModuleTasks.length > 0
-          ? `\n\nBEREITS EXISTIERENDE AUFGABEN (VERMEIDE ÄHNLICHE THEMEN/FRAGESTELLUNGEN):\n${existingModuleTasks
-              .slice(0, 100) // Maximal 30 um Kontext nicht zu überladen
-              .map(t => `- ${t.topic || 'Allgemein'}: ${t.title || t.question.substring(0, 80)}`)
-              .join('\n')}`
+          ? `\n\nBEREITS EXISTIERENDE AUFGABEN (VERMEIDE ÄHNLICHE FRAGESTELLUNGEN!):\n${
+              Array.from(existingByTopic.entries())
+                .slice(0, 20)
+                .map(([topic, titles]) => `**${topic}:**\n${titles.slice(0, 5).map(t => `  - ${t}`).join('\n')}`)
+                .join('\n')
+            }`
           : ''
 
         setPipelineTasks((current) =>
@@ -1374,13 +1458,16 @@ Erstelle jetzt die Lernnotizen auf Deutsch. Nutze konsequent LaTeX fÃ¼r alle m
           ? moduleContext
           : `Kursmaterial:\n${script.content.substring(0, 8000)}`
 
-        const prompt = `Du bist ein erfahrener Dozent. Erstelle 3-5 abwechslungsreiche Übungsaufgaben basierend auf dem bereitgestellten Kontext.
+        const prompt = `Du bist ein erfahrener Dozent. Erstelle EXAKT ${targetTaskCount} abwechslungsreiche Übungsaufgaben basierend auf dem bereitgestellten Kontext.
 
-WICHTIG - KEINE DUPLIKATE:
-- Schaue dir die bereits existierenden Aufgaben an und erstelle NEUE, ANDERE Fragestellungen
-- Variiere die Themen - wenn es schon viele "Binär nach Dezimal" Aufgaben gibt, erstelle andere Themen
-- Nutze das GESAMTE Kursmaterial, nicht nur einen kleinen Teil
-- Erstelle Aufgaben zu verschiedenen Aspekten des Materials
+ZIEL: Decke ALLE Themen im Dokument ab - nicht nur die ersten paar!
+${topicsSection}
+
+KRITISCH - KEINE DUPLIKATE:
+- Die existierenden Aufgaben sind unten aufgelistet - erstelle KOMPLETT ANDERE Fragestellungen
+- Wenn es bereits "UTF-8 nach Binär umwandeln" gibt, frage NICHT nach "UTF-8 und ISO-8859 vergleichen" - das ist zu ähnlich!
+- Nutze UNTERSCHIEDLICHE Aspekte/Perspektiven für jedes Thema
+- Variiere die Aufgabentypen: Berechnung, Verständnis, Vergleich, Anwendung
 
 WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
 - easy = 1-2 Minuten Lösungszeit, sehr kurze Rechenaufgaben
@@ -1389,12 +1476,8 @@ WICHTIG - Aufgaben sollen KURZ und PRÄZISE sein:
 
 STRIKT VERBOTEN - Keine Nummerierung im Aufgabentext:
 - KEINE "1.", "2.", "3." vor der Aufgabe oder als Prefix
-- KEINE römischen Ziffern (I., II., III.)
 - Teilaufgaben NUR mit Kleinbuchstaben: a), b), c), d)
 - Die Aufgabe beginnt DIREKT mit dem Text, NICHT mit einer Nummer
-- Der Aufgabentext beginnt NIEMALS mit einer Zahl gefolgt von Punkt (z.B. "2." oder "3.")
-
-Variation: Mische kurze Berechnungen, Verständnisfragen und ab und zu komplexere Aufgaben.
 
 ${contentSection}
 ${contextPack.inputModeConstraints}
@@ -1408,18 +1491,18 @@ ANTWORTE NUR MIT VALIDEM JSON in diesem Format:
       "question": "### Kurzer Titel\n\nKlare, präzise Aufgabenstellung auf Deutsch.",
       "solution": "Kurze, strukturierte Lösung",
       "difficulty": "easy" | "medium" | "hard",
-      "topic": "Hauptthema der Aufgabe",
+      "topic": "Hauptthema der Aufgabe (aus der Themenliste oben)",
       "tags": ["tag1", "tag2"]
     }
   ]
 }
 
 Regeln:
-- Fragen in Markdown formatieren (### für Titel, - für Listen)
+- Erstelle EXAKT ${targetTaskCount} Aufgaben
+- Jede Aufgabe zu einem ANDEREN Thema
+- Fragen in Markdown formatieren (### für Titel)
 - Keine Textwüsten - maximal 3-4 Sätze pro Aufgabe
-- Teilaufgaben als a), b), c) formatieren - NIEMALS mit Zahlen wie 1., 2., 3.
 - Alles auf DEUTSCH
-- Nutze die analysierten Themen, Definitionen und Formeln aus dem Kontext
 - ERSTELLE KEINE AUFGABEN DIE DEN EXISTIERENDEN ÄHNELN`
 
         setPipelineTasks((current) =>
