@@ -22,6 +22,15 @@ function normalizeContent(content: string): string {
   
   let processed = content
   
+  // SCHRITT 0: Konvertiere \( ... \) zu $...$ und \[ ... \] zu $$...$$
+  // Dies ist wichtig, da viele LLMs LaTeX mit diesen Delimitern zurückgeben
+  // Zuerst display math \[ ... \] -> $$ ... $$
+  processed = processed.replace(/\\\[/g, '$$')
+  processed = processed.replace(/\\\]/g, '$$')
+  // Dann inline math \( ... \) -> $ ... $
+  processed = processed.replace(/\\\(/g, '$')
+  processed = processed.replace(/\\\)/g, '$')
+  
   // Liste aller LaTeX-Befehle
   const latexCommands = [
     // Funktionen

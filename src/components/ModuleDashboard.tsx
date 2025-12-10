@@ -266,17 +266,6 @@ export function ModuleDashboard({
                   Lernen starten
                 </Button>
               )}
-              {flashcards.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="gap-2"
-                  onClick={onStartFlashcardStudy}
-                >
-                  <Cards size={20} />
-                  {flashcards.length} Karteikarten
-                </Button>
-              )}
             </div>
           </div>
           

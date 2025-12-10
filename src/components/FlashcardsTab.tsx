@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Flashcard, StudyNote } from '@/lib/types'
+import { Flashcard, StudyNote, Script } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,8 @@ import {
   Clock,
   Sparkle,
   ArrowsClockwise,
+  BookOpen,
+  Play,
 } from '@phosphor-icons/react'
 import { formatDistanceToNow } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -21,9 +23,11 @@ import { motion } from 'framer-motion'
 
 interface FlashcardsTabProps {
   flashcards: Flashcard[]
+  scripts?: Script[]  // Für Themen-Gruppierung
   onDeleteFlashcard: (flashcardId: string) => void
   onBulkDeleteFlashcards: (ids: string[]) => void
   onStartStudy: () => void
+  onStartStudyByScript?: (scriptId: string) => void  // NEU: Nach Thema lernen
   onGenerateAllFlashcards: () => void
   // Legacy-Props (optional, für Debug-Modus)
   notes?: StudyNote[]
@@ -207,11 +211,14 @@ function FlipCard({
 
 export function FlashcardsTab({
   flashcards,
+  scripts = [],
   onDeleteFlashcard,
   onBulkDeleteFlashcards,
   onStartStudy,
+  onStartStudyByScript,
   onGenerateAllFlashcards,
 }: FlashcardsTabProps) {
+  const [viewMode, setViewMode] = useState<'all' | 'byTopic'>('all')
   const {
     selectedIds: selectedCards,
     hasSelection,
@@ -230,6 +237,27 @@ export function FlashcardsTab({
       return new Date(card.nextReview) <= reference
     })
   }
+  
+  // Gruppiere nach Skript/Thema
+  const cardsByScript = flashcards.reduce((acc, card) => {
+    const key = card.scriptId || 'unknown'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(card)
+    return acc
+  }, {} as Record<string, Flashcard[]>)
+  
+  const scriptGroups = Object.entries(cardsByScript).map(([scriptId, cards]) => {
+    const script = scripts.find(s => s.id === scriptId)
+    const now = new Date()
+    const dueCount = cards.filter(c => !c.nextReview || new Date(c.nextReview) <= now).length
+    return {
+      scriptId,
+      scriptName: script?.name || 'Allgemein',
+      cards,
+      totalCount: cards.length,
+      dueCount
+    }
+  }).sort((a, b) => b.dueCount - a.dueCount)  // Sortiere nach fälligen Karten
 
   const now = new Date()
   const dueCards = getDueFlashcards(now)
@@ -296,6 +324,27 @@ export function FlashcardsTab({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex rounded-lg border overflow-hidden">
+            <Button 
+              variant={viewMode === 'all' ? 'default' : 'ghost'} 
+              size="sm" 
+              className="rounded-none"
+              onClick={() => setViewMode('all')}
+            >
+              <Cards size={14} className="mr-1" />
+              Alle
+            </Button>
+            <Button 
+              variant={viewMode === 'byTopic' ? 'default' : 'ghost'} 
+              size="sm" 
+              className="rounded-none"
+              onClick={() => setViewMode('byTopic')}
+            >
+              <BookOpen size={14} className="mr-1" />
+              Nach Thema
+            </Button>
+          </div>
           <Button variant="outline" size="sm" onClick={toggleSelectAll} disabled={flashcards.length === 0}>
             {allSelected ? 'Auswahl aufheben' : 'Alle auswählen'}
           </Button>
@@ -355,18 +404,64 @@ export function FlashcardsTab({
         </Card>
       </div>
 
-      {/* Karteikarten Grid - 2 Spalten */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {flashcards.map((card) => (
-          <FlipCard
-            key={card.id}
-            card={card}
-            isSelected={selectedCards.has(card.id)}
-            onToggleSelect={() => toggleSelect(card.id)}
-            onDelete={() => onDeleteFlashcard(card.id)}
-          />
-        ))}
-      </div>
+      {/* Themen-basierte Ansicht */}
+      {viewMode === 'byTopic' && (
+        <div className="space-y-4">
+          <h4 className="font-medium text-sm text-muted-foreground">Nach Thema lernen</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {scriptGroups.map(({ scriptId, scriptName, totalCount, dueCount }) => (
+              <Card 
+                key={scriptId} 
+                className={cn(
+                  "p-4 border transition-colors",
+                  dueCount > 0 && "border-primary/30 bg-primary/5"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-medium truncate">{scriptName}</h5>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {totalCount} Karten
+                      </Badge>
+                      {dueCount > 0 && (
+                        <Badge variant="default" className="text-xs bg-blue-500">
+                          {dueCount} fällig
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {dueCount > 0 && onStartStudyByScript && (
+                    <Button 
+                      size="sm" 
+                      className="ml-3 gap-1"
+                      onClick={() => onStartStudyByScript(scriptId)}
+                    >
+                      <Play size={14} weight="fill" />
+                      Lernen
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Karteikarten Grid - 2 Spalten (nur in "Alle" Ansicht) */}
+      {viewMode === 'all' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {flashcards.map((card) => (
+            <FlipCard
+              key={card.id}
+              card={card}
+              isSelected={selectedCards.has(card.id)}
+              onToggleSelect={() => toggleSelect(card.id)}
+              onDelete={() => onDeleteFlashcard(card.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

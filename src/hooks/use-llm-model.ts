@@ -38,16 +38,6 @@ export const LLM_MODELS: ModelInfo[] = [
     supportsVision: true,
   },
   {
-    value: 'gpt-5.1-mini',
-    label: 'GPT-5.1 Mini',
-    description: 'Schnell & günstig, neueste Generation',
-    inputPrice: 0.20,
-    cachedInputPrice: 0.02,
-    outputPrice: 1.5,
-    contextWindow: 200000,
-    supportsVision: true,
-  },
-  {
     value: 'gpt-5',
     label: 'GPT-5',
     description: 'Leistungsstark, multimodal',

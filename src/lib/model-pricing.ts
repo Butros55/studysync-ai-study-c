@@ -23,7 +23,6 @@ export type UsageSummary = {
 export const MODEL_PRICING: Record<string, Pricing> = {
   // GPT-5 Familie
   "gpt-5.1": { input: 1.25, cachedInput: 0.125, output: 10.0 },
-  "gpt-5.1-mini": { input: 0.20, cachedInput: 0.02, output: 1.5 },
   "gpt-5": { input: 1.25, cachedInput: 0.125, output: 10.0 },
   "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2.0 },
   "gpt-5-nano": { input: 0.05, cachedInput: 0.005, output: 0.4 },

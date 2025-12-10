@@ -881,7 +881,7 @@ function AppContent() {
       'generate-flashcards': 'generate-flashcards',
     }
     
-    // Sammle alle relevanten Tasks nach Typ (nur pending/processing fÃ¼r neuen State)
+    // Sammle alle relevanten Tasks nach Typ (nur pending/processing für neuen State)
     const tasksByType: Record<AIActionType, typeof pipelineTasks> = {
       'analyze': [],
       'generate-notes': [],
@@ -896,21 +896,28 @@ function AppContent() {
       }
     }
     
-    // Finde den aktiven Action-Typ (einer mit pending/processing Tasks)
+    // ========================================
+    // NEUE LOGIK: Sammle ALLE aktiven Tasks über alle Typen
+    // ========================================
     const actionTypes: AIActionType[] = ['analyze', 'generate-notes', 'generate-tasks', 'generate-flashcards']
-    let activeActionType: AIActionType | null = null
-    let activeTasks: typeof pipelineTasks = []
     
+    // Sammle ALLE pending/processing Tasks über alle Typen
+    const allActiveTasks: Array<typeof pipelineTasks[0] & { actionType: AIActionType }> = []
     for (const actionType of actionTypes) {
-      const tasks = tasksByType[actionType]
-      // Nur Tasks die noch laufen (pending/processing) starten ein neues UI
-      const hasActive = tasks.some(t => t.status === 'pending' || t.status === 'processing')
-      if (hasActive) {
-        activeActionType = actionType
-        activeTasks = tasks
-        break
+      for (const task of tasksByType[actionType]) {
+        if (task.status === 'pending' || task.status === 'processing') {
+          allActiveTasks.push({ ...task, actionType })
+        }
       }
     }
+    
+    // Finde den AKTUELL verarbeiteten Task (processing hat Priorität über pending)
+    const processingTask = allActiveTasks.find(t => t.status === 'processing')
+    const currentTask = processingTask || allActiveTasks[0]
+    const activeActionType = currentTask?.actionType || null
+    
+    // Alle Tasks des aktuellen Typs (für die Item-Liste)
+    const activeTasks = activeActionType ? tasksByType[activeActionType] : []
     
     setAiActionState(prev => {
       // Wenn keine aktiven Tasks und kein vorheriger State, nichts tun
@@ -929,23 +936,32 @@ function AppContent() {
       
       // Ab hier: Es gibt aktive Tasks
       
-      // Berechne den neuen State
-      const completedCount = activeTasks.filter(t => t.status === 'completed').length
-      const totalProgress = activeTasks.length > 0
-        ? activeTasks.reduce((sum, t) => sum + t.progress, 0) / activeTasks.length
+      // ========================================
+      // GESAMTZAHL über ALLE Typen (nicht nur aktueller Typ)
+      // ========================================
+      const allTasksAcrossTypes = actionTypes.flatMap(at => tasksByType[at])
+      const totalActiveCount = allActiveTasks.length  // Alle pending/processing
+      const totalCompletedCount = allTasksAcrossTypes.filter(t => t.status === 'completed').length
+      
+      // Fortschritt basierend auf ALLEN aktiven Tasks
+      const totalProgress = allActiveTasks.length > 0
+        ? allActiveTasks.reduce((sum, t) => sum + t.progress, 0) / allActiveTasks.length
         : 0
-      const allComplete = activeTasks.every(t => t.status === 'completed' || t.status === 'error')
       
-      // Berechne den aktuellen Schritt basierend auf Fortschritt
+      // Alle fertig wenn keine pending/processing mehr
+      const allComplete = allActiveTasks.length === 0
+      
+      // Berechne den aktuellen Schritt basierend auf Fortschritt des aktuellen Tasks
+      const currentTaskProgress = currentTask?.progress || 0
       let currentStep = 0
-      if (totalProgress > 33) currentStep = 1
-      if (totalProgress > 66) currentStep = 2
+      if (currentTaskProgress > 33) currentStep = 1
+      if (currentTaskProgress > 66) currentStep = 2
       
-      // Finde Modul-Info
-      const firstTask = activeTasks[0]
-      const script = scripts?.find(s => firstTask?.name === s.name)
+      // Finde Modul-Info vom aktuellen Task
+      const script = scripts?.find(s => currentTask?.name === s.name)
       const module = script ? modules?.find(m => m.id === script.moduleId) : null
       
+      // Items nur vom aktuellen Typ anzeigen
       const newItems = activeTasks.map(t => ({
         id: t.id,
         name: t.name,
@@ -953,41 +969,34 @@ function AppContent() {
         status: t.status === 'pending' ? 'queued' as const : t.status as 'processing' | 'completed' | 'error',
       }))
       
-      // Wenn sich nichts geÃ¤ndert hat, nicht updaten
+      // ========================================
+      // Typ-Wechsel erkennen und animiert übergeben
+      // ========================================
+      const typeChanged = prev && prev.type !== activeActionType
+      
+      // Wenn sich nichts geändert hat, nicht updaten
       if (prev && 
           prev.type === activeActionType &&
-          prev.progress === totalProgress &&
-          prev.processedCount === completedCount &&
-          prev.isComplete === allComplete) {
+          Math.abs(prev.progress - totalProgress) < 0.1 &&
+          prev.processedCount === totalCompletedCount &&
+          prev.totalCount === totalActiveCount + totalCompletedCount) {
         return prev
       }
       
-      // Wenn schon ein State existiert fÃ¼r diesen Typ, nur updaten
-      // WICHTIG: totalCount nur erhÃ¶hen, nie verringern (damit die Anzeige stabil bleibt)
-      if (prev && prev.type === activeActionType) {
-        return {
-          ...prev,
-          progress: totalProgress,
-          currentStep,
-          processedCount: completedCount,
-          totalCount: Math.max(prev.totalCount, activeTasks.length),
-          isComplete: allComplete,
-          items: newItems,
-        }
-      }
-      
-      // Neuen State erstellen
+      // Neuen/Aktualisierten State erstellen
+      // WICHTIG: totalCount = alle aktiven + alle fertigen (damit Badge korrekt ist)
       return {
         type: activeActionType!,
         moduleName: module?.name || 'Dokumente',
         moduleId: module?.id || '',
         progress: totalProgress,
         currentStep,
-        processedCount: completedCount,
-        totalCount: activeTasks.length,
+        processedCount: totalCompletedCount,
+        totalCount: Math.max(prev?.totalCount || 0, totalActiveCount + totalCompletedCount),
         isComplete: allComplete,
         items: newItems,
-        isMinimized: false,
+        // Bei Typ-Wechsel minimiert lassen wenn vorher minimiert
+        isMinimized: typeChanged ? (prev?.isMinimized ?? false) : (prev?.isMinimized ?? false),
       }
     })
   }, [pipelineTasks, modules, scripts])
@@ -2707,17 +2716,47 @@ Gib NUR das JSON zurück.`
 
   const handleStartFlashcardStudy = () => {
     if (!selectedModuleId) return
+    
+    // Filtere fällige Karten
     const dueCards = moduleFlashcards.filter((card) => {
       if (!card.nextReview) return true
       return new Date(card.nextReview) <= new Date()
     })
     
     if (dueCards.length === 0) {
-      toast.info('Keine fÃ¤lligen Karteikarten zum Lernen')
+      toast.info('Keine fälligen Karteikarten zum Lernen')
       return
     }
     
-    setActiveFlashcards(dueCards)
+    // SHUFFLE: Mische die Karten zufällig damit nicht immer dieselbe Reihenfolge
+    const shuffledCards = [...dueCards].sort(() => Math.random() - 0.5)
+    
+    setActiveFlashcards(shuffledCards)
+    navigate(buildFlashcardsPath(selectedModuleId))
+  }
+
+  // NEU: Karteikarten nach Thema/Skript lernen
+  const handleStartFlashcardStudyByScript = (scriptId: string) => {
+    if (!selectedModuleId) return
+    
+    // Filtere Karten für dieses Skript
+    const scriptCards = moduleFlashcards.filter(card => card.scriptId === scriptId)
+    
+    // Filtere fällige Karten
+    const dueCards = scriptCards.filter((card) => {
+      if (!card.nextReview) return true
+      return new Date(card.nextReview) <= new Date()
+    })
+    
+    if (dueCards.length === 0) {
+      toast.info('Keine fälligen Karteikarten für dieses Thema')
+      return
+    }
+    
+    // SHUFFLE: Mische die Karten zufällig
+    const shuffledCards = [...dueCards].sort(() => Math.random() - 0.5)
+    
+    setActiveFlashcards(shuffledCards)
     navigate(buildFlashcardsPath(selectedModuleId))
   }
 
@@ -3362,6 +3401,7 @@ Gib deine Antwort als JSON zurÃ¼ck:
           onGenerateAllTasks={handleGenerateAllTasks}
           onGenerateAllFlashcards={handleGenerateAllFlashcards}
           onStartFlashcardStudy={handleStartFlashcardStudy}
+          onStartFlashcardStudyByScript={handleStartFlashcardStudyByScript}
           onEditModule={handleEditModule}
           onStartExamMode={() => navigate(buildExamPath(selectedModule.id))}
           onAnalyzeScript={handleAnalyzeScript}
