@@ -190,6 +190,33 @@ export interface Task {
   viewedSolution?: boolean  // Wurde die Musterlösung angesehen?
   
   // =========================================
+  // CODE EXECUTION TASK (für Software Engineering)
+  // =========================================
+  
+  /** Task type: 'standard' for normal tasks, 'code' for code execution tasks */
+  taskType?: 'standard' | 'code'
+  
+  /** Code execution data (only for taskType='code') */
+  codeExecution?: {
+    /** Programming language */
+    language: 'javascript' | 'typescript' | 'python' | 'java' | 'c' | 'cpp' | 'pseudo'
+    /** The code to display/execute */
+    code: string
+    /** Pre-parsed execution steps with variable states */
+    executionSteps?: Array<{
+      lineNumber: number
+      content: string
+      variableState?: Record<string, unknown>
+      consoleOutput?: string
+      explanation?: string
+    }>
+    /** Expected final output */
+    expectedOutput?: string
+    /** Type of user task */
+    userTask?: 'predict_output' | 'find_bug' | 'trace_variables' | 'explain_logic'
+  }
+  
+  // =========================================
   // NEUE FELDER FÜR DEDUP & COVERAGE (v2.0)
   // =========================================
   

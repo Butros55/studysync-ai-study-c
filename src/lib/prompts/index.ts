@@ -39,3 +39,12 @@ export {
   parseExamTaskResponse,
   type ExamTaskPromptParams
 } from './examTask.prompt'
+
+export {
+  CODE_TASKS_PROMPT_VERSION,
+  buildCodeTaskPrompt,
+  parseCodeTaskResponse,
+  detectSoftwareEngineeringModule,
+  detectProgrammingLanguage,
+  type CodeTaskPromptParams
+} from './codeTasks.prompt'

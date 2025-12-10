@@ -1,10 +1,182 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { cn } from '@/lib/utils'
 import 'katex/dist/katex.min.css'
+import { Copy, Check } from '@phosphor-icons/react'
+import { useState } from 'react'
+
+// ============================================================================
+// Syntax Highlighting für Code-Blöcke
+// ============================================================================
+
+const CODE_TOKENS: Record<string, { pattern: RegExp; className: string }[]> = {
+  javascript: [
+    { pattern: /\b(const|let|var|function|return|if|else|for|while|class|new|this|async|await|import|export|from|try|catch|throw|switch|case|break|continue|default)\b/g, className: 'text-purple-400' },
+    { pattern: /\b(true|false|null|undefined|NaN|Infinity)\b/g, className: 'text-orange-400' },
+    { pattern: /\b(\d+\.?\d*)\b/g, className: 'text-amber-400' },
+    { pattern: /(["'`])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /\/\/.*$/gm, className: 'text-gray-500 italic' },
+    { pattern: /\b(console|Math|Array|Object|String|Number|Boolean|Date|JSON|Promise|Error)\b/g, className: 'text-cyan-400' },
+    { pattern: /\.(log|error|warn|info|push|pop|map|filter|reduce|forEach|length|toString|includes|indexOf|slice|splice|concat|join|split|trim|replace)\b/g, className: 'text-blue-300' },
+    { pattern: /(\=\>|===|!==|==|!=|>=|<=|\+\+|--|\+=|-=|\*=|\/=)/g, className: 'text-pink-400' },
+  ],
+  typescript: [], // Inherits from JS
+  python: [
+    { pattern: /\b(def|class|return|if|elif|else|for|while|import|from|as|try|except|finally|with|lambda|yield|raise|pass|break|continue|and|or|not|in|is|global|nonlocal)\b/g, className: 'text-purple-400' },
+    { pattern: /\b(True|False|None)\b/g, className: 'text-orange-400' },
+    { pattern: /\b(\d+\.?\d*)\b/g, className: 'text-amber-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /("""[\s\S]*?"""|'''[\s\S]*?''')/g, className: 'text-green-400' },
+    { pattern: /#.*$/gm, className: 'text-gray-500 italic' },
+    { pattern: /\b(print|len|range|str|int|float|list|dict|set|tuple|type|input|open|enumerate|zip|map|filter|sorted|reversed|sum|min|max|abs|round)\b/g, className: 'text-cyan-400' },
+    { pattern: /@\w+/g, className: 'text-yellow-400' },
+  ],
+  java: [
+    { pattern: /\b(public|private|protected|class|interface|extends|implements|static|final|void|return|if|else|for|while|new|this|super|try|catch|throw|throws|import|package|abstract|synchronized)\b/g, className: 'text-purple-400' },
+    { pattern: /\b(true|false|null)\b/g, className: 'text-orange-400' },
+    { pattern: /\b(\d+\.?\d*[fFdDlL]?)\b/g, className: 'text-amber-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /\/\/.*$/gm, className: 'text-gray-500 italic' },
+    { pattern: /\b(System|String|Integer|Double|Boolean|ArrayList|HashMap|Scanner|List|Map|Set|Object)\b/g, className: 'text-cyan-400' },
+    { pattern: /@\w+/g, className: 'text-yellow-400' },
+  ],
+  c: [
+    { pattern: /\b(int|char|float|double|void|return|if|else|for|while|do|switch|case|break|continue|struct|typedef|sizeof|const|static|extern|unsigned|signed|long|short)\b/g, className: 'text-purple-400' },
+    { pattern: /\b(\d+\.?\d*[fFlL]?)\b/g, className: 'text-amber-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /\/\/.*$/gm, className: 'text-gray-500 italic' },
+    { pattern: /#\s*(include|define|ifdef|ifndef|endif|if|else|elif|pragma)\b/g, className: 'text-pink-400' },
+    { pattern: /\b(printf|scanf|malloc|free|sizeof|strlen|strcpy|strcmp|memcpy|memset)\b/g, className: 'text-cyan-400' },
+  ],
+  cpp: [], // Inherits from C
+  sql: [
+    { pattern: /\b(SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AND|OR|NOT|IN|IS|NULL|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|INDEX|DROP|ALTER|ADD|PRIMARY|KEY|FOREIGN|REFERENCES|UNIQUE|DEFAULT|CHECK|CONSTRAINT|AS|DISTINCT|COUNT|SUM|AVG|MIN|MAX|CASE|WHEN|THEN|ELSE|END|UNION|ALL|EXISTS|LIKE|BETWEEN)\b/gi, className: 'text-purple-400' },
+    { pattern: /\b(\d+\.?\d*)\b/g, className: 'text-amber-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /--.*$/gm, className: 'text-gray-500 italic' },
+  ],
+  html: [
+    { pattern: /(&lt;\/?[a-zA-Z][a-zA-Z0-9]*)/g, className: 'text-pink-400' },
+    { pattern: /\b([a-zA-Z-]+)=/g, className: 'text-purple-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /(&lt;!--[\s\S]*?--&gt;)/g, className: 'text-gray-500 italic' },
+  ],
+  css: [
+    { pattern: /([.#]?[a-zA-Z_-][a-zA-Z0-9_-]*)\s*\{/g, className: 'text-pink-400' },
+    { pattern: /([a-zA-Z-]+)\s*:/g, className: 'text-purple-400' },
+    { pattern: /:\s*([^;{}]+)/g, className: 'text-cyan-400' },
+    { pattern: /(\/\*[\s\S]*?\*\/)/g, className: 'text-gray-500 italic' },
+  ],
+  bash: [
+    { pattern: /\b(if|then|else|elif|fi|for|do|done|while|until|case|esac|in|function|return|local|export|source|echo|exit|cd|pwd|ls|mkdir|rm|cp|mv|cat|grep|sed|awk|find|xargs|chmod|chown|sudo|apt|npm|yarn|git|docker)\b/g, className: 'text-purple-400' },
+    { pattern: /\$[a-zA-Z_][a-zA-Z0-9_]*/g, className: 'text-cyan-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /#.*$/gm, className: 'text-gray-500 italic' },
+  ],
+  pseudo: [
+    { pattern: /\b(WENN|DANN|SONST|SOLANGE|FÜR|VON|BIS|SCHRITT|WIEDERHOLE|FUNKTION|RÜCKGABE|ENDE|BEGIN|END|IF|THEN|ELSE|WHILE|DO|FOR|TO|STEP|REPEAT|UNTIL|FUNCTION|RETURN|PROCEDURE|CALL|INPUT|OUTPUT|PRINT|READ|ALGORITHM|INTEGER|REAL|BOOLEAN|STRING|ARRAY)\b/gi, className: 'text-purple-400' },
+    { pattern: /\b(wahr|falsch|TRUE|FALSE)\b/gi, className: 'text-orange-400' },
+    { pattern: /\b(\d+\.?\d*)\b/g, className: 'text-amber-400' },
+    { pattern: /(["'])(?:(?!\1)[^\\]|\\.)*\1/g, className: 'text-green-400' },
+    { pattern: /\/\/.*$/gm, className: 'text-gray-500 italic' },
+    { pattern: /:=/g, className: 'text-pink-400' },
+  ],
+}
+
+// Inherit patterns
+CODE_TOKENS.typescript = CODE_TOKENS.javascript
+CODE_TOKENS.cpp = CODE_TOKENS.c
+CODE_TOKENS.sh = CODE_TOKENS.bash
+CODE_TOKENS.shell = CODE_TOKENS.bash
+CODE_TOKENS.js = CODE_TOKENS.javascript
+CODE_TOKENS.ts = CODE_TOKENS.typescript
+CODE_TOKENS.py = CODE_TOKENS.python
+
+function highlightCodeBlock(code: string, language: string): string {
+  const lang = language?.toLowerCase() || 'text'
+  const patterns = CODE_TOKENS[lang]
+  
+  if (!patterns) {
+    // No highlighting for unknown languages
+    return code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  }
+  
+  let highlighted = code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
+  // Apply patterns
+  for (const { pattern, className } of patterns) {
+    // Reset lastIndex for global patterns
+    pattern.lastIndex = 0
+    highlighted = highlighted.replace(pattern, (match) => 
+      `<span class="${className}">${match}</span>`
+    )
+  }
+  
+  return highlighted
+}
+
+// Code Block Component mit Copy-Button
+function CodeBlock({ 
+  code, 
+  language 
+}: { 
+  code: string
+  language?: string 
+}) {
+  const [copied, setCopied] = useState(false)
+  
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [code])
+  
+  const highlightedCode = useMemo(() => 
+    highlightCodeBlock(code, language || 'text'),
+    [code, language]
+  )
+  
+  return (
+    <div className="relative group my-3">
+      {/* Language badge & Copy button */}
+      <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        {language && (
+          <span className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded font-mono">
+            {language}
+          </span>
+        )}
+        <button
+          onClick={handleCopy}
+          className="p-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+          title="Code kopieren"
+        >
+          {copied ? (
+            <Check size={14} className="text-green-400" />
+          ) : (
+            <Copy size={14} />
+          )}
+        </button>
+      </div>
+      
+      {/* Code content */}
+      <pre className="bg-gray-950 border border-gray-800 rounded-lg p-4 overflow-x-auto">
+        <code 
+          className="font-mono text-sm text-gray-200 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: highlightedCode }}
+        />
+      </pre>
+    </div>
+  )
+}
 
 interface MarkdownRendererProps {
   content: string
@@ -279,7 +451,7 @@ export function MarkdownRenderer({
       className={cn(
         baseStyles,
         tableStyles,
-        'prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none prose-pre:bg-muted prose-pre:p-3 prose-pre:rounded-md',
+        'prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none',
         truncateStyles,
         inline && 'inline',
         className
@@ -288,6 +460,32 @@ export function MarkdownRenderer({
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { strict: false }]]}
+        components={{
+          // Custom code block renderer with syntax highlighting
+          code({ node, className: codeClassName, children, ...props }) {
+            const match = /language-(\w+)/.exec(codeClassName || '')
+            const language = match ? match[1] : undefined
+            const codeString = String(children).replace(/\n$/, '')
+            
+            // Check if it's a code block (has language) or inline code
+            const isCodeBlock = !!language || codeString.includes('\n')
+            
+            if (isCodeBlock) {
+              return <CodeBlock code={codeString} language={language} />
+            }
+            
+            // Inline code
+            return (
+              <code className={codeClassName} {...props}>
+                {children}
+              </code>
+            )
+          },
+          // Ensure pre doesn't wrap our CodeBlock
+          pre({ children }) {
+            return <>{children}</>
+          }
+        }}
       >
         {normalizedContent}
       </ReactMarkdown>

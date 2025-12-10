@@ -11,6 +11,7 @@ import { TaskAttachments } from './TaskAttachments'
 import { SolutionPanel } from './SolutionPanel'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { FormulaSheetPanel } from './FormulaSheetPanel'
+import { CodeExecutionPanel } from './CodeExecutionPanel'
 import { Badge } from './ui/badge'
 import {
   CheckCircle,
@@ -24,6 +25,7 @@ import {
   Confetti,
   CaretLeft,
   CaretRight,
+  Code,
 } from '@phosphor-icons/react'
 import { AdvancedDrawingCanvas } from './AdvancedDrawingCanvas'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -504,6 +506,36 @@ export function TaskSolver({
             {/* Attachments Section - Wahrheitstabellen, Bilder, etc. */}
             {task.attachments && task.attachments.length > 0 && (
               <TaskAttachments attachments={task.attachments} compact />
+            )}
+            
+            {/* Code Execution Section - für Software Engineering Aufgaben */}
+            {task.taskType === 'code' && task.codeExecution && (
+              <Card className="p-4 border-primary/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Code size={20} className="text-primary" weight="bold" />
+                  <h3 className="font-semibold">Code-Aufgabe</h3>
+                  <Badge variant="secondary" className="ml-auto">
+                    {task.codeExecution.userTask === 'predict_output' && 'Ausgabe vorhersagen'}
+                    {task.codeExecution.userTask === 'find_bug' && 'Fehler finden'}
+                    {task.codeExecution.userTask === 'trace_variables' && 'Variablen verfolgen'}
+                    {task.codeExecution.userTask === 'explain_logic' && 'Logik erklären'}
+                    {!task.codeExecution.userTask && 'Code verstehen'}
+                  </Badge>
+                </div>
+                <CodeExecutionPanel
+                  codeTask={{
+                    language: task.codeExecution.language,
+                    code: task.codeExecution.code,
+                    executionSteps: task.codeExecution.executionSteps,
+                    expectedOutput: task.codeExecution.expectedOutput,
+                    userTask: task.codeExecution.userTask,
+                    question: task.question,
+                  }}
+                  onExecutionComplete={(success, output) => {
+                    console.log('[CodeExecution] Complete:', { success, output })
+                  }}
+                />
+              </Card>
             )}
 
             {/* Feedback Section */}
