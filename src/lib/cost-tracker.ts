@@ -70,6 +70,7 @@ export function getModelDisplayName(model: string): string {
   const names: Record<string, string> = {
     // GPT-5
     'gpt-5.1': 'GPT-5.1',
+    'gpt-5.1-mini': 'GPT-5.1 Mini',
     'gpt-5': 'GPT-5',
     'gpt-5-mini': 'GPT-5 Mini',
     'gpt-5-nano': 'GPT-5 Nano',
